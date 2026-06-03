@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SITEMAP — Event Site Planner</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.30.0/tabler-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surf:#181c26;--surf2:#1f2433;--surf3:#252b3b;
+  --brd:#2c3347;--brd2:#363d52;
+  --tx:#e8ecf4;--tx2:#8b93a8;--tx3:#5a6278;
+  --acc:#4f7ef8;--acc2:#3a63d4;--accg:rgba(79,126,248,0.15);
+  --grn:#2dd4a0;--grng:rgba(45,212,160,0.1);--grnb:rgba(45,212,160,0.35);
+  --amb:#f5a623;--ambg:rgba(245,166,35,0.1);--ambb:rgba(245,166,35,0.32);
+  --red:#f05252;--redg:rgba(240,82,82,0.1);--redb:rgba(240,82,82,0.32);
+  --font:'Montserrat',sans-serif;--mono:'DM Mono',monospace;
+  --r:5px;--r2:9px;
+}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--font);font-size:13px;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%;min-height:580px}
+#topbar{display:flex;align-items:center;padding:0 10px;gap:1px;background:var(--surf);border-bottom:1px solid var(--brd);height:46px;flex-shrink:0;overflow-x:auto}
+#topbar::-webkit-scrollbar{display:none}
+.brand{font-size:14px;font-weight:800;letter-spacing:.04em;color:var(--tx);padding-right:12px;margin-right:8px;border-right:1px solid var(--brd);white-space:nowrap;flex-shrink:0}
+.brand em{color:var(--acc);font-style:normal}
+.tg{display:flex;gap:1px;padding:0 6px;border-right:1px solid var(--brd);flex-shrink:0;align-items:center}
+.tg:last-child{border:none}
+.tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5px;padding:5px 7px;border-radius:var(--r);background:transparent;cursor:pointer;font-size:8px;font-family:var(--font);font-weight:600;color:var(--tx2);border:1px solid transparent;min-width:40px;user-select:none;transition:background .12s,color .12s,border-color .12s;letter-spacing:.04em;white-space:nowrap}
+.tb i{font-size:15px;line-height:1}
+.tb:hover{background:var(--surf2);color:var(--tx);border-color:var(--brd)}
+.tb.active{background:var(--accg);color:var(--acc);border-color:rgba(79,126,248,0.32)}
+.tb.warn{color:var(--tx3)}
+.tb.warn:hover{background:var(--redg);color:var(--red);border-color:var(--redb)}
+.tb.exp{color:var(--tx3)}
+.tb.exp:hover{background:var(--grng);color:var(--grn);border-color:var(--grnb)}
+.spacer{flex:1}
+.el-drop{padding:5px 8px;background:var(--surf2);border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:10px;font-family:var(--font);font-weight:600;cursor:pointer;outline:none;height:32px;min-width:162px;transition:border-color .12s}
+.el-drop:hover{border-color:var(--brd);background:var(--surf3)}
+.el-drop:focus{border-color:var(--acc)}
+.el-drop option{background:var(--surf2)}
+#main{display:flex;flex:1;min-height:0;overflow:hidden}
+#cv-area{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#141820}
+#cw{position:relative;overflow:hidden;cursor:default;width:100%;height:100%}
+#grid{position:absolute;inset:0;pointer-events:none;opacity:.12;background-image:linear-gradient(var(--brd) 1px,transparent 1px),linear-gradient(90deg,var(--brd) 1px,transparent 1px);background-size:40px 40px}
+#bg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;display:none}
+canvas{position:absolute;inset:0;pointer-events:none}
+#el{position:absolute;inset:0}
+#statusbar{position:absolute;bottom:0;left:0;right:0;height:28px;background:rgba(10,12,18,0.88);backdrop-filter:blur(6px);border-top:1px solid var(--brd);display:flex;align-items:center;padding:0 12px;gap:12px;z-index:8;font-size:10px;color:var(--tx3)}
+#ins-msg{flex:1;display:flex;align-items:center;gap:5px;color:var(--tx2)}
+#ins-msg i{color:var(--acc);font-size:12px}
+#scale-disp{font-family:var(--mono);display:flex;align-items:center;gap:5px}
+.scale-tick{width:24px;height:2px;background:var(--tx3);border-radius:1px}
+#sb{width:226px;background:var(--surf);border-left:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.sb-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.sb-scroll::-webkit-scrollbar{width:3px}
+.sb-scroll::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px}
+.panel{padding:12px;border-bottom:1px solid var(--brd)}
+.plabel{font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin-bottom:9px}
+.plabel-sub{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin-bottom:6px;margin-top:8px}
+.cap-center{text-align:center;padding:2px 0 4px}
+.cap-big{font-size:30px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.cap-sub{font-size:10px;color:var(--tx2);margin-top:3px}
+.cap-detail{font-size:9.5px;color:var(--tx3);margin-top:3px;font-family:var(--mono)}
+.cap-na{font-size:12px;color:var(--tx3);text-align:center;padding:6px 0}
+.rack-row{display:flex;align-items:center;gap:10px}
+.rack-svg{flex-shrink:0}
+.rack-info{font-size:10px;color:var(--tx2);line-height:1.6;font-weight:500}
+.rack-ft{font-family:var(--mono);font-size:9.5px;color:var(--tx3)}
+#wl{display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto}
+.w{display:flex;gap:5px;padding:5px 7px;border-radius:var(--r);font-size:9.5px;line-height:1.5;align-items:flex-start;border:1px solid}
+.w i{font-size:11px;flex-shrink:0;margin-top:2px}
+.w.hard{background:var(--redg);color:#f99;border-color:var(--redb)}
+.w.soft{background:var(--ambg);color:#f5cc7a;border-color:var(--ambb)}
+.w.info{background:rgba(79,126,248,0.1);color:#90b4fc;border-color:rgba(79,126,248,0.32)}
+.w.ok{background:var(--grng);color:var(--grn);border-color:var(--grnb)}
+.ec-row{display:flex;justify-content:space-between;align-items:center;padding:2.5px 0;border-bottom:1px solid var(--brd)}
+.ec-row:last-child{border:none}
+.ec-name{font-size:10px;color:var(--tx2);font-weight:500}
+.ec-val{font-family:var(--mono);font-size:9.5px;color:var(--tx);background:var(--surf2);padding:1px 5px;border-radius:3px}
+.vrow{display:flex;gap:4px;margin-bottom:5px}
+.vrow:last-child{margin-bottom:0}
+.vsel{flex:1;padding:4px 6px;background:var(--surf2);border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:10px;font-family:var(--font);font-weight:500;min-width:0}
+.vsel option{background:var(--surf2)}
+.vbtn{padding:4px 8px;background:var(--surf2);border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx2);font-size:10px;cursor:pointer;font-family:var(--font);font-weight:600;white-space:nowrap;transition:all .12s}
+.vbtn:hover{background:var(--surf3);color:var(--tx)}
+.vbtn.acc{background:var(--accg);color:var(--acc);border-color:rgba(79,126,248,0.32)}
+.vbtn.acc:hover{background:rgba(79,126,248,0.2)}
+.vbtn.del{color:var(--red);border-color:transparent;background:transparent}
+.vbtn.del:hover{background:var(--redg);border-color:var(--redb)}
+.fa-item{padding:4px 0;border-bottom:1px solid var(--brd);font-size:10px}
+.fa-item:last-child{border:none}
+.fa-item strong{color:var(--tx);display:block;font-weight:600}
+.fa-item span{color:var(--tx3);font-size:9px}
+.vl-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.vl-row:last-child{margin-bottom:0}
+.vl-num{font-size:10.5px;font-weight:700;color:var(--acc);font-family:var(--mono);flex-shrink:0;min-width:26px;text-align:right}
+.vl-inp{flex:1;padding:3px 6px;background:var(--surf2);border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:10px;font-family:var(--font);font-weight:500;outline:none;min-width:0}
+.vl-inp:focus{border-color:var(--acc)}
+.vl-del{width:18px;height:18px;flex-shrink:0;background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;font-weight:700;line-height:1;border-radius:3px;transition:color .12s,background .12s;padding:0;display:flex;align-items:center;justify-content:center}
+.vl-del:hover{color:var(--red);background:var(--redg)}
+.ck-row{display:flex;align-items:flex-start;gap:7px;padding:3px 0;font-size:9.5px;color:var(--tx2);font-weight:500}
+.ck-swatch{width:13px;height:13px;border-radius:2px;flex-shrink:0;border:1.5px solid;margin-top:2px}
+.ck-line{width:20px;height:3px;border-radius:2px;flex-shrink:0;margin-top:4px}
+.ck-zone{width:13px;height:13px;border-radius:2px;border:2px dashed;flex-shrink:0;margin-top:2px}
+.evt-inp{width:100%;padding:5px 7px;background:var(--surf2);border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:10.5px;font-family:var(--font);font-weight:500;outline:none;margin-top:6px}
+.evt-inp:focus{border-color:var(--acc)}
+/* KEY FIX: .el has explicit size so hover area works.
+   .dbtn/.rbtn are INSIDE the element bounds (positive offsets) so
+   hovering them keeps .el:hover active and they stay visible. */
+.el{position:absolute;cursor:grab;user-select:none}
+.el:active{cursor:grabbing;z-index:900}
+.eiwrap{position:relative}
+.ei{display:flex;align-items:center;justify-content:center;border-radius:3px;border:2px solid;transition:box-shadow .1s}
+.el.selected .ei{box-shadow:0 0 0 2px var(--acc),0 0 12px rgba(79,126,248,0.4)}
+.el.hr .ei{box-shadow:0 0 0 2px var(--red),0 0 8px var(--redg)}
+.el.sr .ei{box-shadow:0 0 0 2px var(--amb),0 0 8px var(--ambg)}
+.el-lbl{position:absolute;bottom:3px;left:2px;right:2px;font-family:var(--font);font-weight:900;letter-spacing:-.01em;color:#fff;text-align:center;text-shadow:0 0 6px rgba(0,0,0,1),0 1px 4px rgba(0,0,0,0.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;z-index:3;pointer-events:all;line-height:1.1}
+/* Buttons are INSIDE the element — never outside its bounds */
+.dbtn,.rbtn{position:absolute;border-radius:50%;display:none;align-items:center;justify-content:center;cursor:pointer;border:none;line-height:1;z-index:20;transition:transform .1s,opacity .1s;opacity:0.9}
+.dbtn{background:var(--red);color:#fff;font-weight:700}
+.rbtn{background:var(--acc);color:#fff;cursor:grab}
+.dbtn:hover,.rbtn:hover{transform:scale(1.15);opacity:1}
+.el:hover .dbtn,.el:hover .rbtn,.el.selected .dbtn,.el.selected .rbtn{display:flex}
+.rot-deg{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--acc);font-family:var(--mono);display:none;white-space:nowrap;background:rgba(10,12,18,0.8);padding:1px 5px;border-radius:2px;pointer-events:none}
+.el.selected .rot-deg{display:block}
+#enc-screen{position:absolute;inset:0;background:rgba(10,12,18,0.92);backdrop-filter:blur(10px);z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center}
+.ep-title{font-size:18px;font-weight:800;color:var(--tx);letter-spacing:-.02em}
+.ep-sub{font-size:12px;color:var(--tx2);max-width:360px;line-height:1.65;font-weight:400}
+.ep-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.ep-btn{padding:14px 20px;border-radius:var(--r2);border:1px solid var(--brd2);background:var(--surf2);color:var(--tx);cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:150px}
+.ep-btn i{font-size:24px;color:var(--tx2)}
+.ep-btn small{font-size:10px;color:var(--tx3);font-weight:400;line-height:1.4;max-width:140px}
+.ep-btn:hover{background:var(--surf3);transform:translateY(-2px)}
+.ep-btn.yes{border-color:rgba(79,126,248,0.32);background:var(--accg)}
+.ep-btn.yes i{color:var(--acc)}
+#mo{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(6px)}
+#md{background:var(--surf);border:1px solid var(--brd2);border-radius:var(--r2);padding:22px;width:320px;box-shadow:0 24px 60px rgba(0,0,0,0.6)}
+.m-title{font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px;letter-spacing:-.01em}
+.m-desc{font-size:11px;color:var(--tx2);margin-bottom:14px;line-height:1.55;font-weight:400}
+.mf{margin-bottom:9px}
+.mf label{display:block;font-size:8.5px;font-weight:700;color:var(--tx3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.mf input,.mf select{width:100%;padding:6px 9px;background:var(--surf2);border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:12px;font-family:var(--font);font-weight:500;outline:none;transition:border-color .12s}
+.mf input[type=color]{height:36px;padding:3px 5px;cursor:pointer}
+.mf input:focus,.mf select:focus{border-color:var(--acc)}
+.mrow{display:flex;gap:7px}
+.mrow .mf{flex:1}
+.mbtns{display:flex;gap:7px;justify-content:flex-end;margin-top:14px}
+.mbtn{padding:6px 14px;border-radius:var(--r);border:1px solid var(--brd2);background:var(--surf2);color:var(--tx2);cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;transition:all .12s}
+.mbtn:hover{background:var(--surf3);color:var(--tx)}
+.mbtn.p{background:var(--acc);color:#fff;border-color:transparent}
+.mbtn.p:hover{background:var(--acc2)}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="topbar">
+  <div class="brand">SITE<em>MAP</em></div>
+  <div class="tg">
+    <button class="tb" id="zg"><i class="ti ti-plant-2"></i>Grass</button>
+    <button class="tb" id="zp"><i class="ti ti-road"></i>Pave</button>
+    <button class="tb" id="zr"><i class="ti ti-ban"></i>Restrict</button>
+    <button class="tb" id="ze"><i class="ti ti-eraser"></i>Erase Zone</button>
+  </div>
+  <div class="tg" id="rack-tg" style="display:none">
+    <button class="tb" id="brk"><i class="ti ti-barrier-block"></i>Barrier</button>
+    <button class="tb" id="bund"><i class="ti ti-arrow-back-up"></i>Undo Rack</button>
+  </div>
+  <div class="tg">
+    <button class="tb" id="ba"><i class="ti ti-accessible"></i>ADA Path</button>
+  </div>
+  <div class="tg">
+    <button class="tb" id="bdim"><i class="ti ti-dimensions"></i>Measure</button>
+  </div>
+  <div class="tg">
+    <select class="el-drop" id="el-drop">
+      <option value="" disabled selected>Add Elements to Park</option>
+      <option value="tent10">10×10 Tent</option>
+      <option value="tent20">10×20 Tent</option>
+      <option value="stage">Stage</option>
+      <option value="truck">Food Truck</option>
+      <option value="gen">Generator</option>
+      <option value="ingress">Ingress/Egress</option>
+      <option value="firstaid">First Aid Station</option>
+      <option value="extinguisher">Fire Extinguisher</option>
+      <option value="mix">Mix Platform</option>
+      <option value="─────────" disabled>─────────</option>
+      <option value="custom">+ Add your own element…</option>
+    </select>
+  </div>
+  <div class="tg">
+    <button class="tb active" id="bsel"><i class="ti ti-cursor"></i>Select</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="tg">
+    <button class="tb exp" id="bpdf"><i class="ti ti-file-type-pdf"></i>Export PDF</button>
+    <button class="tb" id="bundo"><i class="ti ti-corner-up-left"></i>Undo</button>
+    <button class="tb warn" id="bclr"><i class="ti ti-trash"></i>Clear</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="cv-area">
+    <div id="cw">
+      <div id="grid"></div>
+      <img id="bg">
+      <canvas id="zc"></canvas><canvas id="rkc"></canvas><canvas id="bc"></canvas><canvas id="dc"></canvas>
+      <div id="el"></div>
+      <div id="enc-screen">
+        <div class="ep-title">New Event Layout</div>
+        <div class="ep-sub">Will this event space be enclosed with bike rack or barricade? This determines whether capacity can be calculated from the perimeter.</div>
+        <div class="ep-btns">
+          <button class="ep-btn yes" id="ep-yes"><i class="ti ti-barrier-block"></i>Yes — Enclosed<small>Bike rack tool active · Capacity from enclosed area</small></button>
+          <button class="ep-btn" id="ep-no"><i class="ti ti-layout-distribute-horizontal"></i>No — Open Layout<small>No perimeter boundary · No capacity estimate</small></button>
+        </div>
+      </div>
+      <div id="statusbar">
+        <div id="ins-msg"><i class="ti ti-info-circle"></i><span id="ins-txt">Choose a tool to begin</span></div>
+        <div id="scale-disp"><div class="scale-tick"></div><span id="slbl">Set scale →</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sb">
+    <div class="sb-scroll">
+
+      <!-- Event name -->
+      <div class="panel">
+        <div class="plabel">Event</div>
+        <input id="evt-name" class="evt-inp" type="text" placeholder="Event name &amp; location — shown on PDF">
+      </div>
+
+      <!-- Venue: save/load + photo/scale moved here -->
+      <div class="panel">
+        <div class="plabel">Venue</div>
+        <div class="vrow">
+          <select class="vsel" id="vsel"><option value="">No saved venues</option></select>
+          <button class="vbtn" id="vload">Load</button>
+        </div>
+        <div class="vrow">
+          <button class="vbtn acc" id="vsave" style="flex:1">Save venue</button>
+          <button class="vbtn del" id="vdel">Delete</button>
+        </div>
+        <div class="plabel-sub">Add a New Venue</div>
+        <div class="vrow">
+          <label class="vbtn acc" for="fi" style="flex:1;text-align:center;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px"><i class="ti ti-upload" style="font-size:13px"></i>Upload Photo</label>
+          <input type="file" id="fi" accept="image/*" style="display:none">
+          <button class="vbtn" id="btn-scale" style="display:flex;align-items:center;gap:3px"><i class="ti ti-ruler-2" style="font-size:13px"></i>Scale</button>
+        </div>
+      </div>
+
+      <!-- Capacity -->
+      <div class="panel">
+        <div class="plabel">Capacity</div>
+        <div class="cap-center">
+          <div id="cap-na" class="cap-na">Answer enclosure question to begin</div>
+          <div id="cap-live" style="display:none">
+            <div class="cap-big" id="cn">—</div>
+            <div class="cap-sub">estimated occupants</div>
+            <div class="cap-detail" id="cd">Place bike rack to calculate</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rack -->
+      <div class="panel" id="rack-panel" style="display:none">
+        <div class="plabel">Barrier / Bike Rack</div>
+        <div class="rack-row">
+          <svg class="rack-svg" width="46" height="46" viewBox="0 0 46 46">
+            <circle cx="23" cy="23" r="18" fill="none" stroke="var(--brd2)" stroke-width="5"/>
+            <circle id="rack-arc" cx="23" cy="23" r="18" fill="none" stroke="var(--acc)" stroke-width="5" stroke-dasharray="0 113" stroke-linecap="round" transform="rotate(-90 23 23)"/>
+            <text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" font-family="DM Mono,monospace" fill="var(--tx)" id="rack-num">0</text>
+          </svg>
+          <div class="rack-info">of 100 sections placed<div class="rack-ft" id="rk-ft">0 linear feet</div></div>
+        </div>
+      </div>
+
+      <!-- Activations / Vendor list -->
+      <div class="panel">
+        <div class="plabel">Activations &amp; Vendors</div>
+        <div id="vl"><div style="font-size:10px;color:var(--tx3)">No elements placed yet</div></div>
+      </div>
+
+      <!-- Warnings -->
+      <div class="panel">
+        <div class="plabel">Safety &amp; Compliance</div>
+        <div id="wl"><div class="w info"><i class="ti ti-info-circle"></i><span>Place elements to run checks.</span></div></div>
+      </div>
+
+      <!-- First Aid -->
+      <div class="panel">
+        <div class="plabel">First Aid Contacts</div>
+        <div id="fal"><div style="font-size:10px;color:var(--tx3)">None added</div></div>
+      </div>
+
+      <!-- Color Key -->
+      <div class="panel">
+        <div class="plabel">Color Key</div>
+        <div id="ckey"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="mo"><div id="md">
+  <div class="m-title" id="mtt"></div>
+  <div class="m-desc" id="mdesc"></div>
+  <div id="mb"></div>
+  <div class="mbtns"><button class="mbtn" id="mcan">Cancel</button><button class="mbtn p" id="mok">Place</button></div>
+</div></div>
+
+<script>
+const S={
+  tool:'select',els:[],rack:[],adaPaths:[],curAda:[],dims:[],
+  scale:3,venueWidthFt:200,
+  zonePolys:[],firstAids:[],idCtr:1,selId:null,
+  venues:{},enclosed:null,bgData:null,isRotating:false,
+  hasSoftSurface:null,undoStack:[]
+};
+const CIRC=2*Math.PI*18,RACK_MAX=100;
+const cvArea=document.getElementById('cv-area'),cw=document.getElementById('cw');
+const zc=document.getElementById('zc'),rkc=document.getElementById('rkc'),bc=document.getElementById('bc'),dc=document.getElementById('dc');
+const zcx=zc.getContext('2d'),rkcx=rkc.getContext('2d'),bcx=bc.getContext('2d'),dcx=dc.getContext('2d');
+const elDiv=document.getElementById('el'),bgImg=document.getElementById('bg');
+
+const TYPES={
+  tent10:{lbl:'10×10 Tent',color:'#2dd4a0',wFt:10,hFt:10,tent:true,sqft:100,rot:true},
+  tent20:{lbl:'10×20 Tent',color:'#2dd4a0',wFt:20,hFt:10,tent:true,sqft:200,rot:true},
+  stage:{lbl:'Stage',color:'#a78bfa',wFt:20,hFt:16,icon:'🎪',sqft:null,rot:true},
+  truck:{lbl:'Food Truck',color:'#ef4444',wFt:20,hFt:8,sqft:0,rot:true},
+  gen:{lbl:'Generator',color:'#fbbf24',wFt:6,hFt:6,icon:'⚡',sqft:0,rot:true},
+  ingress:{lbl:'Ingress/Egress',color:'#22c55e',wFt:12,hFt:8,sqft:0,rot:true},
+  firstaid:{lbl:'First Aid',color:'#f05252',wFt:10,hFt:10,icon:'🏥',sqft:0,rot:true},
+  extinguisher:{lbl:'Fire Ext.',color:'#f05252',wFt:2,hFt:3,icon:'🧯',sqft:0,rot:true},
+  mix:{lbl:'Mix Platform',color:'#c084fc',wFt:10,hFt:8,icon:'🎛',sqft:0,rot:true},
+  custom:{lbl:'Custom',color:'#8b93a8',wFt:10,hFt:10,sqft:0,rot:true}
+};
+
+// Per-type numbering prefix codes
+const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'I',firstaid:'FA',extinguisher:'E',mix:'M',custom:'C'};
+
+// Returns {id -> typeNum} recomputed fresh from current S.els order
+function getTypeNums(){
+  const c={},r={};
+  S.els.forEach(el=>{c[el.type]=(c[el.type]||0)+1;r[el.id]=c[el.type];});
+  return r;
+}
+function elCode(el,tnMap){return `${TYPE_PRE[el.type]||'?'}${tnMap[el.id]||'?'}`;}
+
+function elW(el){return el.wFt*S.scale;}
+function elH(el){return el.hFt*S.scale;}
+function elX(el){return el.xFt*S.scale;}
+function elY(el){return el.yFt*S.scale;}
+function ecx(e){return elX(e)+elW(e)/2;}
+function ecy(e){return elY(e)+elH(e)/2;}
+
+// Edge-to-edge clearance in feet between two axis-aligned bounding boxes
+function bboxClearFt(a,b){
+  const ax1=elX(a),ay1=elY(a),ax2=ax1+elW(a),ay2=ay1+elH(a);
+  const bx1=elX(b),by1=elY(b),bx2=bx1+elW(b),by2=by1+elH(b);
+  const gx=Math.max(0,Math.max(ax1,bx1)-Math.min(ax2,bx2));
+  const gy=Math.max(0,Math.max(ay1,by1)-Math.min(ay2,by2));
+  return Math.sqrt(gx*gx+gy*gy)/S.scale;
+}
+
+// --- Undo ---
+function pushUndo(){
+  S.undoStack.push({
+    els:JSON.parse(JSON.stringify(S.els)),rack:JSON.parse(JSON.stringify(S.rack)),
+    zonePolys:JSON.parse(JSON.stringify(S.zonePolys)),adaPaths:JSON.parse(JSON.stringify(S.adaPaths)),
+    dims:JSON.parse(JSON.stringify(S.dims)),firstAids:JSON.parse(JSON.stringify(S.firstAids)),
+    enclosed:S.enclosed
+  });
+  if(S.undoStack.length>40)S.undoStack.shift();
+}
+function undo(){
+  if(!S.undoStack.length)return;
+  const snap=S.undoStack.pop();
+  S.els=snap.els;S.rack=snap.rack;S.zonePolys=snap.zonePolys;
+  S.adaPaths=snap.adaPaths;S.dims=snap.dims;S.firstAids=snap.firstAids;
+  if(snap.enclosed!==undefined)S.enclosed=snap.enclosed;
+  document.getElementById('rack-tg').style.display=S.enclosed?'':'none';
+  document.getElementById('rack-panel').style.display=S.enclosed?'':'none';
+  renderEls();drawRack();redrawZones();drawAda();drawDims();renderFal();renderVendorList();runRules();
+}
+document.getElementById('bundo').addEventListener('click',undo);
+
+// Canvas = photo size
+function sz(){
+  if(S.bgData&&bgImg.naturalWidth){
+    const aw=cvArea.clientWidth,ah=cvArea.clientHeight,asp=bgImg.naturalWidth/bgImg.naturalHeight;
+    let cW,cH;if(asp>aw/ah){cW=aw;cH=Math.round(aw/asp);}else{cH=ah;cW=Math.round(ah*asp);}
+    cw.style.width=cW+'px';cw.style.height=cH+'px';bgImg.style.objectFit='fill';
+  }else{cw.style.width='100%';cw.style.height='100%';bgImg.style.objectFit='contain';}
+  const w=cw.clientWidth,h=cw.clientHeight;
+  [zc,rkc,bc,dc].forEach(c=>{c.width=w;c.height=h;c.style.width=w+'px';c.style.height=h+'px'});
+  S.scale=w/S.venueWidthFt;
+  redrawZones();drawRack();drawAda();drawDims();renderEls();
+}
+window.addEventListener('resize',sz);setTimeout(sz,60);
+
+// --- Zones ---
+const ZD={grass:{stroke:'#2dd4a0',fill:'rgba(45,212,160,0.05)',lbl:'GRASS'},pave:{stroke:'#8b93a8',fill:'rgba(139,147,168,0.05)',lbl:'PAVE'},restrict:{stroke:'#f05252',fill:'rgba(240,82,82,0.05)',lbl:'RESTRICTED'}};
+let activePoly=null;
+function redrawZones(){
+  zcx.clearRect(0,0,zc.width,zc.height);
+  S.zonePolys.forEach(z=>{
+    if(z.pts.length<2)return;const d=ZD[z.type];zcx.save();
+    zcx.beginPath();zcx.moveTo(z.pts[0].x,z.pts[0].y);z.pts.forEach(p=>zcx.lineTo(p.x,p.y));
+    if(!z.open)zcx.closePath();if(!z.open){zcx.fillStyle=d.fill;zcx.fill();}
+    zcx.strokeStyle=d.stroke;zcx.lineWidth=2.5;zcx.setLineDash(z.open?[5,4]:[]);zcx.stroke();zcx.setLineDash([]);
+    if(!z.open&&z.pts.length>=3){const cx=z.pts.reduce((s,p)=>s+p.x,0)/z.pts.length,cy=z.pts.reduce((s,p)=>s+p.y,0)/z.pts.length;zcx.font='bold 9px Montserrat,sans-serif';zcx.fillStyle=d.stroke;zcx.globalAlpha=.65;zcx.textAlign='center';zcx.textBaseline='middle';zcx.fillText(d.lbl,cx,cy);zcx.globalAlpha=1;zcx.textAlign='start';zcx.textBaseline='alphabetic';}
+    zcx.restore();
+  });
+}
+function zoneAt(x,y){for(let i=S.zonePolys.length-1;i>=0;i--){const z=S.zonePolys[i];if(!z.open&&z.pts.length>=3&&pip({x,y},z.pts))return z.type;}return null;}
+function pip(pt,poly){let ins=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;if(((yi>pt.y)!==(yj>pt.y))&&(pt.x<(xj-xi)*(pt.y-yi)/(yj-yi)+xi))ins=!ins;}return ins;}
+function eraseZoneAt(x,y){for(let i=S.zonePolys.length-1;i>=0;i--){if(!S.zonePolys[i].open&&S.zonePolys[i].pts.length>=3&&pip({x,y},S.zonePolys[i].pts)){S.zonePolys.splice(i,1);redrawZones();return;}}}
+function d2(ax,ay,bx,by){const dx=ax-bx,dy=ay-by;return dx*dx+dy*dy;}
+function ft2px(f){return f*S.scale;}
+
+// --- Rack ---
+let rackStart=null;
+function drawRack(){
+  rkcx.clearRect(0,0,rkc.width,rkc.height);const link2=ft2px(2)**2;
+  S.rack.forEach(seg=>{
+    const linked=S.rack.some(o=>o!==seg&&(d2(seg.x1,seg.y1,o.x2,o.y2)<link2||d2(seg.x2,seg.y2,o.x1,o.y1)<link2||d2(seg.x1,seg.y1,o.x1,o.y1)<link2||d2(seg.x2,seg.y2,o.x2,o.y2)<link2));
+    rkcx.save();rkcx.strokeStyle=linked?'#f5a623':'#8b93a8';rkcx.lineWidth=6;rkcx.lineCap='round';
+    rkcx.beginPath();rkcx.moveTo(seg.x1,seg.y1);rkcx.lineTo(seg.x2,seg.y2);rkcx.stroke();
+    rkcx.strokeStyle='rgba(255,255,255,0.18)';rkcx.lineWidth=2;rkcx.beginPath();rkcx.moveTo(seg.x1,seg.y1);rkcx.lineTo(seg.x2,seg.y2);rkcx.stroke();
+    [[seg.x1,seg.y1],[seg.x2,seg.y2]].forEach(([px,py])=>{rkcx.beginPath();rkcx.arc(px,py,4,0,Math.PI*2);rkcx.fillStyle=linked?'#f5a623':'#8b93a8';rkcx.fill();});
+    rkcx.restore();
+  });
+  const n=S.rack.length;document.getElementById('rack-num').textContent=n;document.getElementById('rk-ft').textContent=`${n*8} linear feet`;
+  const arc=document.getElementById('rack-arc'),pct=Math.min(n/RACK_MAX,1);
+  arc.setAttribute('stroke-dasharray',`${pct*CIRC} ${CIRC}`);arc.setAttribute('stroke',n>=RACK_MAX?'var(--red)':n>80?'var(--amb)':'var(--acc)');
+}
+function drawRackPreview(x,y){drawRack();if(!rackStart)return;rkcx.save();rkcx.strokeStyle='rgba(245,166,35,0.45)';rkcx.lineWidth=5;rkcx.lineCap='round';rkcx.setLineDash([5,4]);rkcx.beginPath();rkcx.moveTo(rackStart.x,rackStart.y);rkcx.lineTo(x,y);rkcx.stroke();rkcx.restore();}
+
+// --- ADA ---
+function drawAda(){
+  bcx.clearRect(0,0,bc.width,bc.height);
+  S.adaPaths.forEach(path=>{if(path.length<2)return;bcx.save();bcx.strokeStyle='rgba(79,126,248,0.65)';bcx.lineWidth=7;bcx.globalAlpha=.55;bcx.beginPath();bcx.moveTo(path[0].x,path[0].y);path.forEach(p=>bcx.lineTo(p.x,p.y));bcx.stroke();bcx.restore();});
+  if(S.curAda.length>=2){bcx.save();bcx.strokeStyle='rgba(79,126,248,0.4)';bcx.lineWidth=6;bcx.setLineDash([6,4]);bcx.beginPath();bcx.moveTo(S.curAda[0].x,S.curAda[0].y);S.curAda.forEach(p=>bcx.lineTo(p.x,p.y));bcx.stroke();bcx.restore();}
+}
+
+// --- Dimensions ---
+let dimStart=null;
+function drawDimArrow(ctx,x1,y1,x2,y2,preview){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);if(len<5)return;
+  const color=preview?'rgba(245,166,35,0.6)':'#f5a623',ang=Math.atan2(dy,dx),hw=10,ha=0.42;
+  ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=preview?1.5:2;ctx.lineCap='round';if(preview)ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(x1+hw*Math.cos(ang),y1+hw*Math.sin(ang));ctx.lineTo(x2-hw*Math.cos(ang),y2-hw*Math.sin(ang));ctx.stroke();ctx.setLineDash([]);
+  [[x2,y2,0],[x1,y1,Math.PI]].forEach(([px,py,off])=>{ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-(hw*Math.cos(ang-ha-off)),py-(hw*Math.sin(ang-ha-off)));ctx.lineTo(px-(hw*Math.cos(ang+ha-off)),py-(hw*Math.sin(ang+ha-off)));ctx.closePath();ctx.fill();});
+  if(len>=24){const mx=(x1+x2)/2,my=(y1+y2)/2,lbl=`${Math.round(len/S.scale)} ft`;ctx.font='bold 10px "DM Mono",monospace';ctx.textAlign='center';ctx.textBaseline='middle';const tw=ctx.measureText(lbl).width,pw=tw+10,ph=16;ctx.fillStyle='rgba(10,12,18,0.85)';ctx.fillRect(mx-pw/2,my-ph/2,pw,ph);ctx.fillStyle=color;ctx.fillText(lbl,mx,my);}
+  ctx.restore();
+}
+function drawDims(){dcx.clearRect(0,0,dc.width,dc.height);S.dims.forEach(d=>{drawDimArrow(dcx,d.x1Ft*S.scale,d.y1Ft*S.scale,d.x2Ft*S.scale,d.y2Ft*S.scale,false);});}
+
+function polyArea(pts){let a=0;for(let i=0,j=pts.length-1;i<pts.length;j=i++){a+=(pts[j].x+pts[i].x)*(pts[j].y-pts[i].y);}return Math.abs(a/2);}
+function rackArea(){if(S.rack.length<3)return 0;const pts=[];S.rack.forEach(s=>{pts.push({x:s.x1,y:s.y1});pts.push({x:s.x2,y:s.y2});});const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length,cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;pts.sort((a,b)=>Math.atan2(a.y-cy,a.x-cx)-Math.atan2(b.y-cy,b.x-cx));return polyArea(pts);}
+function updateCap(){
+  const na=document.getElementById('cap-na'),live=document.getElementById('cap-live');
+  if(!S.enclosed){na.style.display='';live.style.display='none';na.textContent='Open layout — no capacity estimate';return;}
+  const area=rackArea();if(area<100){na.style.display='';live.style.display='none';na.textContent='Place bike rack to define boundary';return;}
+  na.style.display='none';live.style.display='';
+  const ftSq=area/(S.scale*S.scale);let struc=0;S.els.forEach(e=>{const t=TYPES[e.type];if(t&&(t.sqft>0||['stage','truck','gen','mix','custom'].includes(e.type)))struc+=e.wFt*e.hFt;});
+  const usable=Math.max(0,ftSq-struc);document.getElementById('cn').textContent=Math.floor(usable/8).toLocaleString();document.getElementById('cd').textContent=`${Math.round(ftSq).toLocaleString()} sq ft · ${Math.round(struc)} in structures`;
+}
+
+function segDSq(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;if(!L)return d2(px,py,ax,ay);const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/L));return d2(px,py,ax+t*dx,ay+t*dy);}
+function tentHitsRack(el){
+  const a=(el.rot||0)*Math.PI/180,cos=Math.cos(a),sin=Math.sin(a),w=elW(el),h=elH(el),cx=elX(el)+w/2,cy=elY(el)+h/2,hw=w/2,hh=h/2;
+  const corners=[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([rx,ry])=>({x:cx+rx*cos-ry*sin,y:cy+rx*sin+ry*cos}));
+  const thresh=ft2px(0.5)**2;
+  for(let i=0;i<corners.length;i++){const a2=corners[i],b=corners[(i+1)%corners.length];for(const seg of S.rack){if(segDSq(seg.x1,seg.y1,a2.x,a2.y,b.x,b.y)<thresh)return true;if(segDSq(a2.x,a2.y,seg.x1,seg.y1,seg.x2,seg.y2)<thresh)return true;}}
+  return false;
+}
+function ovlp(a,b,m=0){return!(elX(a)+elW(a)+m<=elX(b)||elX(b)+elW(b)+m<=elX(a)||elY(a)+elH(a)+m<=elY(b)||elY(b)+elH(b)+m<=elY(a));}
+
+function runRules(){
+  const tnMap=getTypeNums();
+  const N=e=>e.vendorName||elCode(e,tnMap);
+  const warns=[];
+  const trucks=S.els.filter(e=>e.type==='truck'),tents=S.els.filter(e=>['tent10','tent20','custom'].includes(e.type));
+  const gens=S.els.filter(e=>e.type==='gen'),ins=S.els.filter(e=>e.type==='ingress'),stages=S.els.filter(e=>e.type==='stage');
+  S.els.forEach(e=>{e.hr=false;e.sr=false;});
+
+  trucks.forEach(t=>{
+    tents.forEach(n=>{
+      // Tent-truck: check edge-to-edge clearance
+      const clr=bboxClearFt(t,n);
+      if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)} — 20ft required (~${Math.round(clr)}ft).`});t.hr=true;n.hr=true;}
+    });
+    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{
+      // Truck-truck: edge-to-edge must be >= 10ft
+      const clr=bboxClearFt(t,o);
+      if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} within 10ft of each other (~${Math.round(clr)}ft edge to edge).`});t.hr=true;o.hr=true;}
+    });
+    const z=zoneAt(ecx(t),ecy(t));if(z==='grass'){warns.push({type:'hard',msg:`${N(t)} on grass — vehicles must be on pavement.`});t.hr=true;}if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} in restricted zone.`});t.hr=true;}
+  });
+  gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — barricade enclosure required on final plan.`});});
+  if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:'No ingress/egress placed.'});
+  else if(ins.length===1)warns.push({type:'hard',msg:'Only 1 ingress/egress — minimum 2 required. 3 recommended.'});
+  else if(ins.length===2)warns.push({type:'soft',msg:'2 ingress/egress — a 3rd is recommended.'});
+  ins.forEach(i=>{
+    if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is under 10ft wide — ADA minimum not met.`});i.hr=true;}
+    const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`});i.hr=true;blocked.forEach(b=>b.hr=true);}
+    if(S.rack.length&&S.rack.some(seg=>segDSq(ecx(i),ecy(i),seg.x1,seg.y1,seg.x2,seg.y2)<ft2px(4)**2)){warns.push({type:'hard',msg:`${N(i)} opens into barricade.`});i.hr=true;}
+  });
+  const vis=new Set();
+  tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft — over 900 sq ft may need a building permit.`});grp.forEach(e=>e.sr=true);}});
+  tents.forEach(t=>{if(tentHitsRack(t)){warns.push({type:'hard',msg:`${N(t)} overlaps barricade boundary.`});t.hr=true;}});
+  stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft) — over 256 sq ft may need a building permit.`});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft — over 3ft may need a building permit.`});s.sr=true;}});
+  S.els.forEach(e=>{if(e.type!=='ingress'&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone.`});e.hr=true;}});
+  if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.'});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.'});}
+  if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.'});
+  document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
+  renderEls();updateCap();
+}
+
+// --- Render Elements ---
+// THE FIX: div.el has width/height/transform so .el:hover area is correct.
+// dbtn/rbtn are positioned INSIDE the element with small positive offsets —
+// hovering them keeps the cursor inside div.el so hover state stays active.
+function renderEls(){
+  const tnMap=getTypeNums();
+  elDiv.innerHTML='';
+  S.els.forEach(el=>{
+    const t=TYPES[el.type]||TYPES.custom;
+    const rot=el.rot||0,w=elW(el),h=elH(el),x=elX(el),y=elY(el);
+    const fs=Math.min(20,Math.max(10,Math.floor(h*0.45)));
+    const btnSz=Math.min(16,Math.max(10,Math.floor(Math.min(w,h)*0.33)));
+    const btnOff=3;
+
+    const div=document.createElement('div');
+    div.className='el'+(el.hr?' hr':el.sr?' sr':'')+(S.selId===el.id?' selected':'');
+    // width/height/transform on div.el so hover area matches visual element
+    div.style.cssText=`left:${x}px;top:${y}px;width:${w}px;height:${h}px;transform:rotate(${rot}deg);`;
+    div.dataset.id=el.id;
+
+    const wrap=document.createElement('div');
+    wrap.className='eiwrap';
+    wrap.style.cssText=`width:${w}px;height:${h}px;position:relative;`;
+
+    const icon=document.createElement('div');icon.className='ei';
+    if(t.tent){
+      const isFood=el.tentType==='food';
+      icon.style.cssText=`width:${w}px;height:${h}px;background:${isFood?'#facc15':'#fff'};border-color:${isFood?'#eab308':t.color};border-width:2.5px;`;
+    }else if(el.type==='truck'){
+      icon.style.cssText=`width:${w}px;height:${h}px;background:#ef4444;border-color:#b91c1c;border-width:2px;`;
+    }else if(el.type==='ingress'){
+      const ah=Math.min(Math.floor(h*0.8),Math.floor(w*0.22)),sw=Math.floor(h*0.38);
+      icon.style.cssText=`width:${w}px;height:${h}px;background:transparent;border:2px solid rgba(34,197,94,0.25);overflow:hidden;`;
+      icon.innerHTML=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="display:block" preserveAspectRatio="none"><polygon points="0,${h/2} ${ah},${h*0.04} ${ah},${h*0.96}" fill="#22c55e"/><rect x="${ah}" y="${(h-sw)/2}" width="${Math.max(0,w-2*ah)}" height="${sw}" fill="#22c55e"/><polygon points="${w},${h/2} ${w-ah},${h*0.04} ${w-ah},${h*0.96}" fill="#22c55e"/></svg>`;
+    }else{
+      const color=el.color||t.color;const fs2=Math.min(w,h)*.38;
+      icon.style.cssText=`width:${w}px;height:${h}px;background:${color}25;border-color:${color};font-size:${fs2}px;`;
+      if(t.icon)icon.textContent=t.icon;else if(el.type==='custom')icon.textContent=(el.vendorName||el.label||'?').slice(0,2).toUpperCase();
+    }
+    wrap.appendChild(icon);
+
+    // Rotate button — INSIDE element bounds
+    const rb=document.createElement('button');
+    rb.className='rbtn';
+    rb.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:${btnOff}px;left:${btnOff}px;font-size:${btnSz-6}px;`;
+    rb.innerHTML='↻';
+    rb.addEventListener('mousedown',ev=>{
+      ev.stopPropagation();ev.preventDefault();S.isRotating=true;
+      const cwR=cw.getBoundingClientRect(),ox=elX(el)+elW(el)/2,oy=elY(el)+elH(el)/2;
+      const baseAng=Math.atan2(ev.clientY-cwR.top-oy,ev.clientX-cwR.left-ox)*(180/Math.PI),baseRot=el.rot||0;
+      const onM=mv=>{el.rot=baseRot+(Math.atan2(mv.clientY-cwR.top-oy,mv.clientX-cwR.left-ox)*(180/Math.PI)-baseAng);div.style.transform=`rotate(${el.rot}deg)`;const ri=wrap.querySelector('.rot-deg');if(ri)ri.textContent=`${Math.round(((el.rot%360)+360)%360)}°`;};
+      const onU=()=>{S.isRotating=false;document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);runRules();};
+      document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
+    });
+    wrap.appendChild(rb);
+
+    // Label: shows type number (T1, T2…) inside element
+    const lbl=document.createElement('div');lbl.className='el-lbl';
+    lbl.style.fontSize=fs+'px';
+    lbl.textContent=String(tnMap[el.id]||'?');
+    lbl.title=`${elCode(el,tnMap)}${el.vendorName?' · '+el.vendorName:''}`;
+    lbl.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      const inp=document.querySelector(`.vl-inp[data-id="${el.id}"]`);
+      if(inp){inp.focus();inp.select();inp.scrollIntoView({block:'nearest',behavior:'smooth'});}
+    });
+    wrap.appendChild(lbl);
+
+    const ri=document.createElement('div');ri.className='rot-deg';ri.textContent=`${Math.round(((rot%360)+360)%360)}°`;
+    wrap.appendChild(ri);
+
+    div.appendChild(wrap);
+    makeDrag(div,el);
+    div.addEventListener('click',ev=>{
+      if(ev.target===rb||ev.target.classList.contains('rbtn')||ev.target.classList.contains('el-lbl'))return;
+      S.selId=S.selId===el.id?null:el.id;renderEls();
+    });
+    elDiv.appendChild(div);
+  });
+}
+
+function makeDrag(div,el){
+  let sx,sy,exFt,eyFt,moved=false,didPushUndo=false;
+  div.addEventListener('mousedown',ev=>{
+    if(S.isRotating)return;
+    if(ev.target.classList.contains('rbtn'))return;
+    ev.preventDefault();ev.stopPropagation();
+    sx=ev.clientX;sy=ev.clientY;exFt=el.xFt;eyFt=el.yFt;moved=false;didPushUndo=false;
+    const onM=mv=>{if(!didPushUndo){pushUndo();didPushUndo=true;}moved=true;el.xFt=Math.max(0,Math.min(cw.clientWidth/S.scale-el.wFt,exFt+(mv.clientX-sx)/S.scale));el.yFt=Math.max(0,Math.min(cw.clientHeight/S.scale-el.hFt,eyFt+(mv.clientY-sy)/S.scale));div.style.left=elX(el)+'px';div.style.top=elY(el)+'px';};
+    const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);if(moved)runRules();};
+    document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
+  });
+}
+
+function renderFal(){const d=document.getElementById('fal');d.innerHTML=S.firstAids.length?S.firstAids.map(c=>`<div class="fa-item"><strong>${c.name}</strong><span>${c.cert}</span></div>`).join(''):'<div style="font-size:10px;color:var(--tx3)">None added</div>';}
+
+function renderVendorList(){
+  const vl=document.getElementById('vl');if(!vl)return;
+  const tnMap=getTypeNums();
+  const active=document.activeElement,wasId=active&&active.classList&&active.classList.contains('vl-inp')?active.dataset.id:null;
+  if(!S.els.length){vl.innerHTML='<div style="font-size:10px;color:var(--tx3)">No elements placed yet</div>';return;}
+  vl.innerHTML=S.els.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');return `<div class="vl-row"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${(TYPES[el.type]||TYPES.custom).lbl}"><button class="vl-del" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
+  vl.querySelectorAll('.vl-inp').forEach(inp=>{
+    inp.addEventListener('input',ev=>{const id=parseInt(ev.target.dataset.id),found=S.els.find(x=>x.id===id);if(found)found.vendorName=ev.target.value;});
+    inp.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const all=[...vl.querySelectorAll('.vl-inp')],idx=all.indexOf(ev.target);if(idx<all.length-1)all[idx+1].focus();else ev.target.blur();}});
+  });
+  vl.querySelectorAll('.vl-del').forEach(btn=>{
+    btn.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      const id=parseInt(ev.currentTarget.dataset.id);
+      pushUndo();
+      const found=S.els.find(x=>x.id===id);
+      if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==id);renderFal();}
+      S.els=S.els.filter(x=>x.id!==id);
+      if(S.selId===id)S.selId=null;
+      renderVendorList();renderEls();runRules();
+    });
+  });
+  if(wasId){const ni=vl.querySelector(`.vl-inp[data-id="${wasId}"]`);if(ni)ni.focus();}
+}
+
+let mCb=null;
+function modal(title,desc,body,cb,okLabel='Place'){document.getElementById('mtt').textContent=title;document.getElementById('mdesc').textContent=desc;document.getElementById('mb').innerHTML=body;document.getElementById('mok').textContent=okLabel;document.getElementById('mo').style.display='flex';mCb=cb;setTimeout(()=>{const f=document.querySelector('#mb input,#mb select');if(f)f.focus();},80);}
+document.getElementById('mcan').addEventListener('click',()=>document.getElementById('mo').style.display='none');
+document.getElementById('mok').addEventListener('click',()=>{document.getElementById('mo').style.display='none';if(mCb)mCb();});
+function mf(lbl,id,type='text',val='',ph=''){return `<div class="mf"><label>${lbl}</label><input type="${type}" id="${id}" value="${val}" placeholder="${ph}"></div>`;}
+function msel(lbl,id,opts){return `<div class="mf"><label>${lbl}</label><select id="${id}">${opts.map(o=>`<option value="${o.v}">${o.t}</option>`).join('')}</select></div>`;}
+function mr(...fs){return `<div class="mrow">${fs.join('')}</div>`;}
+
+function place(type,cx,cy){
+  const t=TYPES[type]||TYPES.custom,xFt=cx/S.scale-t.wFt/2,yFt=cy/S.scale-t.hFt/2;
+  const base=(extra={})=>({id:S.idCtr++,type,xFt,yFt,wFt:t.wFt,hFt:t.hFt,label:t.lbl,vendorName:'',rot:0,hr:false,sr:false,...extra});
+  if(type==='tent10'||type==='tent20'){modal(`Place ${t.lbl}`,'Label this tent and select its use type.',mf('Tent Label','tlbl','text','','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'nonfood',t:'Non-food / Non-beverage'},{v:'food',t:'Food or Beverage'}]),()=>{pushUndo();const lbl=document.getElementById('tlbl').value.trim()||t.lbl;S.els.push(base({label:lbl,vendorName:lbl,tentType:document.getElementById('tent-type').value}));renderVendorList();renderEls();runRules();});return;}
+  if(type==='truck'){modal('Place Food Truck','Enter vendor name and dimensions.',mf('Vendor Name','tklbl','text','','e.g. Tacos El Rey')+mr(mf('Length (ft)','tkl','number','20'),mf('Width (ft)','tkw','number','8')),()=>{pushUndo();const lbl=document.getElementById('tklbl').value.trim()||'Food Truck',wFt=parseFloat(document.getElementById('tkl').value)||20,hFt=parseFloat(document.getElementById('tkw').value)||8;S.els.push({id:S.idCtr++,type,xFt:cx/S.scale-wFt/2,yFt:cy/S.scale-hFt/2,wFt,hFt,label:lbl,vendorName:lbl,rot:0,hr:false,sr:false});renderVendorList();renderEls();runRules();});return;}
+  if(type==='stage'){modal('Place Stage','Stages over 256 sq ft or 3ft tall may require a building permit.',mf('Stage Name','stlbl','text','','e.g. Main Stage')+mr(mf('Width (ft)','stw','number','20'),mf('Depth (ft)','std','number','16'),mf('Height (ft)','sth','number','2')),()=>{pushUndo();const lbl=document.getElementById('stlbl').value.trim()||'Stage',wFt=parseFloat(document.getElementById('stw').value)||20,hFt=parseFloat(document.getElementById('std').value)||16,heightFt=parseFloat(document.getElementById('sth').value)||2;S.els.push({id:S.idCtr++,type,xFt:cx/S.scale-wFt/2,yFt:cy/S.scale-hFt/2,wFt,hFt,label:lbl,vendorName:lbl,heightFt,rot:0,hr:false,sr:false});renderVendorList();renderEls();runRules();});return;}
+  if(type==='ingress'){modal('Place Ingress/Egress','ADA minimum is 10ft wide. Both directions must be clear.',mf('Gate Label','inlbl','text','','e.g. Main Entrance, North Gate')+mf('Opening Width (ft)','inw','number','12'),()=>{pushUndo();const lbl=document.getElementById('inlbl').value.trim()||'Ingress/Egress',wFt=parseFloat(document.getElementById('inw').value)||12;S.els.push({id:S.idCtr++,type,xFt:cx/S.scale-wFt/2,yFt:cy/S.scale-4,wFt,hFt:8,label:lbl,vendorName:lbl,rot:0,hr:false,sr:false});renderVendorList();renderEls();runRules();});return;}
+  if(type==='firstaid'){modal('Place First Aid Station','Document the certified responder at this station.',mf('Responder Name','fan','text','','Full name')+mf('Certification','fac2','text','','e.g. CPR/AED, EMT, Paramedic'),()=>{pushUndo();const name=document.getElementById('fan').value.trim()||'Unknown',cert=document.getElementById('fac2').value.trim()||'CPR',eid=S.idCtr++;S.els.push({id:eid,type,xFt,yFt,wFt:t.wFt,hFt:t.hFt,label:'First Aid',vendorName:name,cpName:name,rot:0,hr:false,sr:false});S.firstAids.push({eid,name,cert});renderFal();renderVendorList();renderEls();runRules();});return;}
+  if(type==='custom'){modal('Add Custom Element','Name it, set dimensions, and pick a color.',mf('Label / Name','cust-lbl','text','','e.g. Bounce House')+mr(mf('Width (ft)','cust-w','number','10'),mf('Depth (ft)','cust-d','number','10'))+mf('Color','cust-color','color','#8b93a8'),()=>{pushUndo();const lbl=document.getElementById('cust-lbl').value.trim()||'Custom',wFt=Math.max(1,parseFloat(document.getElementById('cust-w').value)||10),hFt=Math.max(1,parseFloat(document.getElementById('cust-d').value)||10),color=document.getElementById('cust-color').value||'#8b93a8';S.els.push({id:S.idCtr++,type:'custom',xFt:cx/S.scale-wFt/2,yFt:cy/S.scale-hFt/2,wFt,hFt,label:lbl,vendorName:lbl,color,rot:0,hr:false,sr:false});renderVendorList();renderEls();runRules();});return;}
+  pushUndo();S.els.push(base());renderVendorList();renderEls();runRules();
+}
+
+const ZONE_TOOLS=['grass','pave','restrict','erase'],PLACEABLE=['tent10','tent20','stage','truck','gen','ingress','firstaid','extinguisher','mix','custom'];
+function setTool(id){
+  S.tool=id;document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
+  const m={select:'bsel',rack:'brk',ada:'ba',dim:'bdim',grass:'zg',pave:'zp',restrict:'zr',erase:'ze'};
+  const btn=document.getElementById(m[id]);if(btn)btn.classList.add('active');
+  cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='rack'||id==='dim'?'crosshair':'default';
+  const msgs={select:'Click to select · Drag to move · Delete key removes selected element',rack:'Click and drag to place barricade (8ft sections)',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',firstaid:'Click to place a first aid station',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',grass:'Click corners to draw grass zone · Double-click to close',pave:'Click corners to draw pavement zone · Double-click to close',restrict:'Click corners to draw restricted zone · Double-click to close',erase:'Click inside a zone to remove it'};
+  document.getElementById('ins-txt').textContent=msgs[id]||'';
+  if(!ZONE_TOOLS.includes(id))activePoly=null;if(id!=='rack')rackStart=null;if(id!=='dim')dimStart=null;
+}
+
+cw.addEventListener('mousedown',e=>{
+  if(S.isRotating)return;
+  const r=cw.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  if(S.tool==='rack'){e.preventDefault();e.stopPropagation();if(S.rack.length>=RACK_MAX)return;let sx=x,sy=y,best=Infinity,th=ft2px(3)**2;S.rack.forEach(seg=>{[[seg.x1,seg.y1],[seg.x2,seg.y2]].forEach(([ex,ey])=>{const dd=d2(x,y,ex,ey);if(dd<best&&dd<th){best=dd;sx=ex;sy=ey;}});});rackStart={x:sx,y:sy};return;}
+  if(S.tool==='dim'){e.preventDefault();e.stopPropagation();dimStart={x,y};return;}
+  if(S.tool==='ada'){if(e.detail===2){if(S.curAda.length>=2){pushUndo();S.adaPaths.push([...S.curAda]);S.curAda=[];}drawAda();return;}S.curAda.push({x,y});drawAda();return;}
+  if(ZONE_TOOLS.includes(S.tool)){if(S.tool==='erase'){pushUndo();eraseZoneAt(x,y);runRules();return;}if(e.detail===2){if(activePoly&&activePoly.pts.length>=3){pushUndo();activePoly.open=false;activePoly=null;redrawZones();runRules();}return;}if(!activePoly){const z={type:S.tool,pts:[{x,y}],open:true};S.zonePolys.push(z);activePoly=z;}else activePoly.pts.push({x,y});redrawZones();return;}
+  if(PLACEABLE.includes(S.tool)){place(S.tool,x,y);return;}
+  if(S.tool==='select'){S.selId=null;renderEls();}
+});
+cw.addEventListener('mousemove',e=>{
+  if(S.isRotating)return;const r=cw.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  if(S.tool==='rack'&&rackStart)drawRackPreview(x,y);
+  if(S.tool==='dim'&&dimStart){drawDims();drawDimArrow(dcx,dimStart.x,dimStart.y,x,y,true);}
+  if(ZONE_TOOLS.includes(S.tool)&&activePoly&&activePoly.open){redrawZones();const d=ZD[activePoly.type];zcx.save();zcx.strokeStyle=d.stroke;zcx.lineWidth=2;zcx.setLineDash([5,4]);zcx.globalAlpha=.45;zcx.beginPath();zcx.moveTo(activePoly.pts[0].x,activePoly.pts[0].y);activePoly.pts.forEach(p=>zcx.lineTo(p.x,p.y));zcx.lineTo(x,y);zcx.stroke();zcx.restore();}
+});
+cw.addEventListener('mouseup',e=>{
+  if(S.tool==='rack'&&rackStart){e.preventDefault();e.stopPropagation();const r=cw.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,dx=x-rackStart.x,dy=y-rackStart.y,dist=Math.sqrt(dx*dx+dy*dy);if(dist>6){pushUndo();const segPx=ft2px(8),steps=Math.max(1,Math.round(dist/segPx));for(let i=0;i<steps&&S.rack.length<RACK_MAX;i++){const t1=i/steps,t2=(i+1)/steps;S.rack.push({x1:rackStart.x+dx*t1,y1:rackStart.y+dy*t1,x2:rackStart.x+dx*t2,y2:rackStart.y+dy*t2});}}rackStart=null;drawRack();runRules();}
+  if(S.tool==='dim'&&dimStart){e.preventDefault();e.stopPropagation();const r=cw.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,dx=x-dimStart.x,dy=y-dimStart.y;if(Math.sqrt(dx*dx+dy*dy)>10){pushUndo();S.dims.push({x1Ft:dimStart.x/S.scale,y1Ft:dimStart.y/S.scale,x2Ft:x/S.scale,y2Ft:y/S.scale});drawDims();}dimStart=null;}
+});
+document.addEventListener('mouseup',()=>{if(S.tool==='rack')rackStart=null;if(S.tool==='dim')dimStart=null;});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.getElementById('mo').style.display='none';return;}
+  const tag=document.activeElement&&document.activeElement.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+  if(e.key==='Delete'||e.key==='Backspace'){if(S.selId!==null){pushUndo();const found=S.els.find(x=>x.id===S.selId);if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==S.selId);renderFal();}S.els=S.els.filter(x=>x.id!==S.selId);S.selId=null;renderVendorList();renderEls();runRules();}}
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}
+});
+
+document.getElementById('ep-yes').addEventListener('click',()=>{S.enclosed=true;document.getElementById('enc-screen').style.display='none';document.getElementById('rack-tg').style.display='';document.getElementById('rack-panel').style.display='';setTool('rack');});
+document.getElementById('ep-no').addEventListener('click',()=>{S.enclosed=false;document.getElementById('enc-screen').style.display='none';document.getElementById('rack-tg').style.display='none';document.getElementById('rack-panel').style.display='none';updateCap();setTool('select');});
+
+[['bsel','select'],['brk','rack'],['zg','grass'],['zp','pave'],['zr','restrict'],['ze','erase'],['bdim','dim']].forEach(([id,tool])=>{const b=document.getElementById(id);if(b)b.addEventListener('click',()=>setTool(tool));});
+
+document.getElementById('ba').addEventListener('click',()=>{modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');});
+document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
+document.getElementById('bund').addEventListener('click',()=>{if(S.rack.length){pushUndo();S.rack.pop();drawRack();runRules();}});
+
+function openScaleModal(){
+  modal('Set Photo Scale',
+    'Enter the real-world distance this photo covers from its left edge to its right edge. Then use the Measure tool to draw known distances on your venue for reference.',
+    mf('Total width of this photo (ft)','scft','number',Math.round(S.venueWidthFt)||200,'e.g. 300')+
+    '<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Tip: use your permit diagram or pace it out. After saving, use the Measure tool to verify distances.</div>',
+    ()=>{
+      const ft=parseFloat(document.getElementById('scft').value)||200;
+      S.venueWidthFt=ft;S.scale=cw.clientWidth/ft;
+      document.getElementById('slbl').textContent=`${Math.round(ft)} ft wide`;
+      drawDims();renderEls();runRules();
+      document.getElementById('ins-txt').textContent='Scale set. Use the Measure tool to draw known distances on your venue.';
+    },'Save');
+}
+document.getElementById('btn-scale').addEventListener('click',openScaleModal);
+
+document.getElementById('fi').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    S.bgData=ev.target.result;bgImg.src=ev.target.result;bgImg.style.display='block';
+    bgImg.onload=()=>{
+      sz();
+      // Auto-prompt for photo scale on every new upload
+      setTimeout(openScaleModal,350);
+    };
+  };
+  reader.readAsDataURL(f);
+});
+
+function loadVenueList(){const sel=document.getElementById('vsel'),names=Object.keys(S.venues);sel.innerHTML=names.length?names.map(n=>`<option value="${n}">${n}</option>`):'<option value="">No saved venues</option>';}
+document.getElementById('vsave').addEventListener('click',()=>{modal('Save Venue','Name this venue. Photo, zones, and scale will be saved.',mf('Venue Name','vname','text','','e.g. Freemason Harbor Park'),()=>{const name=document.getElementById('vname').value.trim();if(!name)return;S.venues[name]={bgData:S.bgData||null,zonePolys:JSON.parse(JSON.stringify(S.zonePolys)),venueWidthFt:S.venueWidthFt,scale:S.scale};try{localStorage.setItem('esm_venues2',JSON.stringify(S.venues));}catch(er){}loadVenueList();document.getElementById('vsel').value=name;},'Save');});
+document.getElementById('vload').addEventListener('click',()=>{const name=document.getElementById('vsel').value;if(!name||!S.venues[name])return;const v=S.venues[name];if(v.bgData){bgImg.src=v.bgData;bgImg.style.display='block';S.bgData=v.bgData;}else{bgImg.src='';bgImg.style.display='none';S.bgData=null;}if(v.venueWidthFt){S.venueWidthFt=v.venueWidthFt;document.getElementById('slbl').textContent=`${Math.round(v.venueWidthFt)} ft wide`;}else if(v.scale){S.scale=v.scale;}if(v.zonePolys){S.zonePolys=JSON.parse(JSON.stringify(v.zonePolys));}S.els=[];S.rack=[];S.firstAids=[];S.adaPaths=[];S.curAda=[];S.dims=[];S.enclosed=null;S.hasSoftSurface=null;S.undoStack=[];bgImg.onload=()=>sz();if(bgImg.complete&&bgImg.naturalWidth)sz();redrawZones();renderEls();drawRack();drawAda();drawDims();renderFal();renderVendorList();document.getElementById('enc-screen').style.display='flex';document.getElementById('rack-tg').style.display='none';document.getElementById('rack-panel').style.display='none';runRules();});
+document.getElementById('vdel').addEventListener('click',()=>{const name=document.getElementById('vsel').value;if(!name||!S.venues[name])return;if(!confirm(`Delete venue "${name}"?`))return;delete S.venues[name];try{localStorage.setItem('esm_venues2',JSON.stringify(S.venues));}catch(er){}loadVenueList();});
+
+document.getElementById('bclr').addEventListener('click',()=>{modal('Clear Layout','Choose what to clear from the canvas.',`<div class="mf"><label>Clear</label><select id="clr-opt"><option value="els">Elements &amp; measurements</option><option value="rack">Bike rack only</option><option value="zones">Zones only</option><option value="dims">Measurements only</option><option value="all">Everything — full reset</option></select></div>`,()=>{pushUndo();const v=document.getElementById('clr-opt').value;if(v==='els'||v==='all'){S.els=[];S.firstAids=[];S.selId=null;renderEls();renderFal();renderVendorList();}if(v==='els'||v==='dims'||v==='all'){S.dims=[];drawDims();}if(v==='rack'||v==='all'){S.rack=[];drawRack();}if(v==='zones'||v==='all'){S.zonePolys=[];redrawZones();}if(v==='all'){S.adaPaths=[];S.curAda=[];S.bgData=null;bgImg.src='';bgImg.style.display='none';cw.style.width='100%';cw.style.height='100%';S.enclosed=null;S.hasSoftSurface=null;S.undoStack=[];document.getElementById('enc-screen').style.display='flex';document.getElementById('rack-tg').style.display='none';document.getElementById('rack-panel').style.display='none';document.getElementById('slbl').textContent='Set scale →';}drawAda();runRules();},'Clear');});
+
+function renderColorKey(){
+  const rows=[
+    {type:'swatch',bg:'#fff',bord:'#2dd4a0',lbl:'Non-food Tent',dim:'10×10 or 10×20 ft'},
+    {type:'swatch',bg:'#facc15',bord:'#eab308',lbl:'Food / Beverage Tent',dim:'10×10 or 10×20 ft'},
+    {type:'swatch',bg:'#ef4444',bord:'#b91c1c',lbl:'Food Truck',dim:'20×8 ft (default)'},
+    {type:'swatch',bg:'#a78bfa25',bord:'#a78bfa',lbl:'Stage',dim:'20×16 ft (default)'},
+    {type:'swatch',bg:'rgba(34,197,94,0.2)',bord:'#22c55e',lbl:'Ingress / Egress',dim:'10+ ft wide'},
+    {type:'swatch',bg:'#f0525225',bord:'#f05252',lbl:'First Aid / Fire Ext.',dim:'Variable'},
+    {type:'swatch',bg:'#fbbf2425',bord:'#fbbf24',lbl:'Generator',dim:'6×6 ft'},
+    {type:'swatch',bg:'#c084fc25',bord:'#c084fc',lbl:'Mix Platform',dim:'10×8 ft'},
+    {type:'swatch',bg:'#8b93a825',bord:'#8b93a8',lbl:'Custom Element',dim:'User-defined'},
+    {type:'line',color:'rgba(79,126,248,0.65)',lbl:'ADA Path',dim:'Accessible routes'},
+    {type:'line',color:'#f5a623',lbl:'Dimension / Linked Barricade',dim:'Measured distances'},
+    {type:'line',color:'#8b93a8',lbl:'Unlinked Barricade',dim:'Standalone barriers'},
+    {type:'zone',color:'#2dd4a0',lbl:'Grass Zone',dim:'Natural surface'},
+    {type:'zone',color:'#8b93a8',lbl:'Pave Zone',dim:'Hard surface'},
+    {type:'zone',color:'#f05252',lbl:'Restricted Zone',dim:'Off-limits area'}
+  ];
+  document.getElementById('ckey').innerHTML=rows.map(r=>{
+    let sw;
+    if(r.type==='swatch')sw=`<div class="ck-swatch" style="background:${r.bg};border-color:${r.bord}"></div>`;
+    else if(r.type==='line')sw=`<div class="ck-line" style="background:${r.color}"></div>`;
+    else sw=`<div class="ck-zone" style="border-color:${r.color};background:${r.color}18"></div>`;
+    return `<div class="ck-row">${sw}<div><span>${r.lbl}</span>${r.dim?`<div style="font-size:8px;color:var(--tx3);margin-top:1px">${r.dim}</div>`:''}` + `</div></div>`;
+  }).join('');
+}
+
+// --- PDF Export ---
+async function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('Failed: '+src));document.head.appendChild(s);});}
+document.getElementById('bpdf').addEventListener('click',async()=>{
+  const btn=document.getElementById('bpdf'),orig=btn.innerHTML;btn.innerHTML='<i class="ti ti-loader-2"></i>Building…';btn.disabled=true;
+  try{if(!window.html2canvas)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');if(!window.jspdf)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');await exportPDF();document.getElementById('ins-txt').textContent='PDF saved.';}
+  catch(err){document.getElementById('ins-txt').textContent='PDF export failed — check internet connection.';console.error(err);}
+  finally{btn.innerHTML=orig;btn.disabled=false;}
+});
+
+async function exportPDF(){
+  const {jsPDF}=window.jspdf;
+  const gridEl=document.getElementById('grid');gridEl.style.opacity='0';
+  const mapCvs=await window.html2canvas(cw,{backgroundColor:'#141820',scale:1.5,useCORS:true,logging:false});
+  gridEl.style.opacity='';
+  const pdf=new jsPDF({orientation:'l',unit:'mm',format:'letter'});
+  const PW=279,PH=216,M=8,sbW=70,gap=4;
+  const mapAreaW=PW-M-sbW-gap-M,titleH=13,mapAreaH=PH-titleH-M-6;
+  // Title bar
+  pdf.setFillColor(15,17,23);pdf.rect(0,0,PW,titleH,'F');
+  pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(232,236,244);
+  pdf.text('SITEMAP',M,9);
+  const evtName=document.getElementById('evt-name').value.trim();
+  if(evtName){pdf.setFontSize(10);pdf.setFont('helvetica','normal');pdf.setTextColor(200,210,230);pdf.text('·  '+evtName,M+22,9);}
+  pdf.setFontSize(8);pdf.setFont('helvetica','normal');pdf.setTextColor(139,147,168);
+  pdf.text(new Date().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}),PW-M,9,{align:'right'});
+  // Map
+  const asp=mapCvs.width/mapCvs.height;let imgW=mapAreaW,imgH=mapAreaW/asp;if(imgH>mapAreaH){imgH=mapAreaH;imgW=mapAreaH*asp;}
+  const imgX=M,imgY=titleH+2;
+  pdf.addImage(mapCvs.toDataURL('image/jpeg',0.92),'JPEG',imgX,imgY,imgW,imgH);
+  // Sidebar
+  const sbX=M+mapAreaW+gap,sbY=imgY;
+  pdf.setFillColor(245,247,252);pdf.rect(sbX-1,sbY-1,sbW+2,imgH+2,'F');
+  let sy=sbY+5;const lineH=4.6;
+  const hdr=txt=>{sy+=3;pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(79,126,248);pdf.text(txt.toUpperCase(),sbX+2,sy);sy+=lineH;};
+  const row=(txt,val)=>{pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);pdf.setTextColor(40,45,60);if(val!==undefined){pdf.text(txt,sbX+2,sy);pdf.setFont('helvetica','bold');pdf.text(String(val),sbX+sbW-3,sy,{align:'right'});}else{pdf.text(txt,sbX+2,sy,{maxWidth:sbW-4});}sy+=lineH;};
+  // Capacity (no scale section)
+  if(S.enclosed){hdr('Capacity');row('Est. occupants',document.getElementById('cn').textContent);pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(100,110,130);pdf.text(document.getElementById('cd').textContent,sbX+2,sy,{maxWidth:sbW-4});sy+=lineH;}
+  if(S.rack.length){hdr('Barricade');row('Sections',S.rack.length);row('Linear feet',S.rack.length*8);}
+  // Activations
+  hdr('Activations');
+  const tnMap=getTypeNums();
+  if(S.els.length){S.els.forEach(el=>{if(sy>sbY+imgH-8)return;const name=el.vendorName||(TYPES[el.type]||TYPES.custom).lbl;pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(79,126,248);pdf.text(elCode(el,tnMap),sbX+2,sy);pdf.setFont('helvetica','normal');pdf.setTextColor(40,45,60);pdf.text(name,sbX+14,sy,{maxWidth:sbW-16});sy+=lineH;});}else{row('None placed');}
+  if(S.firstAids.length&&sy<sbY+imgH-14){hdr('First Aid');S.firstAids.forEach(c=>{if(sy>sbY+imgH-8)return;pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(40,45,60);pdf.text(c.name,sbX+2,sy);sy+=3.5;pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);pdf.setTextColor(100,110,130);pdf.text(c.cert,sbX+2,sy);sy+=lineH;});}
+  if(sy<sbY+imgH-42){
+    hdr('Color Key');
+    [{r:255,g:255,b:255,l:'Non-food Tent'},{r:250,g:204,b:21,l:'Food/Bev Tent'},{r:239,g:68,b:68,l:'Food Truck'},{r:167,g:139,b:250,l:'Stage'},{r:34,g:197,b:94,l:'Ingress/Egress'},{r:240,g:82,b:82,l:'First Aid'},{r:79,g:126,b:248,l:'ADA Path'},{r:245,g:166,b:35,l:'Measurement'}].forEach(k=>{if(sy>sbY+imgH-6)return;pdf.setFillColor(k.r,k.g,k.b);pdf.setDrawColor(160);pdf.setLineWidth(0.15);pdf.rect(sbX+2,sy-3,3.5,3.5,'FD');pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);pdf.setTextColor(50,55,70);pdf.text(k.l,sbX+8,sy);sy+=lineH;});
+  }
+  pdf.setFontSize(6.5);pdf.setTextColor(139,147,168);pdf.text('Generated by SITEMAP Event Site Planner',M,PH-3);
+  const filename=evtName?evtName.replace(/[^a-z0-9]/gi,'-').toLowerCase()+'-sitemap.pdf':'sitemap-event-plan.pdf';
+  pdf.save(filename);
+}
+
+try{const saved=localStorage.getItem('esm_venues2');if(saved)S.venues=JSON.parse(saved);}catch(er){}
+loadVenueList();renderColorKey();renderVendorList();
+</script>
+</body>
+</html>
