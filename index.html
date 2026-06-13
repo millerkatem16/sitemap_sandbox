@@ -79,7 +79,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 
 /* ── Capacity display ────────────────────────────────────────────────────── */
 .cap-center{text-align:center;padding:4px 0 6px}
-.cap-big{font-size:36px;font-weight:200;line-height:1;letter-spacing:-.03em;color:var(--tx)}
+.cap-big{font-size:36px;font-weight:200;line-height:1;letter-spacing:-.03em;color:var(--slate)}
 .cap-sub{font-size:12px;color:var(--tx2);margin-top:5px;font-weight:500}
 .cap-detail{font-size:10.5px;color:var(--tx3);margin-top:4px;font-family:var(--mono)}
 .cap-na{font-size:12px;color:var(--tx3);text-align:center;padding:8px 0;line-height:1.6}
@@ -92,6 +92,15 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .w.soft{background:rgba(251,189,47,0.09);color:#7a5200;border-color:rgba(251,189,47,0.36)}
 .w.info{background:rgba(42,95,100,0.08);color:var(--slate);border-color:rgba(42,95,100,0.2)}
 .w.ok{background:rgba(45,212,160,0.08);color:#14705a;border-color:rgba(45,212,160,0.28)}
+
+/* ── Zone & tool button semantic states ──────────────────────────────────── */
+#zg:hover,#zg.active{background:rgba(45,212,160,0.22);color:#2dd4a0;border-color:rgba(45,212,160,0.45)}
+#zp:hover,#zp.active{background:rgba(139,147,168,0.22);color:#b8bdd0;border-color:rgba(139,147,168,0.45)}
+#zr:hover,#zr.active{background:rgba(240,82,82,0.22);color:#f58b8b;border-color:rgba(240,82,82,0.48)}
+#zbrd:hover,#zbrd.active{background:rgba(251,189,47,0.22);color:#FBBD2F;border-color:rgba(251,189,47,0.48)}
+#ze:hover,#ze.active{background:rgba(244,81,64,0.2);color:var(--crimson);border-color:rgba(244,81,64,0.42)}
+#ba:hover,#ba.active{background:rgba(79,126,248,0.22);color:#85a9fb;border-color:rgba(79,126,248,0.45)}
+#bdim:hover,#bdim.active{background:rgba(245,166,35,0.22);color:#f5a623;border-color:rgba(245,166,35,0.45)}
 
 /* ── Sidebar rows & buttons ──────────────────────────────────────────────── */
 .ec-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--brd)}
@@ -109,6 +118,10 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .vbtn.acc:hover{background:var(--acc2);color:#fff;box-shadow:0 4px 14px rgba(146,39,100,0.32)}
 .vbtn.del{color:var(--crimson);border-color:transparent;background:transparent}
 .vbtn.del:hover{background:rgba(242,95,136,0.1);border-color:rgba(242,95,136,0.3)}
+.vbtn.gold{background:var(--amb);color:#2a1800;border-color:transparent;box-shadow:0 2px 8px rgba(251,189,47,0.3),inset 0 1px 0 rgba(255,255,255,0.2);transition:background .12s,box-shadow .12s}
+.vbtn.gold:hover{background:oklch(84% 0.16 75);color:#1e1000;box-shadow:0 3px 12px rgba(251,189,47,0.42)}
+.vbtn.gold-ol{background:rgba(251,189,47,0.1);color:#5a3800;border-color:rgba(251,189,47,0.45);transition:background .12s,border-color .12s}
+.vbtn.gold-ol:hover{background:rgba(251,189,47,0.18);border-color:rgba(251,189,47,0.7);color:#3a2200}
 
 /* ── First aid / FA list ─────────────────────────────────────────────────── */
 .fa-item{padding:6px 0;border-bottom:1px solid var(--brd);font-size:12px}
@@ -258,10 +271,10 @@ canvas{position:absolute;inset:0;pointer-events:none}
         <div class="plabel">Capacity</div>
         <div style="font-size:9px;color:var(--tx3);line-height:1.55;padding:2px 0 8px">Draw a border around your event space to calculate usable square footage and estimated capacity.</div>
         <div class="vrow" style="margin-bottom:6px">
-          <button class="vbtn acc" id="zbrd-sb" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-vector-triangle" style="font-size:13px"></i>Draw Venue Border</button>
+          <button class="vbtn gold" id="zbrd-sb" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-vector-triangle" style="font-size:13px"></i>Draw Venue Border</button>
         </div>
         <div class="vrow">
-          <button class="vbtn" id="zbrd-vip" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-plus" style="font-size:12px"></i>Add Sub-zone (VIP etc.)</button>
+          <button class="vbtn gold-ol" id="zbrd-vip" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-plus" style="font-size:12px"></i>Add Sub-zone (VIP etc.)</button>
         </div>
         <div style="margin-top:8px">
           <div id="cap-na" class="cap-na">No borders drawn yet</div>
@@ -571,21 +584,43 @@ function updateCap(){
   borders.forEach((_,i)=>{if(parentIdx[i]>=0)netAreas[parentIdx[i]]-=rawAreas[i];});
 
   let struc=0;S.els.forEach(e=>{const t=TYPES[e.type];if(t&&(t.sqft>0||['stage','truck','gen','mix','custom','customtent'].includes(e.type)))struc+=e.wFt*e.hFt;});
+  // Per-zone structural footprint: assign each structure to its smallest enclosing zone
+  const zoneStruc=borders.map(()=>0);
+  S.els.forEach(e=>{
+    const t=TYPES[e.type];
+    if(!t||(!(t.sqft>0)&&!['stage','truck','gen','mix','custom','customtent'].includes(e.type)))return;
+    const ePx=latLngToPixel(e.lat,e.lng);
+    let bestZone=-1,bestArea=Infinity;
+    borders.forEach((b,i)=>{if(pip(ePx,b.pts)&&rawAreas[i]<bestArea){bestZone=i;bestArea=rawAreas[i];}});
+    if(bestZone>=0)zoneStruc[bestZone]+=e.wFt*e.hFt;
+  });
   const totalFtSq=netAreas.reduce((s,a)=>s+Math.max(0,a),0);
   const totalCap=Math.max(0,Math.floor((totalFtSq-struc)/8));
 
   const bordersEl=document.getElementById('cap-borders');
   const multi=borders.length>1;
+  // Preserve focus on zone name inputs during re-render
+  const activeZoneEl=document.activeElement;
+  const wasZid=activeZoneEl&&activeZoneEl.classList&&activeZoneEl.classList.contains('zone-name-inp')?activeZoneEl.dataset.zid:null;
   // Ensure every border has a zid (retroactively assign for loaded data)
   borders.forEach(b=>{if(!b.zid)b.zid=S.idCtr++;});
   bordersEl.innerHTML=borders.map((b,i)=>{
-    const label=b.label||(parentIdx[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`);
+    const placeholder=parentIdx[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`;
     const sub=parentIdx[i]>=0?` <span style="font-size:8px;color:var(--acc);font-weight:700;vertical-align:middle">SUB</span>`:'';
-    const sqFt=Math.round(Math.max(0,multi?netAreas[i]:rawAreas[0]));
-    const cap=Math.max(0,Math.floor((multi?netAreas[i]:rawAreas[0])/8));
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--brd)"><span style="font-size:10px;color:var(--tx2);font-weight:500">${label}${sub}<br><span style="font-size:9px;color:var(--tx3);font-family:var(--mono)">${sqFt.toLocaleString()} sq ft usable</span></span><div style="display:flex;align-items:center;gap:5px;flex-shrink:0"><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${cap.toLocaleString()}</span><button class="vl-del zone-del-btn" data-zid="${b.zid}" title="Remove zone">×</button></div></div>`;
+    const zs=zoneStruc[i];
+    const sqFt=Math.round(Math.max(0,(multi?netAreas[i]:rawAreas[0])-zs));
+    const cap=Math.max(0,Math.floor(((multi?netAreas[i]:rawAreas[0])-zs)/8));
+    const escapedLabel=(b.label||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--brd)"><div style="flex:1;min-width:0"><input class="vl-inp zone-name-inp" type="text" data-zid="${b.zid}" value="${escapedLabel}" placeholder="${placeholder}" style="width:100%;margin-bottom:2px">${sub}<br><span style="font-size:9px;color:var(--tx3);font-family:var(--mono)">${sqFt.toLocaleString()} sq ft usable</span></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:4px"><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${cap.toLocaleString()}</span><button class="vl-del zone-del-btn" data-zid="${b.zid}" title="Remove zone">×</button></div></div>`;
   }).join('');
   if(multi){bordersEl.innerHTML+=`<div style="margin-top:6px;margin-bottom:2px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate)">Estimated Total</div>`;}
+  bordersEl.querySelectorAll('.zone-name-inp').forEach(inp=>{
+    inp.addEventListener('input',ev=>{
+      const zid=parseInt(ev.target.dataset.zid);
+      const z=S.zonePolys.find(z=>z.zid===zid);
+      if(z)z.label=ev.target.value;
+    });
+  });
   bordersEl.querySelectorAll('.zone-del-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const zid=parseInt(btn.dataset.zid);
@@ -594,6 +629,7 @@ function updateCap(){
       redrawZones();runRules();
     });
   });
+  if(wasZid){const ni=bordersEl.querySelector(`.zone-name-inp[data-zid="${wasZid}"]`);if(ni)ni.focus();}
   document.getElementById('cn').textContent=totalCap.toLocaleString();
   document.getElementById('cn-lbl').textContent=multi?'estimated total occupants':'estimated occupants';
   document.getElementById('cd').textContent=`${Math.round(totalFtSq).toLocaleString()} sq ft usable · ${Math.round(struc)} in structures`;
@@ -1219,43 +1255,57 @@ async function exportPDF(){
     }
   }
 
-  hdr('Activations');
-  if(S.els.length){S.els.forEach(el=>{if(sy>sbY+imgH-8)return;const name=el.vendorName||(TYPES[el.type]||TYPES.custom).lbl;pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(244,81,64);pdf.text(elCode(el,tnMap),sbX+4,sy);pdf.setFont('helvetica','normal');pdf.setTextColor(28,27,46);pdf.text(name,sbX+16,sy,{maxWidth:sbW-18});sy+=lineH;});}else{row('None placed');}
+  // ── 9. Dynamic color key — pre-build rows, reserve space, guarantee render ─
+  const keyRows=[];const seenStd=new Set();
+  const stdKey={stage:{r:167,g:139,b:250,l:'Stage',d:'20×16 ft (default)'},truck:{r:239,g:68,b:68,l:'Food Truck',d:'20×8 ft (default)'},gen:{r:251,g:191,b:36,l:'Generator',d:'6×6 ft'},ingress:{r:34,g:197,b:94,l:'Ingress/Egress',d:'10+ ft wide'},firstaid:{r:240,g:82,b:82,l:'First Aid Stn.',d:'10×10 ft'},extinguisher:{r:240,g:82,b:82,l:'Fire Ext.',d:'2×3 ft'},mix:{r:192,g:132,b:252,l:'Mix Platform',d:'10×8 ft'}};
+  const tentBuckets={};
+  S.els.forEach(el=>{
+    if(['tent10','tent20','customtent'].includes(el.type)){
+      const food=el.tentType==='food';
+      const key=`${food?'food':'nonfood'}|${el.wFt}|${el.hFt}`;
+      if(!tentBuckets[key])tentBuckets[key]={food,wFt:el.wFt,hFt:el.hFt,count:0};
+      tentBuckets[key].count++;
+    }else if(el.type==='custom'){
+      const[cr,cg,cb]=hexRgb(el.color||'#8b93a8');
+      keyRows.push({r:cr,g:cg,b:cb,l:`${el.vendorName||'Custom'} (${S.els.filter(x=>x.type==='custom'&&x.color===el.color).length})`,d:`${el.wFt}×${el.hFt} ft`});
+    }else if(!seenStd.has(el.type)){
+      seenStd.add(el.type);
+      const count=S.els.filter(x=>x.type===el.type).length;
+      if(stdKey[el.type])keyRows.push({...stdKey[el.type],l:`${stdKey[el.type].l} (${count})`});
+    }
+  });
+  Object.values(tentBuckets).sort((a,tb)=>a.food-tb.food||a.wFt-tb.wFt||a.hFt-tb.hFt).forEach(t=>{
+    keyRows.unshift({r:t.food?250:255,g:t.food?204:255,b:t.food?21:255,
+      l:`${t.food?'Food/Bev':'Non-food'} Tent, ${t.wFt}×${t.hFt} ft (${t.count})`,d:''});
+  });
+  if(S.zonePolys.some(z=>z.type==='border'&&!z.open))keyRows.push({r:251,g:189,b:47,l:'Venue Border/Sub-zone',d:'boundary'});
+  if(S.adaPaths.length)keyRows.push({r:79,g:126,b:248,l:'ADA Path',d:'accessible routes'});
+  // Reserve bottom space: header (~11mm) + each row (~7.5mm)
+  const colorKeyH=keyRows.length?11+keyRows.length*7.5:0;
+  const actCutoff=sbY+imgH-colorKeyH-6;
 
-  if(S.firstAids.length&&sy<sbY+imgH-14){
+  hdr('Activations');
+  if(S.els.length){
+    let hidden=0;
+    S.els.forEach(el=>{
+      if(sy>actCutoff){hidden++;return;}
+      const name=el.vendorName||(TYPES[el.type]||TYPES.custom).lbl;
+      pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(244,81,64);
+      pdf.text(elCode(el,tnMap),sbX+4,sy);
+      pdf.setFont('helvetica','normal');pdf.setTextColor(28,27,46);
+      pdf.text(name,sbX+16,sy,{maxWidth:sbW-18});
+      sy+=lineH;
+    });
+    if(hidden>0){pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(90,88,120);pdf.text(`…+${hidden} more`,sbX+4,sy);sy+=lineH;}
+  }else{row('None placed');}
+
+  if(S.firstAids.length&&sy<actCutoff){
     hdr('First Aid');
-    S.firstAids.forEach(c=>{if(sy>sbY+imgH-8)return;pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(28,27,46);pdf.text(c.name,sbX+4,sy);sy+=3.5;pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);pdf.setTextColor(90,88,120);pdf.text(c.cert,sbX+4,sy);sy+=lineH;});
+    S.firstAids.forEach(c=>{if(sy>actCutoff)return;pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(28,27,46);pdf.text(c.name,sbX+4,sy);sy+=3.5;pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);pdf.setTextColor(90,88,120);pdf.text(c.cert,sbX+4,sy);sy+=lineH;});
   }
 
-  // ── 9. Dynamic color key — per-size tent breakdown with counts ───────────
-  if(sy<sbY+imgH-20){
+  if(keyRows.length){
     hdr('Color Key');
-    const keyRows=[];const seenStd=new Set();
-    const stdKey={stage:{r:167,g:139,b:250,l:'Stage',d:'20×16 ft (default)'},truck:{r:239,g:68,b:68,l:'Food Truck',d:'20×8 ft (default)'},gen:{r:251,g:191,b:36,l:'Generator',d:'6×6 ft'},ingress:{r:34,g:197,b:94,l:'Ingress/Egress',d:'10+ ft wide'},firstaid:{r:240,g:82,b:82,l:'First Aid Stn.',d:'10×10 ft'},extinguisher:{r:240,g:82,b:82,l:'Fire Ext.',d:'2×3 ft'},mix:{r:192,g:132,b:252,l:'Mix Platform',d:'10×8 ft'}};
-    // Bucket tents by type×size×use — track counts
-    const tentBuckets={};
-    S.els.forEach(el=>{
-      if(['tent10','tent20','customtent'].includes(el.type)){
-        const food=el.tentType==='food';
-        const key=`${food?'food':'nonfood'}|${el.wFt}|${el.hFt}`;
-        if(!tentBuckets[key])tentBuckets[key]={food,wFt:el.wFt,hFt:el.hFt,count:0};
-        tentBuckets[key].count++;
-      }else if(el.type==='custom'){
-        const[r,g,b]=hexRgb(el.color||'#8b93a8');
-        keyRows.push({r,g,b,l:`${el.vendorName||'Custom'} (${S.els.filter(x=>x.type==='custom'&&x.color===el.color).length})`,d:`${el.wFt}×${el.hFt} ft`});
-      }else if(!seenStd.has(el.type)){
-        seenStd.add(el.type);
-        const count=S.els.filter(x=>x.type===el.type).length;
-        if(stdKey[el.type])keyRows.push({...stdKey[el.type],l:`${stdKey[el.type].l} (${count})`});
-      }
-    });
-    // Add tent rows sorted non-food first, then food; smaller sizes first
-    Object.values(tentBuckets).sort((a,b)=>a.food-b.food||a.wFt-b.wFt||a.hFt-b.hFt).forEach(t=>{
-      keyRows.unshift({r:t.food?250:255,g:t.food?204:255,b:t.food?21:255,
-        l:`${t.food?'Food/Bev':'Non-food'} Tent, ${t.wFt}×${t.hFt} ft (${t.count})`,d:''});
-    });
-    if(S.zonePolys.some(z=>z.type==='border'&&!z.open))keyRows.push({r:251,g:189,b:47,l:'Venue Border/Sub-zone',d:'boundary'});
-    if(S.adaPaths.length)keyRows.push({r:79,g:126,b:248,l:'ADA Path',d:'accessible routes'});
     keyRows.forEach(k=>{
       if(sy>sbY+imgH-4)return;
       pdf.setFillColor(k.r,k.g,k.b);pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.15);pdf.rect(sbX+4,sy-3,3.5,3.5,'FD');
