@@ -776,8 +776,8 @@ function setTool(id){
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
   const m={select:'bsel',ada:'ba',dim:'bdim',grass:'zg',pave:'zp',restrict:'zr',border:'zbrd',erase:'ze'};
   const btn=document.getElementById(m[id]);if(btn)btn.classList.add('active');
-  // Drawing tools capture pointer events; select falls through to map
-  cw.style.pointerEvents=DRAWING_TOOLS.includes(id)?'auto':'none';
+  // Select passes clicks through to map; every other tool needs canvas input
+  cw.style.pointerEvents=id==='select'?'none':'auto';
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'?'crosshair':'default';
   const msgs={select:'Click to select · Drag to move · Delete key removes selected element',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',firstaid:'Click to place a first aid station',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',grass:'Click corners to draw grass zone · Double-click to close',pave:'Click corners to draw pavement zone · Double-click to close',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click corners to draw venue border · Double-click to close',erase:'Click inside a zone or border to remove it'};
   document.getElementById('ins-txt').textContent=msgs[id]||'';
