@@ -121,8 +121,9 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .el-lbl{position:absolute;bottom:3px;left:2px;right:2px;font-family:var(--font);font-weight:800;letter-spacing:-.01em;color:#fff;text-align:center;text-shadow:0 0 6px rgba(0,0,0,1),0 1px 4px rgba(0,0,0,0.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;z-index:3;pointer-events:all;line-height:1.1}
 .dbtn,.rbtn{position:absolute;border-radius:50%;display:none;align-items:center;justify-content:center;cursor:pointer;border:none;line-height:1;z-index:20;transition:transform .12s,opacity .12s;opacity:0.92}
 .dbtn{background:var(--red);color:#fff;font-weight:700}
-.rbtn{background:var(--acc);color:#fff;cursor:grab}
-.dbtn:hover,.rbtn:hover{transform:scale(1.18);opacity:1}
+.rbtn{background:var(--gold);color:#1C1B2E;cursor:grab}
+.dbtn:hover{transform:scale(1.18);opacity:1}
+.rbtn:hover{transform:scale(1.9);opacity:1;box-shadow:0 4px 18px rgba(251,189,47,0.6);z-index:30}
 .el:hover .dbtn,.el:hover .rbtn,.el.selected .dbtn,.el.selected .rbtn{display:flex}
 .rot-deg{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--gold);font-family:var(--mono);display:none;white-space:nowrap;background:rgba(28,43,44,0.88);padding:1px 6px;border-radius:4px;pointer-events:none}
 .el.selected .rot-deg{display:block}
@@ -169,6 +170,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <option value="" disabled selected>Add Elements to Park</option>
       <option value="tent10">10×10 Tent</option>
       <option value="tent20">10×20 Tent</option>
+      <option value="customtent">+ Add custom tent size…</option>
       <option value="stage">Stage</option>
       <option value="truck">Food Truck</option>
       <option value="gen">Generator</option>
@@ -303,9 +305,10 @@ const TYPES={
   firstaid:{lbl:'First Aid',color:'#f05252',wFt:10,hFt:10,icon:'🏥',sqft:0,rot:true},
   extinguisher:{lbl:'Fire Ext.',color:'#f05252',wFt:2,hFt:3,icon:'🧯',sqft:0,rot:true},
   mix:{lbl:'Mix Platform',color:'#c084fc',wFt:10,hFt:8,icon:'🎛',sqft:0,rot:true},
-  custom:{lbl:'Custom',color:'#8b93a8',wFt:10,hFt:10,sqft:0,rot:true}
+  custom:{lbl:'Custom',color:'#8b93a8',wFt:10,hFt:10,sqft:0,rot:true},
+  customtent:{lbl:'Custom Tent',color:'#2dd4a0',wFt:20,hFt:20,tent:true,sqft:1,rot:true}
 };
-const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'I',firstaid:'FA',extinguisher:'E',mix:'M',custom:'C'};
+const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'I',firstaid:'FA',extinguisher:'E',mix:'M',custom:'C',customtent:'T'};
 
 // ── Coordinate conversion ──────────────────────────────────────────────────
 function latLngToPixel(lat,lng){
@@ -540,7 +543,7 @@ function runRules(){
   const tnMap=getTypeNums();
   const N=e=>e.vendorName||elCode(e,tnMap);
   const warns=[];
-  const trucks=S.els.filter(e=>e.type==='truck'),tents=S.els.filter(e=>['tent10','tent20','custom'].includes(e.type));
+  const trucks=S.els.filter(e=>e.type==='truck'),tents=S.els.filter(e=>['tent10','tent20','custom','customtent'].includes(e.type));
   const gens=S.els.filter(e=>e.type==='gen'),ins=S.els.filter(e=>e.type==='ingress'),stages=S.els.filter(e=>e.type==='stage');
   S.els.forEach(e=>{e.hr=false;e.sr=false;});
   trucks.forEach(t=>{
@@ -599,7 +602,7 @@ function renderEls(){
       icon.innerHTML=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="display:block" preserveAspectRatio="none"><polygon points="0,${h/2} ${ah},${h*0.04} ${ah},${h*0.96}" fill="#22c55e"/><rect x="${ah}" y="${(h-sw)/2}" width="${Math.max(0,w-2*ah)}" height="${sw}" fill="#22c55e"/><polygon points="${w},${h/2} ${w-ah},${h*0.04} ${w-ah},${h*0.96}" fill="#22c55e"/></svg>`;
     }else{
       const color=el.color||t.color;const fs2=Math.min(w,h)*.38;
-      icon.style.cssText=`width:${w}px;height:${h}px;background:${color}25;border-color:${color};font-size:${fs2}px;`;
+      icon.style.cssText=`width:${w}px;height:${h}px;background:${color};border-color:${color};font-size:${fs2}px;color:#fff;`;
       if(t.icon)icon.textContent=t.icon;else if(el.type==='custom')icon.textContent=(el.vendorName||el.label||'?').slice(0,2).toUpperCase();
     }
     wrap.appendChild(icon);
@@ -728,6 +731,21 @@ function place(type,x,y){
       renderVendorList();renderEls();runRules();
     });return;
   }
+  if(type==='customtent'){
+    modal('Add Custom Tent Size','Specify dimensions and use type. Tent-to-food-truck clearance rules still apply.',
+      mf('Tent Label','ctlbl','text','','e.g. 20×40 Frame Tent')+
+      mr(mf('Width (ft)','ctw','number','20'),mf('Length (ft)','ctl','number','40'))+
+      msel('Tent Use','ct-type',[{v:'nonfood',t:'Non-food / Non-beverage'},{v:'food',t:'Food or Beverage'}]),
+      ()=>{
+        pushUndo();
+        const lbl=document.getElementById('ctlbl').value.trim()||'Custom Tent';
+        const wFt=Math.max(1,parseFloat(document.getElementById('ctw').value)||20);
+        const hFt=Math.max(1,parseFloat(document.getElementById('ctl').value)||40);
+        const tentType=document.getElementById('ct-type').value;
+        S.els.push({id:S.idCtr++,type:'customtent',lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,tentType,rot:0,hr:false,sr:false});
+        renderVendorList();renderEls();runRules();
+      });return;
+  }
   if(type==='truck'){
     modal('Place Food Truck','Enter vendor name and dimensions.',mf('Vendor Name','tklbl','text','','e.g. Tacos El Rey')+mr(mf('Length (ft)','tkl','number','20'),mf('Width (ft)','tkw','number','8')),()=>{
       pushUndo();const lbl=document.getElementById('tklbl').value.trim()||'Food Truck',wFt=parseFloat(document.getElementById('tkl').value)||20,hFt=parseFloat(document.getElementById('tkw').value)||8;
@@ -768,7 +786,7 @@ function place(type,x,y){
 
 // ── Tool management ────────────────────────────────────────────────────────
 const ZONE_TOOLS=['grass','pave','restrict','border','erase'];
-const PLACEABLE=['tent10','tent20','stage','truck','gen','ingress','firstaid','extinguisher','mix','custom'];
+const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','firstaid','extinguisher','mix','custom'];
 const DRAWING_TOOLS=[...ZONE_TOOLS,'ada','dim'];
 
 function setTool(id){
@@ -962,24 +980,24 @@ async function exportPDF(){
   const{jsPDF}=window.jspdf;
   const gridEl=document.getElementById('grid');gridEl.style.opacity='0';
 
-  // Capture overlay (elements, zones, dims — transparent bg) via html2canvas
-  const overlayCvs=await window.html2canvas(cw,{backgroundColor:null,scale:1.5,useCORS:true,logging:false});
-  gridEl.style.opacity='';
-
-  // Fetch static satellite image via our proxy (avoids CORS)
-  let mapDataUrl=null;
+  // Fetch static satellite image first so we know its dimensions before capturing overlay
+  let mapDataUrl=null,smW=0,smH=0;
   if(gmap){
     const lat=gmap.getCenter().lat(),lng=gmap.getCenter().lng(),zoom=gmap.getZoom();
     const mapDiv=document.getElementById('map');
     const mw=mapDiv.offsetWidth,mh=mapDiv.offsetHeight;
-    // Max static map size 640 per dimension (free tier)
-    let smW=Math.min(mw,640),smH=Math.round(mh*smW/mw);
+    // Cap at 640 per dimension (free tier); preserve screen aspect ratio
+    smW=Math.min(mw,640);smH=Math.round(mh*smW/mw);
     if(smH>640){smH=640;smW=Math.round(mw*smH/mh);}
     try{
       const resp=await fetch(`/api/static-map?center=${lat},${lng}&zoom=${zoom}&size=${smW}x${smH}&maptype=satellite`);
       if(resp.ok){const blob=await resp.blob();mapDataUrl=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);});}
     }catch(e){console.warn('Static map fetch failed',e);}
   }
+
+  // Capture overlay at 1× — we'll crop it to match the static map's coverage
+  const overlayCvs=await window.html2canvas(cw,{backgroundColor:null,scale:1,useCORS:true,logging:false});
+  gridEl.style.opacity='';
 
   const pdf=new jsPDF({orientation:'l',unit:'mm',format:'letter'});
   const PW=279,PH=216,M=8,sbW=72,gap=5;
@@ -996,25 +1014,35 @@ async function exportPDF(){
   pdf.setFontSize(8);pdf.setFont('helvetica','normal');pdf.setTextColor(200,230,232);
   pdf.text(new Date().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}),PW-M,10,{align:'right'});
 
-  // Map image area
+  // Map image area — aspect ratio from requested static map dimensions (smW/smH), not the @2x image pixels
   const imgX=M,imgY=titleH+2;
   let imgW=mapAreaW,imgH=mapAreaH;
-
-  if(mapDataUrl){
-    // Use static map as base, compute aspect from the proxy response
-    const tmpImg=new Image();await new Promise(r=>{tmpImg.onload=r;tmpImg.src=mapDataUrl;});
-    const asp=tmpImg.naturalWidth/tmpImg.naturalHeight;
+  if(smW&&smH){
+    const asp=smW/smH;
     imgW=mapAreaW;imgH=mapAreaW/asp;
     if(imgH>mapAreaH){imgH=mapAreaH;imgW=mapAreaH*asp;}
+  }
+
+  if(mapDataUrl){
     pdf.addImage(mapDataUrl,'JPEG',imgX,imgY,imgW,imgH);
   }else{
-    // Fallback: dark background
     pdf.setFillColor(28,43,44);pdf.rect(imgX,imgY,imgW,imgH,'F');
   }
 
-  // Overlay (elements + zones + dims) on top of map
-  const overUrl=overlayCvs.toDataURL('image/png');
-  // Scale overlay to match same imgW x imgH
+  // Crop overlay to the same geographic footprint as the static map.
+  // The static map covers smW×smH CSS pixels centered on the screen; crop out that region.
+  let overUrl;
+  const scrW=cw.clientWidth,scrH=cw.clientHeight;
+  if(smW>0&&smH>0&&(scrW>smW||scrH>smH)){
+    const cropX=Math.max(0,Math.round((scrW-smW)/2));
+    const cropY=Math.max(0,Math.round((scrH-smH)/2));
+    const cropCanvas=document.createElement('canvas');
+    cropCanvas.width=smW;cropCanvas.height=smH;
+    cropCanvas.getContext('2d').drawImage(overlayCvs,cropX,cropY,smW,smH,0,0,smW,smH);
+    overUrl=cropCanvas.toDataURL('image/png');
+  }else{
+    overUrl=overlayCvs.toDataURL('image/png');
+  }
   pdf.addImage(overUrl,'PNG',imgX,imgY,imgW,imgH);
 
   // Sidebar
