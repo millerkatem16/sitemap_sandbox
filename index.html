@@ -538,11 +538,13 @@ function polyArea(pts){
 }
 function getClosedBorders(){return S.zonePolys.filter(z=>z.type==='border'&&!z.open&&z.pts.length>=3);}
 
-function borderCentroidPx(b){
-  const px=ptsToPixels(b.pts);
-  return{x:px.reduce((s,p)=>s+p.x,0)/px.length,y:px.reduce((s,p)=>s+p.y,0)/px.length};
+// Majority-vote: >50% of inner vertices must be inside outer polygon
+function isBorderNestedIn(inner,outer){
+  const innerPx=ptsToPixels(inner.pts);
+  let inside=0;
+  for(const pt of innerPx){if(pip(pt,outer.pts))inside++;}
+  return inside>innerPx.length*0.5;
 }
-function isBorderNestedIn(inner,outer){return pip(borderCentroidPx(inner),outer.pts);}
 
 function updateCap(){
   const na=document.getElementById('cap-na'),live=document.getElementById('cap-live');
@@ -574,18 +576,24 @@ function updateCap(){
 
   const bordersEl=document.getElementById('cap-borders');
   const multi=borders.length>1;
-  if(multi){
-    bordersEl.innerHTML=borders.map((b,i)=>{
-      const label=b.label||(parentIdx[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`);
-      const sub=parentIdx[i]>=0?` <span style="font-size:8px;color:var(--acc);font-weight:700">SUB</span>`:'';
-      const sqFt=Math.round(Math.max(0,netAreas[i]));
-      const cap=Math.max(0,Math.floor(netAreas[i]/8));
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--brd)"><span style="font-size:10px;color:var(--tx2);font-weight:500">${label}${sub}<br><span style="font-size:9px;color:var(--tx3);font-family:var(--mono)">${sqFt.toLocaleString()} sq ft</span></span><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${cap.toLocaleString()}</span></div>`;
-    }).join('')+`<div style="margin-top:6px;margin-bottom:2px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate)">Estimated Total</div>`;
-  }else{
-    const label=borders[0].label||'Event Space';
-    bordersEl.innerHTML=`<div style="font-size:10px;color:var(--tx2);font-weight:500;padding-bottom:6px">${label} · ${Math.round(rawAreas[0]).toLocaleString()} sq ft</div>`;
-  }
+  // Ensure every border has a zid (retroactively assign for loaded data)
+  borders.forEach(b=>{if(!b.zid)b.zid=S.idCtr++;});
+  bordersEl.innerHTML=borders.map((b,i)=>{
+    const label=b.label||(parentIdx[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`);
+    const sub=parentIdx[i]>=0?` <span style="font-size:8px;color:var(--acc);font-weight:700;vertical-align:middle">SUB</span>`:'';
+    const sqFt=Math.round(Math.max(0,multi?netAreas[i]:rawAreas[0]));
+    const cap=Math.max(0,Math.floor((multi?netAreas[i]:rawAreas[0])/8));
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--brd)"><span style="font-size:10px;color:var(--tx2);font-weight:500">${label}${sub}<br><span style="font-size:9px;color:var(--tx3);font-family:var(--mono)">${sqFt.toLocaleString()} sq ft usable</span></span><div style="display:flex;align-items:center;gap:5px;flex-shrink:0"><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${cap.toLocaleString()}</span><button class="vl-del zone-del-btn" data-zid="${b.zid}" title="Remove zone">×</button></div></div>`;
+  }).join('');
+  if(multi){bordersEl.innerHTML+=`<div style="margin-top:6px;margin-bottom:2px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate)">Estimated Total</div>`;}
+  bordersEl.querySelectorAll('.zone-del-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const zid=parseInt(btn.dataset.zid);
+      pushUndo();
+      S.zonePolys=S.zonePolys.filter(z=>z.zid!==zid);
+      redrawZones();runRules();
+    });
+  });
   document.getElementById('cn').textContent=totalCap.toLocaleString();
   document.getElementById('cn-lbl').textContent=multi?'estimated total occupants':'estimated occupants';
   document.getElementById('cd').textContent=`${Math.round(totalFtSq).toLocaleString()} sq ft usable · ${Math.round(struc)} in structures`;
@@ -887,7 +895,7 @@ cw.addEventListener('mousedown',e=>{
     if(S.tool==='erase'){pushUndo();eraseZoneAt(x,y);runRules();return;}
     if(e.detail===2){if(activePoly&&activePoly.pts.length>=3){pushUndo();activePoly.open=false;if(S._pendingZoneLabel){activePoly.label=S._pendingZoneLabel;S._pendingZoneLabel=null;}activePoly=null;redrawZones();runRules();}return;}
     const ll=pixelToLatLng(x,y);
-    if(!activePoly){const z={type:S.tool,pts:[{lat:ll.lat,lng:ll.lng}],open:true};S.zonePolys.push(z);activePoly=z;}
+    if(!activePoly){const z={type:S.tool,pts:[{lat:ll.lat,lng:ll.lng}],open:true,zid:S.idCtr++};S.zonePolys.push(z);activePoly=z;}
     else activePoly.pts.push({lat:ll.lat,lng:ll.lng});
     redrawZones();return;
   }
@@ -1058,14 +1066,20 @@ async function exportPDF(){
   const{jsPDF}=window.jspdf;
 
   // ── 1. Fetch satellite base image ─────────────────────────────────────────
+  // Scale down the zoom so the FULL screen fits inside the 640px static map limit.
+  // At zoom Z-1 each pixel covers 2× the geographic area, so smW = mw/2 covers the same ground.
   const pdfLat=gmap.getCenter().lat(),pdfLng=gmap.getCenter().lng(),pdfZoom=gmap.getZoom();
   const mapDiv=document.getElementById('map');
   const mw=mapDiv.offsetWidth,mh=mapDiv.offsetHeight;
-  let smW=Math.min(mw,640),smH=Math.round(mh*smW/mw);
-  if(smH>640){smH=640;smW=Math.round(mw*smH/mh);}
+  const maxDim=Math.max(mw,mh);
+  const zoomReduction=Math.max(0,Math.ceil(Math.log2(maxDim/640)));
+  const staticZoom=Math.max(1,pdfZoom-zoomReduction);
+  const zoomScale=Math.pow(2,zoomReduction);
+  let smW=Math.min(Math.round(mw/zoomScale),640);
+  let smH=Math.min(Math.round(mh/zoomScale),640);
   let mapDataUrl=null;
   try{
-    const resp=await fetch(`/api/static-map?center=${pdfLat},${pdfLng}&zoom=${pdfZoom}&size=${smW}x${smH}&maptype=satellite`);
+    const resp=await fetch(`/api/static-map?center=${pdfLat},${pdfLng}&zoom=${staticZoom}&size=${smW}x${smH}&maptype=satellite`);
     if(resp.ok){const blob=await resp.blob();mapDataUrl=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);});}
   }catch(e){console.warn('Static map failed',e);}
 
@@ -1093,8 +1107,9 @@ async function exportPDF(){
   if(mapDataUrl)pdf.addImage(mapDataUrl,'JPEG',imgX,imgY,imgW,imgH);
 
   // ── 3. Coordinate helpers ─────────────────────────────────────────────────
+  // Use staticZoom (not pdfZoom) so ll2pdf aligns with the static map's coverage
   const pdfProj=gmap.getProjection();
-  const pdfPjScale=Math.pow(2,pdfZoom);
+  const pdfPjScale=Math.pow(2,staticZoom);
   const pdfCPt=pdfProj.fromLatLngToPoint(new google.maps.LatLng(pdfLat,pdfLng));
   function ll2pdf(lat,lng){
     const pt=pdfProj.fromLatLngToPoint(new google.maps.LatLng(lat,lng));
@@ -1102,7 +1117,7 @@ async function exportPDF(){
     const py=(pt.y-pdfCPt.y)*pdfPjScale+smH/2;
     return{x:imgX+px*(imgW/smW),y:imgY+py*(imgH/smH)};
   }
-  const mppPdf=156543.03392*Math.cos(pdfLat*Math.PI/180)/Math.pow(2,pdfZoom);
+  const mppPdf=156543.03392*Math.cos(pdfLat*Math.PI/180)/Math.pow(2,staticZoom);
   const ftToMm=(1/(mppPdf*3.28084))*(imgW/smW);
   function hexRgb(h){const c=(h||'#888').replace('#','');return[parseInt(c.slice(0,2),16)||128,parseInt(c.slice(2,4),16)||128,parseInt(c.slice(4,6),16)||128];}
 
@@ -1212,21 +1227,33 @@ async function exportPDF(){
     S.firstAids.forEach(c=>{if(sy>sbY+imgH-8)return;pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(28,27,46);pdf.text(c.name,sbX+4,sy);sy+=3.5;pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);pdf.setTextColor(90,88,120);pdf.text(c.cert,sbX+4,sy);sy+=lineH;});
   }
 
-  // ── 9. Dynamic color key (only placed types + custom colors/dims) ─────────
+  // ── 9. Dynamic color key — per-size tent breakdown with counts ───────────
   if(sy<sbY+imgH-20){
     hdr('Color Key');
     const keyRows=[];const seenStd=new Set();
-    const stdKey={tent10:{r:255,g:255,b:255,l:'Non-food Tent',d:'10×10 ft'},tent20:{r:255,g:255,b:255,l:'Non-food Tent',d:'10×20 ft'},stage:{r:167,g:139,b:250,l:'Stage',d:'20×16 ft (default)'},truck:{r:239,g:68,b:68,l:'Food Truck',d:'20×8 ft (default)'},gen:{r:251,g:191,b:36,l:'Generator',d:'6×6 ft'},ingress:{r:34,g:197,b:94,l:'Ingress/Egress',d:'10+ ft wide'},firstaid:{r:240,g:82,b:82,l:'First Aid Stn.',d:'10×10 ft'},extinguisher:{r:240,g:82,b:82,l:'Fire Ext.',d:'2×3 ft'},mix:{r:192,g:132,b:252,l:'Mix Platform',d:'10×8 ft'}};
-    let hasFoodTent=false,hasNonFoodTent=false;
+    const stdKey={stage:{r:167,g:139,b:250,l:'Stage',d:'20×16 ft (default)'},truck:{r:239,g:68,b:68,l:'Food Truck',d:'20×8 ft (default)'},gen:{r:251,g:191,b:36,l:'Generator',d:'6×6 ft'},ingress:{r:34,g:197,b:94,l:'Ingress/Egress',d:'10+ ft wide'},firstaid:{r:240,g:82,b:82,l:'First Aid Stn.',d:'10×10 ft'},extinguisher:{r:240,g:82,b:82,l:'Fire Ext.',d:'2×3 ft'},mix:{r:192,g:132,b:252,l:'Mix Platform',d:'10×8 ft'}};
+    // Bucket tents by type×size×use — track counts
+    const tentBuckets={};
     S.els.forEach(el=>{
-      if((el.type==='tent10'||el.type==='tent20')&&el.tentType==='food')hasFoodTent=true;
-      if((el.type==='tent10'||el.type==='tent20')&&el.tentType!=='food')hasNonFoodTent=true;
-      if(el.type==='custom'){const[r,g,b]=hexRgb(el.color||'#8b93a8');keyRows.push({r,g,b,l:el.vendorName||'Custom',d:`${el.wFt}×${el.hFt} ft`});}
-      else if(el.type==='customtent'){const food=el.tentType==='food';keyRows.push({r:food?250:255,g:food?204:255,b:food?21:255,l:el.vendorName||'Custom Tent',d:`${el.wFt}×${el.hFt} ft · ${food?'Food':'Non-food'}`});}
-      else if(el.type!=='tent10'&&el.type!=='tent20'&&!seenStd.has(el.type)){seenStd.add(el.type);if(stdKey[el.type])keyRows.push({...stdKey[el.type]});}
+      if(['tent10','tent20','customtent'].includes(el.type)){
+        const food=el.tentType==='food';
+        const key=`${food?'food':'nonfood'}|${el.wFt}|${el.hFt}`;
+        if(!tentBuckets[key])tentBuckets[key]={food,wFt:el.wFt,hFt:el.hFt,count:0};
+        tentBuckets[key].count++;
+      }else if(el.type==='custom'){
+        const[r,g,b]=hexRgb(el.color||'#8b93a8');
+        keyRows.push({r,g,b,l:`${el.vendorName||'Custom'} (${S.els.filter(x=>x.type==='custom'&&x.color===el.color).length})`,d:`${el.wFt}×${el.hFt} ft`});
+      }else if(!seenStd.has(el.type)){
+        seenStd.add(el.type);
+        const count=S.els.filter(x=>x.type===el.type).length;
+        if(stdKey[el.type])keyRows.push({...stdKey[el.type],l:`${stdKey[el.type].l} (${count})`});
+      }
     });
-    if(hasFoodTent)keyRows.unshift({r:250,g:204,b:21,l:'Food/Bev Tent',d:'10×10 or 10×20 ft'});
-    if(hasNonFoodTent)keyRows.unshift({r:255,g:255,b:255,l:'Non-food Tent',d:'10×10 or 10×20 ft'});
+    // Add tent rows sorted non-food first, then food; smaller sizes first
+    Object.values(tentBuckets).sort((a,b)=>a.food-b.food||a.wFt-b.wFt||a.hFt-b.hFt).forEach(t=>{
+      keyRows.unshift({r:t.food?250:255,g:t.food?204:255,b:t.food?21:255,
+        l:`${t.food?'Food/Bev':'Non-food'} Tent, ${t.wFt}×${t.hFt} ft (${t.count})`,d:''});
+    });
     if(S.zonePolys.some(z=>z.type==='border'&&!z.open))keyRows.push({r:251,g:189,b:47,l:'Venue Border/Sub-zone',d:'boundary'});
     if(S.adaPaths.length)keyRows.push({r:79,g:126,b:248,l:'ADA Path',d:'accessible routes'});
     keyRows.forEach(k=>{
