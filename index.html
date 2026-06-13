@@ -156,7 +156,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <button class="tb" id="zg"><i class="ti ti-plant-2"></i>Grass</button>
     <button class="tb" id="zp"><i class="ti ti-road"></i>Pave</button>
     <button class="tb" id="zr"><i class="ti ti-ban"></i>Restrict</button>
-    <button class="tb" id="zbrd"><i class="ti ti-vector-triangle"></i>Border</button>
     <button class="tb" id="ze"><i class="ti ti-eraser"></i>Erase Zone</button>
   </div>
   <div class="tg">
@@ -183,7 +182,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
     </select>
   </div>
   <div class="tg">
-    <button class="tb active" id="bsel"><i class="ti ti-cursor"></i>Select</button>
+    <button class="tb active" id="bsel"><i class="ti ti-map-2"></i>Adjust Map</button>
   </div>
   <div class="spacer"></div>
   <div class="tg">
@@ -229,16 +228,18 @@ canvas{position:absolute;inset:0;pointer-events:none}
 
       <div class="panel">
         <div class="plabel">Capacity</div>
-        <div class="vrow" style="margin-bottom:8px">
-          <button class="vbtn" id="cap-enc" style="flex:1">Enclosed</button>
-          <button class="vbtn" id="cap-open" style="flex:1">Open Layout</button>
+        <div style="font-size:9px;color:var(--tx3);line-height:1.55;padding:2px 0 8px">Draw a border around your event space to calculate usable square footage and estimated capacity.</div>
+        <div class="vrow" style="margin-bottom:6px">
+          <button class="vbtn acc" id="zbrd-sb" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-vector-triangle" style="font-size:13px"></i>Draw Venue Border</button>
         </div>
-        <div style="font-size:9px;color:var(--tx3);line-height:1.55;padding:2px 0 4px">If you're enclosing the space temporarily and not with existing structures, many event organizers choose to use barricade or bike rack.</div>
-        <div class="cap-center">
-          <div id="cap-na" class="cap-na">Select Enclosed or Open Layout above</div>
+        <div class="vrow">
+          <button class="vbtn" id="zbrd-vip" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-plus" style="font-size:12px"></i>Add Sub-zone (VIP etc.)</button>
+        </div>
+        <div style="margin-top:8px">
+          <div id="cap-na" class="cap-na">No borders drawn yet</div>
           <div id="cap-live" style="display:none">
             <div id="cap-borders"></div>
-            <div class="cap-center">
+            <div class="cap-center" id="cap-total-wrap">
               <div class="cap-big" id="cn">—</div>
               <div class="cap-sub" id="cn-lbl">estimated occupants</div>
               <div class="cap-detail" id="cd">Draw a border to calculate</div>
@@ -283,9 +284,10 @@ const S={
   tool:'select',els:[],adaPaths:[],curAda:[],dims:[],
   scale:3,venueWidthFt:200,
   zonePolys:[],firstAids:[],idCtr:1,selId:null,
-  venues:{},enclosed:null,isRotating:false,
+  venues:{},isRotating:false,
   hasSoftSurface:null,undoStack:[],
-  mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17
+  mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17,
+  _pendingZoneLabel:null
 };
 
 let gmap=null,mapsApiKey='';
@@ -377,8 +379,6 @@ function undo(){
   const snap=S.undoStack.pop();
   S.els=snap.els;S.zonePolys=snap.zonePolys;
   S.adaPaths=snap.adaPaths;S.dims=snap.dims;S.firstAids=snap.firstAids;
-  if(snap.enclosed!==undefined)S.enclosed=snap.enclosed;
-  syncEncButtons();
   renderEls();redrawZones();drawAda();drawDims();renderFal();renderVendorList();runRules();
 }
 document.getElementById('bundo').addEventListener('click',undo);
@@ -509,27 +509,58 @@ function polyArea(pts){
   return Math.abs(a/2);
 }
 function getClosedBorders(){return S.zonePolys.filter(z=>z.type==='border'&&!z.open&&z.pts.length>=3);}
+
+function borderCentroidPx(b){
+  const px=ptsToPixels(b.pts);
+  return{x:px.reduce((s,p)=>s+p.x,0)/px.length,y:px.reduce((s,p)=>s+p.y,0)/px.length};
+}
+function isBorderNestedIn(inner,outer){return pip(borderCentroidPx(inner),outer.pts);}
+
 function updateCap(){
   const na=document.getElementById('cap-na'),live=document.getElementById('cap-live');
-  if(!S.enclosed){na.style.display='';live.style.display='none';na.textContent='Open layout — no capacity estimate';return;}
   const borders=getClosedBorders();
-  if(!borders.length){na.style.display='';live.style.display='none';na.textContent='Draw a border to define the enclosed area';return;}
+  if(!borders.length){
+    na.style.display='';live.style.display='none';
+    na.textContent='No borders drawn yet — use Draw Venue Border above';return;
+  }
   na.style.display='none';live.style.display='';
-  const multi=borders.length>1;
+
+  const rawAreas=borders.map(b=>polyArea(b.pts)/(S.scale*S.scale));
+
+  // Find immediate parent for each border (smallest enclosing border)
+  const parentIdx=borders.map((inner,i)=>{
+    let best=-1,bestArea=Infinity;
+    borders.forEach((outer,j)=>{
+      if(i!==j&&isBorderNestedIn(inner,outer)&&rawAreas[j]<bestArea){best=j;bestArea=rawAreas[j];}
+    });
+    return best;
+  });
+
+  // Net area = raw area minus direct children (to avoid double-counting)
+  const netAreas=rawAreas.slice();
+  borders.forEach((_,i)=>{if(parentIdx[i]>=0)netAreas[parentIdx[i]]-=rawAreas[i];});
+
+  let struc=0;S.els.forEach(e=>{const t=TYPES[e.type];if(t&&(t.sqft>0||['stage','truck','gen','mix','custom','customtent'].includes(e.type)))struc+=e.wFt*e.hFt;});
+  const totalFtSq=netAreas.reduce((s,a)=>s+Math.max(0,a),0);
+  const totalCap=Math.max(0,Math.floor((totalFtSq-struc)/8));
+
   const bordersEl=document.getElementById('cap-borders');
+  const multi=borders.length>1;
   if(multi){
     bordersEl.innerHTML=borders.map((b,i)=>{
-      const ftSq=polyArea(b.pts)/(S.scale*S.scale);
-      const cap=Math.floor(ftSq/8);
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--brd)"><span style="font-size:10px;color:var(--tx2);font-weight:500">Zone ${i+1} · ${Math.round(ftSq).toLocaleString()} sq ft</span><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${cap.toLocaleString()}</span></div>`;
-    }).join('')+'<div style="margin-top:6px;margin-bottom:2px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate)">Estimated Total</div>';
-  }else{bordersEl.innerHTML='';}
-  let struc=0;S.els.forEach(e=>{const t=TYPES[e.type];if(t&&(t.sqft>0||['stage','truck','gen','mix','custom'].includes(e.type)))struc+=e.wFt*e.hFt;});
-  const totalFtSq=borders.reduce((sum,b)=>sum+polyArea(b.pts),0)/(S.scale*S.scale);
-  const usable=Math.max(0,totalFtSq-struc);
-  document.getElementById('cn').textContent=Math.floor(usable/8).toLocaleString();
+      const label=b.label||(parentIdx[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`);
+      const sub=parentIdx[i]>=0?` <span style="font-size:8px;color:var(--acc);font-weight:700">SUB</span>`:'';
+      const sqFt=Math.round(Math.max(0,netAreas[i]));
+      const cap=Math.max(0,Math.floor(netAreas[i]/8));
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--brd)"><span style="font-size:10px;color:var(--tx2);font-weight:500">${label}${sub}<br><span style="font-size:9px;color:var(--tx3);font-family:var(--mono)">${sqFt.toLocaleString()} sq ft</span></span><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${cap.toLocaleString()}</span></div>`;
+    }).join('')+`<div style="margin-top:6px;margin-bottom:2px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate)">Estimated Total</div>`;
+  }else{
+    const label=borders[0].label||'Event Space';
+    bordersEl.innerHTML=`<div style="font-size:10px;color:var(--tx2);font-weight:500;padding-bottom:6px">${label} · ${Math.round(rawAreas[0]).toLocaleString()} sq ft</div>`;
+  }
+  document.getElementById('cn').textContent=totalCap.toLocaleString();
   document.getElementById('cn-lbl').textContent=multi?'estimated total occupants':'estimated occupants';
-  document.getElementById('cd').textContent=`${Math.round(totalFtSq).toLocaleString()} sq ft total · ${Math.round(struc)} in structures`;
+  document.getElementById('cd').textContent=`${Math.round(totalFtSq).toLocaleString()} sq ft usable · ${Math.round(struc)} in structures`;
 }
 
 function segDSq(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;if(!L)return d2(px,py,ax,ay);const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/L));return d2(px,py,ax+t*dx,ay+t*dy);}
@@ -563,6 +594,8 @@ function runRules(){
   tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft — over 900 sq ft may need a building permit.`});grp.forEach(e=>e.sr=true);}});
   stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft) — over 256 sq ft may need a building permit.`});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft — over 3ft may need a building permit.`});s.sr=true;}});
   S.els.forEach(e=>{if(e.type!=='ingress'&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone.`});e.hr=true;}});
+  // Overlap check — no two elements may occupy the same space
+  for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){if(ovlp(S.els[i],S.els[j])){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping.`});S.els[i].hr=true;S.els[j].hr=true;}}}
   if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.'});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.'});}
   if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.'});
   document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
@@ -647,15 +680,15 @@ function renderEls(){
 
 // ── Drag ───────────────────────────────────────────────────────────────────
 function makeDrag(div,el){
-  let sx,sy,startCx,startCy,moved=false,didPushUndo=false;
+  let sx,sy,startCx,startCy,startLat,startLng,moved=false,didPushUndo=false;
   div.addEventListener('mousedown',ev=>{
     if(S.isRotating)return;
     if(ev.target.classList.contains('rbtn'))return;
     ev.preventDefault();ev.stopPropagation();
     sx=ev.clientX;sy=ev.clientY;
-    // Starting center in pixels
     const xy=elXY(el);
     startCx=xy.x+elW(el)/2;startCy=xy.y+elH(el)/2;
+    startLat=el.lat;startLng=el.lng;
     moved=false;didPushUndo=false;
     const onM=mv=>{
       if(!didPushUndo){pushUndo();didPushUndo=true;}
@@ -669,7 +702,18 @@ function makeDrag(div,el){
     };
     const onU=()=>{
       document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);
-      if(moved)runRules();
+      if(moved){
+        // Snap back if the drop position overlaps another element
+        const overlapping=S.els.some(other=>other.id!==el.id&&ovlp(el,other));
+        if(overlapping){
+          el.lat=startLat;el.lng=startLng;
+          const sxy=elXY(el);
+          div.style.left=(sxy.x)+'px';div.style.top=(sxy.y)+'px';
+          document.getElementById('ins-txt').textContent='Elements cannot overlap — position reverted.';
+          setTimeout(()=>document.getElementById('ins-txt').textContent='',2200);
+        }
+        runRules();
+      }
     };
     document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
   });
@@ -797,7 +841,7 @@ function setTool(id){
   // Select passes clicks through to map; every other tool needs canvas input
   cw.style.pointerEvents=id==='select'?'none':'auto';
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'?'crosshair':'default';
-  const msgs={select:'Click to select · Drag to move · Delete key removes selected element',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',firstaid:'Click to place a first aid station',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',grass:'Click corners to draw grass zone · Double-click to close',pave:'Click corners to draw pavement zone · Double-click to close',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click corners to draw venue border · Double-click to close',erase:'Click inside a zone or border to remove it'};
+  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',firstaid:'Click to place a first aid station',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',grass:'Click corners to draw grass zone · Double-click to close',pave:'Click corners to draw pavement zone · Double-click to close',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click corners to draw venue border · Double-click to close',erase:'Click inside a zone or border to remove it'};
   document.getElementById('ins-txt').textContent=msgs[id]||'';
   if(!ZONE_TOOLS.includes(id))activePoly=null;if(id!=='dim')dimStart=null;
 }
@@ -813,7 +857,7 @@ cw.addEventListener('mousedown',e=>{
   }
   if(ZONE_TOOLS.includes(S.tool)){
     if(S.tool==='erase'){pushUndo();eraseZoneAt(x,y);runRules();return;}
-    if(e.detail===2){if(activePoly&&activePoly.pts.length>=3){pushUndo();activePoly.open=false;activePoly=null;redrawZones();runRules();}return;}
+    if(e.detail===2){if(activePoly&&activePoly.pts.length>=3){pushUndo();activePoly.open=false;if(S._pendingZoneLabel){activePoly.label=S._pendingZoneLabel;S._pendingZoneLabel=null;}activePoly=null;redrawZones();runRules();}return;}
     const ll=pixelToLatLng(x,y);
     if(!activePoly){const z={type:S.tool,pts:[{lat:ll.lat,lng:ll.lng}],open:true};S.zonePolys.push(z);activePoly=z;}
     else activePoly.pts.push({lat:ll.lat,lng:ll.lng});
@@ -867,16 +911,21 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}
 });
 
-// ── Capacity buttons ───────────────────────────────────────────────────────
-document.getElementById('cap-enc').addEventListener('click',()=>{S.enclosed=true;syncEncButtons();updateCap();});
-document.getElementById('cap-open').addEventListener('click',()=>{S.enclosed=false;syncEncButtons();updateCap();});
-function syncEncButtons(){
-  document.getElementById('cap-enc').classList.toggle('acc',S.enclosed===true);
-  document.getElementById('cap-open').classList.toggle('acc',S.enclosed===false);
-}
+// ── Capacity sidebar border buttons ────────────────────────────────────────
+document.getElementById('zbrd-sb').addEventListener('click',()=>setTool('border'));
+document.getElementById('zbrd-vip').addEventListener('click',()=>{
+  modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',
+    mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),
+    ()=>{
+      const name=document.getElementById('vip-name').value.trim()||'Sub-zone';
+      S._pendingZoneLabel=name;
+      setTool('border');
+      document.getElementById('ins-txt').textContent=`Drawing "${name}" — click corners to place, double-click to close`;
+    },'Start Drawing');
+});
 
 // ── Tool buttons ───────────────────────────────────────────────────────────
-[['bsel','select'],['zg','grass'],['zp','pave'],['zr','restrict'],['zbrd','border'],['ze','erase'],['bdim','dim']].forEach(([id,tool])=>{
+[['bsel','select'],['zg','grass'],['zp','pave'],['zr','restrict'],['ze','erase'],['bdim','dim']].forEach(([id,tool])=>{
   const b=document.getElementById(id);if(b)b.addEventListener('click',()=>setTool(tool));
 });
 document.getElementById('ba').addEventListener('click',()=>{
@@ -908,9 +957,9 @@ document.getElementById('vload').addEventListener('click',()=>{
   const name=document.getElementById('vsel').value;if(!name||!S.venues[name])return;
   const v=S.venues[name];
   if(v.zonePolys)S.zonePolys=JSON.parse(JSON.stringify(v.zonePolys));
-  S.els=[];S.firstAids=[];S.adaPaths=[];S.curAda=[];S.dims=[];S.enclosed=null;S.hasSoftSurface=null;S.undoStack=[];
+  S.els=[];S.firstAids=[];S.adaPaths=[];S.curAda=[];S.dims=[];S.hasSoftSurface=null;S.undoStack=[];
   if(gmap&&v.mapCenter&&v.mapZoom){gmap.setCenter(v.mapCenter);gmap.setZoom(v.mapZoom);}
-  redrawZones();renderEls();drawAda();drawDims();renderFal();renderVendorList();syncEncButtons();runRules();
+  redrawZones();renderEls();drawAda();drawDims();renderFal();renderVendorList();runRules();
 });
 document.getElementById('vdel').addEventListener('click',()=>{
   const name=document.getElementById('vsel').value;if(!name||!S.venues[name])return;
@@ -927,7 +976,7 @@ document.getElementById('bclr').addEventListener('click',()=>{
       if(v==='els'||v==='all'){S.els=[];S.firstAids=[];S.selId=null;renderEls();renderFal();renderVendorList();}
       if(v==='els'||v==='dims'||v==='all'){S.dims=[];drawDims();}
       if(v==='zones'||v==='all'){S.zonePolys=[];redrawZones();}
-      if(v==='all'){S.adaPaths=[];S.curAda=[];S.enclosed=null;S.hasSoftSurface=null;S.undoStack=[];syncEncButtons();}
+      if(v==='all'){S.adaPaths=[];S.curAda=[];S.hasSoftSurface=null;S.undoStack=[];}
       drawAda();runRules();
     },'Clear');
 });
@@ -977,31 +1026,26 @@ document.getElementById('bpdf').addEventListener('click',async()=>{
 });
 
 async function exportPDF(){
+  if(!gmap)return;
   const{jsPDF}=window.jspdf;
-  const gridEl=document.getElementById('grid');gridEl.style.opacity='0';
 
-  // Fetch static satellite image first so we know its dimensions before capturing overlay
-  let mapDataUrl=null,smW=0,smH=0;
-  if(gmap){
-    const lat=gmap.getCenter().lat(),lng=gmap.getCenter().lng(),zoom=gmap.getZoom();
-    const mapDiv=document.getElementById('map');
-    const mw=mapDiv.offsetWidth,mh=mapDiv.offsetHeight;
-    // Cap at 640 per dimension (free tier); preserve screen aspect ratio
-    smW=Math.min(mw,640);smH=Math.round(mh*smW/mw);
-    if(smH>640){smH=640;smW=Math.round(mw*smH/mh);}
-    try{
-      const resp=await fetch(`/api/static-map?center=${lat},${lng}&zoom=${zoom}&size=${smW}x${smH}&maptype=satellite`);
-      if(resp.ok){const blob=await resp.blob();mapDataUrl=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);});}
-    }catch(e){console.warn('Static map fetch failed',e);}
-  }
+  // ── 1. Fetch satellite base image ─────────────────────────────────────────
+  const pdfLat=gmap.getCenter().lat(),pdfLng=gmap.getCenter().lng(),pdfZoom=gmap.getZoom();
+  const mapDiv=document.getElementById('map');
+  const mw=mapDiv.offsetWidth,mh=mapDiv.offsetHeight;
+  let smW=Math.min(mw,640),smH=Math.round(mh*smW/mw);
+  if(smH>640){smH=640;smW=Math.round(mw*smH/mh);}
+  let mapDataUrl=null;
+  try{
+    const resp=await fetch(`/api/static-map?center=${pdfLat},${pdfLng}&zoom=${pdfZoom}&size=${smW}x${smH}&maptype=satellite`);
+    if(resp.ok){const blob=await resp.blob();mapDataUrl=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);});}
+  }catch(e){console.warn('Static map failed',e);}
 
-  // Capture overlay at 1× — we'll crop it to match the static map's coverage
-  const overlayCvs=await window.html2canvas(cw,{backgroundColor:null,scale:1,useCORS:true,logging:false});
-  gridEl.style.opacity='';
-
+  // ── 2. PDF setup ──────────────────────────────────────────────────────────
   const pdf=new jsPDF({orientation:'l',unit:'mm',format:'letter'});
   const PW=279,PH=216,M=8,sbW=72,gap=5;
   const mapAreaW=PW-M-sbW-gap-M,titleH=15,mapAreaH=PH-titleH-M-6;
+  const evtName=document.getElementById('evt-name').value.trim();
 
   // Title bar
   pdf.setFillColor(42,95,100);pdf.rect(0,0,PW*0.6,titleH,'F');
@@ -1009,118 +1053,160 @@ async function exportPDF(){
   pdf.setFillColor(251,189,47);pdf.rect(0,titleH-1.2,PW,1.2,'F');
   pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(255,255,255);
   pdf.text('SITEMAP',M,10);
-  const evtName=document.getElementById('evt-name').value.trim();
   if(evtName){pdf.setFontSize(10);pdf.setFont('helvetica','normal');pdf.setTextColor(220,235,238);pdf.text('·  '+evtName,M+26,10);}
   pdf.setFontSize(8);pdf.setFont('helvetica','normal');pdf.setTextColor(200,230,232);
   pdf.text(new Date().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}),PW-M,10,{align:'right'});
 
-  // Map image area — aspect ratio from requested static map dimensions (smW/smH), not the @2x image pixels
+  // Map image area
   const imgX=M,imgY=titleH+2;
   let imgW=mapAreaW,imgH=mapAreaH;
-  if(smW&&smH){
-    const asp=smW/smH;
-    imgW=mapAreaW;imgH=mapAreaW/asp;
-    if(imgH>mapAreaH){imgH=mapAreaH;imgW=mapAreaH*asp;}
-  }
+  if(smW&&smH){const asp=smW/smH;imgW=mapAreaW;imgH=mapAreaW/asp;if(imgH>mapAreaH){imgH=mapAreaH;imgW=mapAreaH*asp;}}
+  pdf.setFillColor(28,43,44);pdf.rect(imgX,imgY,imgW,imgH,'F');
+  if(mapDataUrl)pdf.addImage(mapDataUrl,'JPEG',imgX,imgY,imgW,imgH);
 
-  if(mapDataUrl){
-    pdf.addImage(mapDataUrl,'JPEG',imgX,imgY,imgW,imgH);
-  }else{
-    pdf.setFillColor(28,43,44);pdf.rect(imgX,imgY,imgW,imgH,'F');
+  // ── 3. Coordinate helpers ─────────────────────────────────────────────────
+  const pdfProj=gmap.getProjection();
+  const pdfPjScale=Math.pow(2,pdfZoom);
+  const pdfCPt=pdfProj.fromLatLngToPoint(new google.maps.LatLng(pdfLat,pdfLng));
+  function ll2pdf(lat,lng){
+    const pt=pdfProj.fromLatLngToPoint(new google.maps.LatLng(lat,lng));
+    const px=(pt.x-pdfCPt.x)*pdfPjScale+smW/2;
+    const py=(pt.y-pdfCPt.y)*pdfPjScale+smH/2;
+    return{x:imgX+px*(imgW/smW),y:imgY+py*(imgH/smH)};
   }
+  const mppPdf=156543.03392*Math.cos(pdfLat*Math.PI/180)/Math.pow(2,pdfZoom);
+  const ftToMm=(1/(mppPdf*3.28084))*(imgW/smW);
+  function hexRgb(h){const c=(h||'#888').replace('#','');return[parseInt(c.slice(0,2),16)||128,parseInt(c.slice(2,4),16)||128,parseInt(c.slice(4,6),16)||128];}
 
-  // Crop overlay to the same geographic footprint as the static map.
-  // The static map covers smW×smH CSS pixels centered on the screen; crop out that region.
-  let overUrl;
-  const scrW=cw.clientWidth,scrH=cw.clientHeight;
-  if(smW>0&&smH>0&&(scrW>smW||scrH>smH)){
-    const cropX=Math.max(0,Math.round((scrW-smW)/2));
-    const cropY=Math.max(0,Math.round((scrH-smH)/2));
-    const cropCanvas=document.createElement('canvas');
-    cropCanvas.width=smW;cropCanvas.height=smH;
-    cropCanvas.getContext('2d').drawImage(overlayCvs,cropX,cropY,smW,smH,0,0,smW,smH);
-    overUrl=cropCanvas.toDataURL('image/png');
-  }else{
-    overUrl=overlayCvs.toDataURL('image/png');
-  }
-  pdf.addImage(overUrl,'PNG',imgX,imgY,imgW,imgH);
+  // ── 4. Draw zones ─────────────────────────────────────────────────────────
+  S.zonePolys.forEach(z=>{
+    if(z.open||z.pts.length<3)return;
+    const d=ZD[z.type];const[r,g,b]=hexRgb(d.stroke);
+    const pps=z.pts.map(p=>ll2pdf(p.lat,p.lng));
+    pdf.setDrawColor(r,g,b);pdf.setLineWidth(z.type==='border'?0.6:0.35);
+    if(z.type==='border')pdf.setLineDashPattern([2.5,1.5],0);else pdf.setLineDashPattern([],0);
+    for(let i=0;i<pps.length;i++){const a=pps[i],b2=pps[(i+1)%pps.length];pdf.line(a.x,a.y,b2.x,b2.y);}
+    pdf.setLineDashPattern([],0);
+    if(z.label){const cx=pps.reduce((s,p)=>s+p.x,0)/pps.length,cy=pps.reduce((s,p)=>s+p.y,0)/pps.length;pdf.setFont('helvetica','bold');pdf.setFontSize(6);pdf.setTextColor(r,g,b);pdf.text(z.label.toUpperCase(),cx,cy,{align:'center'});}
+  });
 
-  // Sidebar
+  // ── 5. Draw ADA paths ─────────────────────────────────────────────────────
+  S.adaPaths.forEach(path=>{
+    if(path.length<2)return;
+    const pps=path.map(p=>ll2pdf(p.lat,p.lng));
+    pdf.setDrawColor(79,126,248);pdf.setLineWidth(1.2);
+    for(let i=0;i<pps.length-1;i++)pdf.line(pps[i].x,pps[i].y,pps[i+1].x,pps[i+1].y);
+  });
+
+  // ── 6. Draw dimension arrows ──────────────────────────────────────────────
+  S.dims.forEach(d=>{
+    const p1=ll2pdf(d.lat1,d.lng1),p2=ll2pdf(d.lat2,d.lng2);
+    pdf.setDrawColor(245,166,35);pdf.setLineWidth(0.4);pdf.line(p1.x,p1.y,p2.x,p2.y);
+    const dx=p2.x-p1.x,dy=p2.y-p1.y,lenMm=Math.sqrt(dx*dx+dy*dy);
+    if(lenMm>6){
+      const ft=Math.round(lenMm/ftToMm);const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
+      pdf.setFillColor(10,12,18);pdf.rect(mx-4,my-2.5,8,4,'F');
+      pdf.setFont('helvetica','bold');pdf.setFontSize(5.5);pdf.setTextColor(245,166,35);
+      pdf.text(`${ft} ft`,mx,my+0.6,{align:'center'});
+    }
+  });
+
+  // ── 7. Draw elements programmatically ────────────────────────────────────
+  const tnMap=getTypeNums();
+  S.els.forEach(el=>{
+    const t=TYPES[el.type]||TYPES.custom;
+    const center=ll2pdf(el.lat,el.lng);
+    const wMm=el.wFt*ftToMm,hMm=el.hFt*ftToMm;
+    const x=center.x-wMm/2,y=center.y-hMm/2;
+    let fr=255,fg=255,fb=255,dr=180,dg=180,db=180;
+    if(t.tent){const food=el.tentType==='food';fr=food?250:255;fg=food?204:255;fb=food?21:255;[dr,dg,db]=food?[234,179,8]:[45,212,160];}
+    else if(el.type==='truck'){[fr,fg,fb]=[239,68,68];[dr,dg,db]=[185,28,28];}
+    else if(el.type==='ingress'){[fr,fg,fb]=[34,197,94];[dr,dg,db]=[22,163,74];}
+    else{[fr,fg,fb]=hexRgb(el.color||t.color);dr=Math.max(0,fr-50);dg=Math.max(0,fg-50);db=Math.max(0,fb-50);}
+    pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
+    pdf.rect(x,y,wMm,hMm,'FD');
+    const code=elCode(el,tnMap);
+    const fs=Math.max(4,Math.min(8,wMm*1.4));
+    pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
+    const dark=t.tent&&el.tentType!=='food';
+    pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
+    if(wMm>2&&hMm>2)pdf.text(code,center.x,center.y+fs*0.18,{align:'center'});
+  });
+
+  // ── 8. Sidebar ────────────────────────────────────────────────────────────
   const sbX=M+mapAreaW+gap,sbY=imgY;
   pdf.setFillColor(250,250,248);pdf.rect(sbX-1,sbY-1,sbW+2,imgH+2,'F');
   pdf.setFillColor(42,95,100);pdf.rect(sbX-1,sbY-1,3,imgH+2,'F');
   let sy=sbY+5;const lineH=4.8;
-  const hdr=txt=>{
-    sy+=4;pdf.setDrawColor(244,81,64);pdf.setLineWidth(0.4);pdf.line(sbX+4,sy-1,sbX+sbW-4,sy-1);
-    pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);pdf.setTextColor(244,81,64);
-    pdf.text(txt.toUpperCase(),sbX+4,sy+3);sy+=lineH+2;
-  };
-  const row=(txt,val)=>{
-    pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);pdf.setTextColor(28,27,46);
-    if(val!==undefined){pdf.text(txt,sbX+4,sy);pdf.setFont('helvetica','bold');pdf.setTextColor(42,95,100);pdf.text(String(val),sbX+sbW-3,sy,{align:'right'});pdf.setTextColor(28,27,46);}
-    else{pdf.text(txt,sbX+4,sy,{maxWidth:sbW-8});}
-    sy+=lineH;
-  };
+  const hdr=txt=>{sy+=4;pdf.setDrawColor(244,81,64);pdf.setLineWidth(0.4);pdf.line(sbX+4,sy-1,sbX+sbW-4,sy-1);pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);pdf.setTextColor(244,81,64);pdf.text(txt.toUpperCase(),sbX+4,sy+3);sy+=lineH+2;};
+  const row=(txt,val)=>{pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);pdf.setTextColor(28,27,46);if(val!==undefined){pdf.text(txt,sbX+4,sy);pdf.setFont('helvetica','bold');pdf.setTextColor(42,95,100);pdf.text(String(val),sbX+sbW-3,sy,{align:'right'});pdf.setTextColor(28,27,46);}else{pdf.text(txt,sbX+4,sy,{maxWidth:sbW-8});}sy+=lineH;};
 
-  // Capacity
-  if(S.enclosed){
-    const borders=getClosedBorders();
-    if(borders.length>0){
-      const multi=borders.length>1;
-      if(multi){
-        hdr('Boundary Zones');
-        borders.forEach((b,i)=>{
-          if(sy>sbY+imgH-8)return;
-          const ftSq=polyArea(b.pts)/(S.scale*S.scale),cap=Math.floor(ftSq/8);
-          pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(28,27,46);
-          pdf.text(`Zone ${i+1} — ${Math.round(ftSq).toLocaleString()} sq ft`,sbX+4,sy);
-          pdf.setFont('helvetica','bold');pdf.setTextColor(42,95,100);
-          pdf.text(`~${cap.toLocaleString()}`,sbX+sbW-3,sy,{align:'right'});sy+=lineH;
-        });sy+=2;
-      }
-      let struc=0;S.els.forEach(e=>{const t=TYPES[e.type];if(t&&(t.sqft>0||['stage','truck','gen','mix','custom'].includes(e.type)))struc+=e.wFt*e.hFt;});
-      const totalFtSq=borders.reduce((sum,b)=>sum+polyArea(b.pts),0)/(S.scale*S.scale);
-      const totalCap=Math.max(0,Math.floor((totalFtSq-struc)/8));
-      if(sy+16<sbY+imgH){
-        pdf.setFillColor(251,189,47);pdf.setDrawColor(245,166,35);pdf.setLineWidth(0.2);
-        pdf.roundedRect(sbX+2,sy,sbW-4,15,2,2,'FD');
-        pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(90,60,0);
-        pdf.text(multi?'ESTIMATED TOTAL':'EST. CAPACITY',sbX+4,sy+5);
-        pdf.setFontSize(14);pdf.setTextColor(28,27,46);
-        pdf.text(totalCap.toLocaleString(),sbX+sbW/2,sy+12.5,{align:'center'});sy+=18;
-        pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(120,110,80);
-        pdf.text(`${Math.round(totalFtSq).toLocaleString()} sq ft total · ${Math.round(struc)} in structures`,sbX+4,sy,{maxWidth:sbW-8});sy+=lineH+2;
-      }
+  // Capacity sidebar
+  const borders=getClosedBorders();
+  if(borders.length>0){
+    const rawAreas=borders.map(b=>polyArea(b.pts)/(S.scale*S.scale));
+    const parentIdxPdf=borders.map((inner,i)=>{let best=-1,bestA=Infinity;borders.forEach((outer,j)=>{if(i!==j&&isBorderNestedIn(inner,outer)&&rawAreas[j]<bestA){best=j;bestA=rawAreas[j];}});return best;});
+    const netAreasPdf=rawAreas.slice();borders.forEach((_,i)=>{if(parentIdxPdf[i]>=0)netAreasPdf[parentIdxPdf[i]]-=rawAreas[i];});
+    let struc=0;S.els.forEach(e=>{const t=TYPES[e.type];if(t&&(t.sqft>0||['stage','truck','gen','mix','custom','customtent'].includes(e.type)))struc+=e.wFt*e.hFt;});
+    const totalFtSq=netAreasPdf.reduce((s,a)=>s+Math.max(0,a),0);
+    const totalCap=Math.max(0,Math.floor((totalFtSq-struc)/8));
+    const multi=borders.length>1;
+    if(multi){
+      hdr('Boundary Zones');
+      borders.forEach((b,i)=>{
+        if(sy>sbY+imgH-8)return;
+        const label=b.label||(parentIdxPdf[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`);
+        const sqFt=Math.round(Math.max(0,netAreasPdf[i]));
+        const cap=Math.max(0,Math.floor(netAreasPdf[i]/8));
+        pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(28,27,46);
+        pdf.text(label,sbX+4,sy);pdf.setFont('helvetica','bold');pdf.setTextColor(42,95,100);
+        pdf.text(`~${cap.toLocaleString()}`,sbX+sbW-3,sy,{align:'right'});sy+=3.5;
+        pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);pdf.setTextColor(120,110,80);
+        pdf.text(`${sqFt.toLocaleString()} sq ft`,sbX+4,sy);sy+=lineH;
+      });sy+=2;
+    }
+    if(sy+16<sbY+imgH){
+      pdf.setFillColor(251,189,47);pdf.setDrawColor(245,166,35);pdf.setLineWidth(0.2);
+      pdf.roundedRect(sbX+2,sy,sbW-4,15,2,2,'FD');
+      pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(90,60,0);
+      pdf.text(multi?'ESTIMATED TOTAL':'EST. CAPACITY',sbX+4,sy+5);
+      pdf.setFontSize(14);pdf.setTextColor(28,27,46);pdf.text(totalCap.toLocaleString(),sbX+sbW/2,sy+12.5,{align:'center'});sy+=18;
+      pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(120,110,80);
+      pdf.text(`${Math.round(totalFtSq).toLocaleString()} sq ft usable · ${Math.round(struc)} in structures`,sbX+4,sy,{maxWidth:sbW-8});sy+=lineH+2;
     }
   }
 
   hdr('Activations');
-  const tnMap=getTypeNums();
-  if(S.els.length){
-    S.els.forEach(el=>{
-      if(sy>sbY+imgH-8)return;
-      const name=el.vendorName||(TYPES[el.type]||TYPES.custom).lbl;
-      pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(244,81,64);pdf.text(elCode(el,tnMap),sbX+4,sy);
-      pdf.setFont('helvetica','normal');pdf.setTextColor(28,27,46);pdf.text(name,sbX+16,sy,{maxWidth:sbW-18});sy+=lineH;
-    });
-  }else{row('None placed');}
+  if(S.els.length){S.els.forEach(el=>{if(sy>sbY+imgH-8)return;const name=el.vendorName||(TYPES[el.type]||TYPES.custom).lbl;pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(244,81,64);pdf.text(elCode(el,tnMap),sbX+4,sy);pdf.setFont('helvetica','normal');pdf.setTextColor(28,27,46);pdf.text(name,sbX+16,sy,{maxWidth:sbW-18});sy+=lineH;});}else{row('None placed');}
 
   if(S.firstAids.length&&sy<sbY+imgH-14){
     hdr('First Aid');
-    S.firstAids.forEach(c=>{
-      if(sy>sbY+imgH-8)return;
-      pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(28,27,46);pdf.text(c.name,sbX+4,sy);sy+=3.5;
-      pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);pdf.setTextColor(90,88,120);pdf.text(c.cert,sbX+4,sy);sy+=lineH;
-    });
+    S.firstAids.forEach(c=>{if(sy>sbY+imgH-8)return;pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(28,27,46);pdf.text(c.name,sbX+4,sy);sy+=3.5;pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);pdf.setTextColor(90,88,120);pdf.text(c.cert,sbX+4,sy);sy+=lineH;});
   }
 
-  if(sy<sbY+imgH-30){
+  // ── 9. Dynamic color key (only placed types + custom colors/dims) ─────────
+  if(sy<sbY+imgH-20){
     hdr('Color Key');
-    [{r:255,g:255,b:255,l:'Non-food Tent',d:'10×10 or 10×20 ft'},{r:250,g:204,b:21,l:'Food / Bev Tent',d:'10×10 or 10×20 ft'},{r:239,g:68,b:68,l:'Food Truck',d:'20×8 ft'},{r:167,g:139,b:250,l:'Stage',d:'20×16 ft'},{r:34,g:197,b:94,l:'Ingress / Egress',d:'10+ ft wide'},{r:240,g:82,b:82,l:'First Aid / Fire Ext.',d:'variable'},{r:192,g:132,b:252,l:'Mix Platform',d:'10×8 ft'},{r:251,g:191,b:36,l:'Generator',d:'6×6 ft'},{r:79,g:126,b:248,l:'ADA Path',d:'accessible routes'},{r:251,g:189,b:47,l:'Venue Border',d:'event boundary'}].forEach(k=>{
+    const keyRows=[];const seenStd=new Set();
+    const stdKey={tent10:{r:255,g:255,b:255,l:'Non-food Tent',d:'10×10 ft'},tent20:{r:255,g:255,b:255,l:'Non-food Tent',d:'10×20 ft'},stage:{r:167,g:139,b:250,l:'Stage',d:'20×16 ft (default)'},truck:{r:239,g:68,b:68,l:'Food Truck',d:'20×8 ft (default)'},gen:{r:251,g:191,b:36,l:'Generator',d:'6×6 ft'},ingress:{r:34,g:197,b:94,l:'Ingress/Egress',d:'10+ ft wide'},firstaid:{r:240,g:82,b:82,l:'First Aid Stn.',d:'10×10 ft'},extinguisher:{r:240,g:82,b:82,l:'Fire Ext.',d:'2×3 ft'},mix:{r:192,g:132,b:252,l:'Mix Platform',d:'10×8 ft'}};
+    let hasFoodTent=false,hasNonFoodTent=false;
+    S.els.forEach(el=>{
+      if((el.type==='tent10'||el.type==='tent20')&&el.tentType==='food')hasFoodTent=true;
+      if((el.type==='tent10'||el.type==='tent20')&&el.tentType!=='food')hasNonFoodTent=true;
+      if(el.type==='custom'){const[r,g,b]=hexRgb(el.color||'#8b93a8');keyRows.push({r,g,b,l:el.vendorName||'Custom',d:`${el.wFt}×${el.hFt} ft`});}
+      else if(el.type==='customtent'){const food=el.tentType==='food';keyRows.push({r:food?250:255,g:food?204:255,b:food?21:255,l:el.vendorName||'Custom Tent',d:`${el.wFt}×${el.hFt} ft · ${food?'Food':'Non-food'}`});}
+      else if(el.type!=='tent10'&&el.type!=='tent20'&&!seenStd.has(el.type)){seenStd.add(el.type);if(stdKey[el.type])keyRows.push({...stdKey[el.type]});}
+    });
+    if(hasFoodTent)keyRows.unshift({r:250,g:204,b:21,l:'Food/Bev Tent',d:'10×10 or 10×20 ft'});
+    if(hasNonFoodTent)keyRows.unshift({r:255,g:255,b:255,l:'Non-food Tent',d:'10×10 or 10×20 ft'});
+    if(S.zonePolys.some(z=>z.type==='border'&&!z.open))keyRows.push({r:251,g:189,b:47,l:'Venue Border/Sub-zone',d:'boundary'});
+    if(S.adaPaths.length)keyRows.push({r:79,g:126,b:248,l:'ADA Path',d:'accessible routes'});
+    keyRows.forEach(k=>{
       if(sy>sbY+imgH-4)return;
-      pdf.setFillColor(k.r,k.g,k.b);pdf.setDrawColor(180);pdf.setLineWidth(0.15);pdf.rect(sbX+4,sy-3,3.5,3.5,'FD');
+      pdf.setFillColor(k.r,k.g,k.b);pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.15);pdf.rect(sbX+4,sy-3,3.5,3.5,'FD');
       pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);pdf.setTextColor(28,27,46);pdf.text(k.l,sbX+10,sy);sy+=3.2;
-      pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);pdf.setTextColor(90,88,120);pdf.text(k.d,sbX+10,sy);sy+=lineH-0.5;
+      if(k.d){pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);pdf.setTextColor(90,88,120);pdf.text(k.d,sbX+10,sy);}
+      sy+=lineH-0.5;
     });
   }
 
