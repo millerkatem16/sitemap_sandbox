@@ -1269,7 +1269,7 @@ async function loadScript(src){return new Promise((res,rej)=>{const s=document.c
 // ── Map Capture Selection UI ───────────────────────────────────────────────
 function startMapCapture(){
   return new Promise((resolve,reject)=>{
-    if(!window.html2canvas){reject(new Error('html2canvas not loaded'));return;}
+    if(!window.domtoimage){reject(new Error('dom-to-image-more not loaded'));return;}
     const ov=document.getElementById('pdf-sel-ov');
     const selCv=document.getElementById('pdf-sel-cv');
     const instrCard=document.getElementById('pdf-instr-card');
@@ -1334,23 +1334,21 @@ function startMapCapture(){
     }
 
     async function doCapture(){
-      console.log('CAPTURE STARTED');
       const r=getSelRect(sx,sy,ex,ey);
-      console.log('Selection rect:',r.w.toFixed(0)+'×'+r.h.toFixed(0),'at',r.x.toFixed(0)+','+r.y.toFixed(0));
-      if(r.w<20||r.h<20){console.log('CAPTURE ABORTED — selection too small');return;}
+      if(r.w<20||r.h<20)return;
       cancelAnimationFrame(rafId);
       ctx.clearRect(0,0,selCv.width,selCv.height);
       await new Promise(res=>setTimeout(res,80));
       const relX=r.x-cvRect.left,relY=r.y-cvRect.top;
       const outW=Math.round(r.w),outH=Math.round(r.h);
-      console.log('Canvas dims:',outW+'×'+outH,'cvRect offset:',relX.toFixed(0)+','+relY.toFixed(0));
 
+      // Composite canvas at 2× for retina-quality PDF output
+      const CS=2;
       const comp=document.createElement('canvas');
-      comp.width=outW;comp.height=outH;
+      comp.width=outW*CS;comp.height=outH*CS;
       const cctx=comp.getContext('2d');
-      if(!cctx){console.error('CAPTURE FAILED — could not get 2d context');return;}
 
-      // 1. Satellite background via Static Maps API
+      // 1. Satellite background — Static Maps API blob → object URL → no canvas taint
       let bgDone=false;
       try{
         const ctr=pixelToLatLng(relX+outW/2,relY+outH/2);
@@ -1358,80 +1356,56 @@ function startMapCapture(){
         const maxD=640,ratio=Math.min(1,Math.min(maxD/outW,maxD/outH));
         const smW=Math.max(1,Math.round(outW*ratio)),smH=Math.max(1,Math.round(outH*ratio));
         const smUrl=`https://maps.googleapis.com/maps/api/staticmap?center=${ctr.lat},${ctr.lng}&zoom=${zoom}&size=${smW}x${smH}&maptype=satellite&key=${mapsApiKey}`;
-        console.log('Fetching static map:',smUrl.replace(mapsApiKey,'[KEY]'));
         const resp=await fetch(smUrl,{mode:'cors'});
-        console.log('Static map response: HTTP',resp.status,resp.statusText,'type:',resp.headers.get('content-type'));
         if(resp.ok){
           const blob=await resp.blob();
-          console.log('STATIC MAP FETCH COMPLETE — blob size:',blob.size,'bytes, type:',blob.type);
           const objUrl=URL.createObjectURL(blob);
-          console.log('Object URL created:',objUrl);
           await new Promise(res=>{
             const img=new Image();
-            img.onload=()=>{
-              cctx.drawImage(img,0,0,outW,outH);
-              URL.revokeObjectURL(objUrl);
-              bgDone=true;
-              console.log('STATIC MAP DRAWN to canvas');
-              res();
-            };
-            img.onerror=(err)=>{
-              console.error('Static map image failed to load:',err);
-              URL.revokeObjectURL(objUrl);
-              res();
-            };
+            img.onload=()=>{cctx.drawImage(img,0,0,outW*CS,outH*CS);URL.revokeObjectURL(objUrl);bgDone=true;res();};
+            img.onerror=()=>{URL.revokeObjectURL(objUrl);res();};
             img.src=objUrl;
           });
-        }else{
-          const txt=await resp.text().catch(()=>'(unreadable)');
-          console.warn('STATIC MAP FETCH FAILED — HTTP',resp.status,': ',txt.slice(0,200));
         }
-      }catch(e){
-        console.error('STATIC MAP FETCH FAILED — exception:',e);
-      }
-      if(!bgDone){
-        console.log('Using dark fill fallback for background');
-        try{cctx.fillStyle='#1c2b2c';cctx.fillRect(0,0,outW,outH);}
-        catch(e){console.error('Dark fill also failed:',e);}
-      }
+      }catch(e){}
+      if(!bgDone){cctx.fillStyle='#1c2b2c';cctx.fillRect(0,0,outW*CS,outH*CS);}
 
-      // 2. Canvas overlays
-      for(const [name,oc] of [['zc',zc],['bc',bc],['dc',dc]]){
-        try{
-          if(oc&&oc.width>0){
-            cctx.drawImage(oc,relX,relY,outW,outH,0,0,outW,outH);
-            console.log('Overlay drawn:',name,'('+oc.width+'×'+oc.height+')');
-          }else{
-            console.log('Overlay skipped:',name,'(empty or missing, width='+( oc?oc.width:'null')+')');
-          }
-        }catch(e){console.error('Overlay draw failed for',name,':',e);}
-      }
-
-      // 3. DOM elements via html2canvas on #el only
+      // 2. dom-to-image-more: capture #cw (all SITEMAP overlays — zc, bc, dc, #el)
+      // Transform crops to the user's selection region; filter removes non-visual chrome
       try{
-        console.log('Starting html2canvas on #el, region:',relX+','+relY,outW+'×'+outH);
-        const elCv=await html2canvas(elDiv,{
-          x:relX,y:relY,width:outW,height:outH,
-          scale:1,useCORS:false,allowTaint:false,
-          logging:false,imageTimeout:4000,backgroundColor:null
+        const pngUrl=await domtoimage.toPng(cw,{
+          width:outW,
+          height:outH,
+          scale:CS,
+          style:{
+            transform:`translate(${-relX}px,${-relY}px)`,
+            transformOrigin:'0 0',
+            width:cw.offsetWidth+'px',
+            height:cw.offsetHeight+'px',
+            overflow:'visible'
+          },
+          filter:node=>node.id!=='statusbar'&&node.id!=='grid'
         });
-        console.log('ELEMENTS CAPTURED — canvas:',elCv.width+'×'+elCv.height);
-        cctx.drawImage(elCv,0,0,outW,outH);
+        await new Promise(res=>{
+          const img=new Image();
+          img.onload=()=>{cctx.drawImage(img,0,0,outW*CS,outH*CS);res();};
+          img.onerror=()=>res();
+          img.src=pngUrl;
+        });
       }catch(e){
-        console.error('html2canvas on #el failed:',e);
+        // Fallback: draw canvas overlays directly
+        [zc,bc,dc].forEach(oc=>{
+          try{if(oc&&oc.width>0)cctx.drawImage(oc,relX,relY,outW,outH,0,0,outW*CS,outH*CS);}catch(ex){}
+        });
       }
 
-      // Always produce a result
       capturedDataUrl=comp.toDataURL('image/jpeg',0.93);
-      console.log('capturedDataUrl length:',capturedDataUrl.length,'prefix:',capturedDataUrl.slice(0,60));
-      if(capturedDataUrl.length<10000)console.warn('WARNING — data URL is suspiciously short; canvas may be blank');
       capX=relX;capY=relY;capW=outW;capH=outH;
       prevImg.src=capturedDataUrl;
       instrCard.style.display='none';
       prevWrap.style.display='block';
       dragging=false;
       rafId=requestAnimationFrame(animate);
-      console.log('PREVIEW STATE SET — prevWrap display:',prevWrap.style.display,'instrCard display:',instrCard.style.display);
     }
 
     function cleanup(){
@@ -1489,7 +1463,7 @@ document.getElementById('bpdf').addEventListener('click',async()=>{
   const btn=document.getElementById('bpdf'),orig=btn.innerHTML;
   try{
     btn.innerHTML='<i class="ti ti-loader-2"></i>Loading…';btn.disabled=true;
-    if(!window.html2canvas)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    if(!window.domtoimage)await loadScript('https://cdn.jsdelivr.net/npm/dom-to-image-more@2.11.0/dist/dom-to-image-more.min.js');
     if(!window.jspdf)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
     btn.innerHTML=orig;btn.disabled=false;
     // Let user position map before capture overlay appears
