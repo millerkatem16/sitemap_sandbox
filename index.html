@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>SITEMAP — Event Site Planner</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.30.0/tabler-icons.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -16,7 +16,7 @@
   --grn:#2dd4a0;--grng:rgba(45,212,160,0.1);--grnb:rgba(45,212,160,0.35);
   --amb:#FBBD2F;--ambg:rgba(251,189,47,0.12);--ambb:rgba(251,189,47,0.4);
   --red:#e03535;--redg:rgba(224,53,53,0.09);--redb:rgba(224,53,53,0.28);
-  --font:'Poppins',sans-serif;--mono:'DM Mono',monospace;
+  --font:'Plus Jakarta Sans',sans-serif;--mono:'DM Mono',monospace;
   --r:9px;--r2:14px;
 }
 html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--font);font-size:13px;overflow:hidden}
@@ -182,6 +182,24 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .mbtn:hover{background:var(--surf3);color:var(--tx)}
 .mbtn.p{background:var(--acc);color:#fff;border-color:transparent;box-shadow:0 2px 12px rgba(244,81,64,0.3),inset 0 1px 0 rgba(255,255,255,0.1)}
 .mbtn.p:hover{background:var(--acc2);box-shadow:0 4px 18px rgba(146,39,100,0.35)}
+
+/* ── PDF Capture Overlay ─────────────────────────────────────────────────── */
+#pdf-sel-ov{position:fixed;inset:0;z-index:10000;cursor:crosshair;user-select:none}
+#pdf-sel-cv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#pdf-instr-card{position:absolute;top:28px;left:50%;transform:translateX(-50%);background:var(--surf);border-radius:16px;padding:20px 32px;box-shadow:0 16px 64px rgba(0,0,0,0.5),0 4px 16px rgba(0,0,0,0.2);text-align:center;z-index:2;pointer-events:none;min-width:320px;border:1px solid rgba(255,255,255,0.08)}
+#pdf-instr-card h3{font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px;letter-spacing:-.02em}
+#pdf-instr-card p{font-size:12px;color:var(--tx2);margin-bottom:16px;line-height:1.6;max-width:260px}
+#pdf-esc-btn{pointer-events:auto;padding:7px 18px;background:rgba(244,81,64,0.08);border:1px solid rgba(244,81,64,0.25);border-radius:9px;color:var(--acc);font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;transition:all .12s}
+#pdf-esc-btn:hover{background:rgba(244,81,64,0.16);border-color:rgba(244,81,64,0.45)}
+#pdf-prev-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surf);border-radius:18px;padding:24px 28px;box-shadow:0 24px 72px rgba(0,0,0,0.48),0 4px 16px rgba(0,0,0,0.16);z-index:2;display:none;width:380px;border:1px solid var(--brd)}
+#pdf-prev-wrap h3{font-size:14px;font-weight:700;color:var(--tx);margin-bottom:12px;text-align:center;letter-spacing:-.02em}
+#pdf-prev-img{width:100%;max-height:200px;object-fit:contain;border-radius:10px;border:1px solid var(--brd2);display:block;margin-bottom:8px;background:var(--surf2)}
+.pdf-cap-note{font-size:10px;color:var(--crimson);font-family:var(--font);font-weight:500;text-align:center;margin-bottom:16px;line-height:1.4}
+.pdf-prev-btns{display:flex;gap:8px}
+#pdf-ok-btn{flex:1;padding:10px 0;background:var(--grn);color:#fff;border:none;border-radius:10px;font-size:13px;font-family:var(--font);font-weight:600;cursor:pointer;transition:background .14s;box-shadow:0 2px 12px rgba(45,212,160,0.3)}
+#pdf-ok-btn:hover{background:#20c49a}
+#pdf-retry-btn{padding:10px 16px;background:var(--surf2);border:1px solid var(--brd2);border-radius:10px;font-size:13px;font-family:var(--font);font-weight:600;color:var(--tx2);cursor:pointer;transition:all .14s}
+#pdf-retry-btn:hover{background:var(--surf3);color:var(--tx)}
 </style>
 </head>
 <body>
@@ -312,6 +330,24 @@ canvas{position:absolute;inset:0;pointer-events:none}
     </div>
   </div>
 </div>
+</div>
+
+<div id="pdf-sel-ov">
+  <canvas id="pdf-sel-cv"></canvas>
+  <div id="pdf-instr-card">
+    <h3>Capture Map Area</h3>
+    <p>Click and drag to draw a box around your venue map to include it in the PDF</p>
+    <button id="pdf-esc-btn">✕ Cancel</button>
+  </div>
+  <div id="pdf-prev-wrap">
+    <h3>Preview</h3>
+    <img id="pdf-prev-img" alt="Captured map area">
+    <div class="pdf-cap-note">Venue map captured at time of export</div>
+    <div class="pdf-prev-btns">
+      <button id="pdf-ok-btn"><i class="ti ti-check"></i> Looks good — continue to PDF</button>
+      <button id="pdf-retry-btn">Retake</button>
+    </div>
+  </div>
 </div>
 
 <div id="mo"><div id="md">
@@ -1199,39 +1235,185 @@ function renderColorKey(){
 
 // ── PDF Export ─────────────────────────────────────────────────────────────
 async function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('Failed: '+src));document.head.appendChild(s);});}
+
+// ── Map Capture Selection UI ───────────────────────────────────────────────
+function startMapCapture(){
+  return new Promise((resolve,reject)=>{
+    if(!window.html2canvas){reject(new Error('html2canvas not loaded'));return;}
+    const ov=document.getElementById('pdf-sel-ov');
+    const selCv=document.getElementById('pdf-sel-cv');
+    const instrCard=document.getElementById('pdf-instr-card');
+    const prevWrap=document.getElementById('pdf-prev-wrap');
+    const prevImg=document.getElementById('pdf-prev-img');
+    const okBtn=document.getElementById('pdf-ok-btn');
+    const retryBtn=document.getElementById('pdf-retry-btn');
+    const escBtn=document.getElementById('pdf-esc-btn');
+
+    // Bounds constraint: cv-area only
+    const cvAreaEl=document.getElementById('cv-area');
+    const cvRect=cvAreaEl.getBoundingClientRect();
+
+    selCv.width=window.innerWidth;selCv.height=window.innerHeight;
+    const ctx=selCv.getContext('2d');
+    let dragging=false,sx=0,sy=0,ex=0,ey=0;
+    let dashOffset=0,rafId=null;
+    let capturedDataUrl=null,capX=0,capY=0,capW=0,capH=0;
+
+    function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+
+    function getSelRect(x1,y1,x2,y2){
+      const rx=clamp(Math.min(x1,x2),cvRect.left,cvRect.right);
+      const ry=clamp(Math.min(y1,y2),cvRect.top,cvRect.bottom);
+      const rx2=clamp(Math.max(x1,x2),cvRect.left,cvRect.right);
+      const ry2=clamp(Math.max(y1,y2),cvRect.top,cvRect.bottom);
+      return{x:rx,y:ry,w:rx2-rx,h:ry2-ry};
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,selCv.width,selCv.height);
+      // Full dim
+      ctx.fillStyle='rgba(20,18,40,0.62)';
+      ctx.fillRect(0,0,selCv.width,selCv.height);
+      if(dragging&&(ex!==sx||ey!==sy)){
+        const r=getSelRect(sx,sy,ex,ey);
+        if(r.w>2&&r.h>2){
+          // Cut out selection
+          ctx.clearRect(r.x,r.y,r.w,r.h);
+          // Animated gold dashed border
+          ctx.save();
+          ctx.strokeStyle='#FBBD2F';
+          ctx.lineWidth=2;
+          ctx.setLineDash([8,5]);
+          ctx.lineDashOffset=-dashOffset;
+          ctx.strokeRect(r.x+1,r.y+1,r.w-2,r.h-2);
+          ctx.restore();
+        }
+      }
+    }
+
+    function animate(){
+      dashOffset=(dashOffset+0.5)%13;
+      draw();
+      rafId=requestAnimationFrame(animate);
+    }
+
+    function showInstructions(){
+      instrCard.style.display='';
+      prevWrap.style.display='none';
+      capturedDataUrl=null;
+    }
+
+    async function doCapture(){
+      const r=getSelRect(sx,sy,ex,ey);
+      if(r.w<20||r.h<20){return;}// too small
+      cancelAnimationFrame(rafId);
+      ctx.clearRect(0,0,selCv.width,selCv.height);// hide overlay during capture
+      // Small delay so the canvas clears before html2canvas fires
+      await new Promise(res=>setTimeout(res,80));
+      const relX=r.x-cvRect.left,relY=r.y-cvRect.top;
+      let canvas;
+      try{
+        canvas=await html2canvas(cvAreaEl,{
+          x:relX,y:relY,width:r.w,height:r.h,
+          scale:window.devicePixelRatio||1,
+          useCORS:true,allowTaint:true,
+          logging:false,imageTimeout:6000
+        });
+      }catch(e){
+        // If html2canvas fails, resume
+        rafId=requestAnimationFrame(animate);
+        return;
+      }
+      capturedDataUrl=canvas.toDataURL('image/jpeg',0.93);
+      capX=relX;capY=relY;capW=r.w;capH=r.h;
+      // Show preview
+      prevImg.src=capturedDataUrl;
+      instrCard.style.display='none';
+      prevWrap.style.display='';
+      // Restart animation (dim bg, no selection box)
+      dragging=false;
+      rafId=requestAnimationFrame(animate);
+    }
+
+    function cleanup(){
+      cancelAnimationFrame(rafId);
+      ov.style.display='none';
+      ov.removeEventListener('mousedown',onDown);
+      window.removeEventListener('mousemove',onMove);
+      window.removeEventListener('mouseup',onUp);
+      document.removeEventListener('keydown',onKey);
+      okBtn.removeEventListener('click',onOk);
+      retryBtn.removeEventListener('click',onRetry);
+      escBtn.removeEventListener('click',onEsc);
+    }
+
+    function onOk(){
+      if(!capturedDataUrl)return;
+      cleanup();
+      resolve({dataUrl:capturedDataUrl,x:capX,y:capY,w:capW,h:capH});
+    }
+    function onRetry(){showInstructions();dragging=false;}
+    function onEsc(){cleanup();reject('cancelled');}
+    function onKey(e){if(e.key==='Escape'){cleanup();reject('cancelled');}}
+
+    function onDown(e){
+      if(prevWrap.style.display!=='none')return;// in preview mode
+      dragging=true;sx=e.clientX;sy=e.clientY;ex=e.clientX;ey=e.clientY;
+    }
+    function onMove(e){
+      if(!dragging)return;
+      ex=e.clientX;ey=e.clientY;
+    }
+    function onUp(e){
+      if(!dragging)return;
+      ex=e.clientX;ey=e.clientY;
+      dragging=false;
+      const r=getSelRect(sx,sy,ex,ey);
+      if(r.w>=20&&r.h>=20)doCapture();
+    }
+
+    okBtn.addEventListener('click',onOk);
+    retryBtn.addEventListener('click',onRetry);
+    escBtn.addEventListener('click',onEsc);
+    ov.addEventListener('mousedown',onDown);
+    window.addEventListener('mousemove',onMove);
+    window.addEventListener('mouseup',onUp);
+    document.addEventListener('keydown',onKey);
+
+    ov.style.display='block';
+    showInstructions();
+    rafId=requestAnimationFrame(animate);
+  });
+}
+
 document.getElementById('bpdf').addEventListener('click',async()=>{
   const btn=document.getElementById('bpdf'),orig=btn.innerHTML;
-  btn.innerHTML='<i class="ti ti-loader-2"></i>Building…';btn.disabled=true;
   try{
+    btn.innerHTML='<i class="ti ti-loader-2"></i>Loading…';btn.disabled=true;
     if(!window.html2canvas)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
     if(!window.jspdf)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-    await exportPDF();
+    btn.innerHTML=orig;btn.disabled=false;
+    // Start user-guided capture
+    const capture=await startMapCapture();
+    btn.innerHTML='<i class="ti ti-loader-2"></i>Building…';btn.disabled=true;
+    await exportPDF(capture);
     document.getElementById('ins-txt').textContent='PDF saved.';
   }catch(err){
-    document.getElementById('ins-txt').textContent='PDF export failed — check internet connection.';
-    console.error(err);
+    if(err!=='cancelled'){
+      document.getElementById('ins-txt').textContent='PDF export failed — check internet connection.';
+      console.error(err);
+    }
   }finally{btn.innerHTML=orig;btn.disabled=false;}
 });
 
-async function exportPDF(){
+async function exportPDF(capture){
   if(!gmap)return;
   const{jsPDF}=window.jspdf;
 
-  // ── 1. Fetch satellite base image ─────────────────────────────────────────
-  const pdfLat=gmap.getCenter().lat(),pdfLng=gmap.getCenter().lng(),pdfZoom=gmap.getZoom();
-  const mapDiv=document.getElementById('map');
-  const mw=mapDiv.offsetWidth,mh=mapDiv.offsetHeight;
-  const maxDim=Math.max(mw,mh);
-  const zoomReduction=Math.max(0,Math.ceil(Math.log2(maxDim/640)));
-  const staticZoom=Math.max(1,pdfZoom-zoomReduction);
-  const zoomScale=Math.pow(2,zoomReduction);
-  let smW=Math.min(Math.round(mw/zoomScale),640);
-  let smH=Math.min(Math.round(mh/zoomScale),640);
-  let mapDataUrl=null;
-  try{
-    const resp=await fetch(`/api/static-map?center=${pdfLat},${pdfLng}&zoom=${staticZoom}&size=${smW}x${smH}&maptype=satellite`);
-    if(resp.ok){const blob=await resp.blob();mapDataUrl=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);});}
-  }catch(e){console.warn('Static map failed',e);}
+  // ── 1. Map image from capture ─────────────────────────────────────────────
+  const mapDataUrl=capture.dataUrl;
+  const captureX=capture.x,captureY=capture.y; // cv-area-relative offsets (CSS px)
+  const captureW=capture.w,captureH=capture.h; // CSS px dimensions
 
   // ── 2. Reverse-geocode map center for street address ─────────────────────
   const evtName=document.getElementById('evt-name').value.trim();
@@ -1256,11 +1438,9 @@ async function exportPDF(){
   const imgX=M,imgY=titleH+2;
   // Map: full page width, aspect-correct height
   let imgW=PW-2*M,imgH=PH-legH-footerH-imgY-2;
-  if(smW&&smH){
-    const asp=smW/smH;
-    const fitH=imgW/asp;
-    if(fitH>imgH){imgW=imgH*asp;}else{imgH=fitH;}
-  }
+  const asp=captureW/captureH;
+  const fitH=imgW/asp;
+  if(fitH>imgH){imgW=imgH*asp;}else{imgH=fitH;}
   const legY=imgY+imgH+2;
   const dateStr=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
 
@@ -1279,17 +1459,17 @@ async function exportPDF(){
   if(mapDataUrl)pdf.addImage(mapDataUrl,'JPEG',imgX,imgY,imgW,imgH);
 
   // ── 6. Coordinate helpers ─────────────────────────────────────────────────
-  const pdfProj=gmap.getProjection();
-  const pdfPjScale=Math.pow(2,staticZoom);
-  const pdfCPt=pdfProj.fromLatLngToPoint(new google.maps.LatLng(pdfLat,pdfLng));
+  // ll2pdf maps lat/lng → PDF coordinates using live map pixel positions
+  // (captureX,captureY) is the cv-area-relative origin of the captured region
   function ll2pdf(lat,lng){
-    const pt=pdfProj.fromLatLngToPoint(new google.maps.LatLng(lat,lng));
-    const px=(pt.x-pdfCPt.x)*pdfPjScale+smW/2;
-    const py=(pt.y-pdfCPt.y)*pdfPjScale+smH/2;
-    return{x:imgX+px*(imgW/smW),y:imgY+py*(imgH/smH)};
+    const screenPt=latLngToPixel(lat,lng); // CSS px within cv-area
+    const relX=screenPt.x-captureX;
+    const relY=screenPt.y-captureY;
+    return{x:imgX+relX*(imgW/captureW),y:imgY+relY*(imgH/captureH)};
   }
-  const mppPdf=156543.03392*Math.cos(pdfLat*Math.PI/180)/Math.pow(2,staticZoom);
-  const ftToMm=(1/(mppPdf*3.28084))*(imgW/smW);
+  // S.scale = CSS px per foot on the live canvas
+  // captureW CSS px maps to imgW mm, so 1 ft = S.scale*(imgW/captureW) mm
+  const ftToMm=S.scale*(imgW/captureW);
   function hexRgb(h){const c=(h||'#888').replace('#','');return[parseInt(c.slice(0,2),16)||128,parseInt(c.slice(2,4),16)||128,parseInt(c.slice(4,6),16)||128];}
 
   // ── 7. Draw zones ─────────────────────────────────────────────────────────
