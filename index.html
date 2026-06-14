@@ -200,6 +200,8 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #pdf-ok-btn:hover{background:#20c49a}
 #pdf-retry-btn{padding:10px 16px;background:var(--surf2);border:1px solid var(--brd2);border-radius:10px;font-size:13px;font-family:var(--font);font-weight:600;color:var(--tx2);cursor:pointer;transition:all .14s}
 #pdf-retry-btn:hover{background:var(--surf3);color:var(--tx)}
+.oe-del-btn{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important;margin-right:auto}
+.oe-del-btn:hover{background:#b91c1c!important;border-color:#b91c1c!important}
 #pdf-ready-card{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);z-index:9000;display:flex;align-items:center;gap:10px;background:var(--surf);border:1px solid var(--brd2);border-radius:14px;padding:14px 20px;box-shadow:0 8px 40px rgba(0,0,0,0.45);font-family:var(--font);white-space:nowrap}
 .pdf-rc-msg{font-size:13px;color:var(--tx2);margin-right:4px}
 .pdf-rc-msg strong{color:var(--tx)}
@@ -1000,7 +1002,7 @@ function place(type,x,y){
       renderVendorList();renderEls();runRules();
     });return;
   }
-  pushUndo();S.els.push(base());renderVendorList();renderEls();runRules();
+  pushUndo();S.els.push(base());renderVendorList();renderEls();renderSiteManagement();runRules();
 }
 
 // ── Tool management ────────────────────────────────────────────────────────
@@ -1191,6 +1193,26 @@ function openEvents(){
       redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
       document.getElementById('ins-txt').textContent=`"${name}" loaded.`;
     },'Open');
+  // Inject Delete button into modal footer
+  const _mbtns=document.querySelector('#mo .mbtns');
+  if(_mbtns){
+    const _del=document.createElement('button');
+    _del.className='mbtn oe-del-btn';_del.innerHTML='<i class="ti ti-trash"></i> Delete';
+    _mbtns.insertBefore(_del,_mbtns.firstChild);
+    _del.addEventListener('click',()=>{
+      const name=document.getElementById('oe-sel').value;
+      if(!name||!savedEvents[name])return;
+      document.getElementById('mo').style.display='none';
+      modal(`Delete "${name}"?`,
+        'This cannot be undone. The event and all its data will be permanently removed.',
+        '',
+        ()=>{
+          delete savedEvents[name];
+          try{localStorage.setItem('esm_events_v1',JSON.stringify(savedEvents));}catch(er){}
+          document.getElementById('ins-txt').textContent=`"${name}" deleted.`;
+        },'Delete Event');
+    });
+  }
 }
 
 document.getElementById('bsave-evt').addEventListener('click',saveEvent);
@@ -1324,8 +1346,9 @@ function startMapCapture(){
         canvas=await html2canvas(cvAreaEl,{
           x:relX,y:relY,width:r.w,height:r.h,
           scale:window.devicePixelRatio||1,
-          useCORS:true,allowTaint:true,
-          logging:false,imageTimeout:6000
+          useCORS:false,allowTaint:false,
+          logging:false,imageTimeout:6000,
+          backgroundColor:'#1c2b2c'
         });
       }catch(e){
         // If html2canvas fails, resume
