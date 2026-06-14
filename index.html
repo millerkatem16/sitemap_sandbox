@@ -192,6 +192,9 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <input id="map-search" type="text" placeholder="Search venue or address…" autocomplete="off" spellcheck="false">
   </div>
   <div class="tg">
+    <button class="tb" id="bopen"><i class="ti ti-folder-open"></i>Open</button>
+  </div>
+  <div class="tg">
     <button class="tb" id="zr"><i class="ti ti-ban"></i>Restrict</button>
     <button class="tb" id="ze"><i class="ti ti-eraser"></i>Erase Zone</button>
   </div>
@@ -219,7 +222,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div class="tg">
     <select class="el-drop" id="sm-drop">
       <option value="" disabled selected>Site Management</option>
-      <option value="firstaid">First Aid Station</option>
       <option value="extinguisher">Fire Extinguisher</option>
       <option value="─────────" disabled>─────────</option>
       <option value="electric">Electric Source</option>
@@ -232,6 +234,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="spacer"></div>
   <div class="tg">
+    <button class="tb exp" id="bsave-evt"><i class="ti ti-device-floppy"></i>Save Event</button>
     <button class="tb exp" id="bpdf"><i class="ti ti-file-type-pdf"></i>Export PDF</button>
     <button class="tb" id="bundo"><i class="ti ti-corner-up-left"></i>Undo</button>
     <button class="tb warn" id="bclr"><i class="ti ti-trash"></i>Clear</button>
@@ -256,20 +259,29 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <div class="sb-scroll">
 
       <div class="panel">
-        <div class="plabel">Event</div>
-        <input id="evt-name" class="evt-inp" type="text" placeholder="Event name &amp; location — shown on PDF">
+        <div class="plabel">Event Name and Date</div>
+        <input id="evt-name" class="evt-inp" type="text" placeholder="Event name — shown on PDF">
+        <input id="evt-date" class="evt-inp" type="date" style="margin-top:6px">
       </div>
 
       <div class="panel">
-        <div class="plabel">Venue</div>
-        <div class="vrow">
-          <select class="vsel" id="vsel"><option value="">No saved venues</option></select>
-          <button class="vbtn" id="vload">Load</button>
-        </div>
-        <div class="vrow">
-          <button class="vbtn acc" id="vsave" style="flex:1">Save venue</button>
-          <button class="vbtn del" id="vdel">Delete</button>
-        </div>
+        <div class="plabel">Safety &amp; Compliance Pre-Check</div>
+        <div id="wl"><div class="w info"><i class="ti ti-info-circle"></i><span>Place elements to run checks.</span></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="plabel">Activations &amp; Vendors</div>
+        <div id="vl"><div style="font-size:10px;color:var(--tx3)">No elements placed yet</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="plabel">Site Management</div>
+        <div id="sml"></div>
+      </div>
+
+      <div class="panel">
+        <div class="plabel">Color Key</div>
+        <div id="ckey"></div>
       </div>
 
       <div class="panel">
@@ -294,24 +306,8 @@ canvas{position:absolute;inset:0;pointer-events:none}
         </div>
       </div>
 
-      <div class="panel">
-        <div class="plabel">Activations &amp; Vendors</div>
-        <div id="vl"><div style="font-size:10px;color:var(--tx3)">No elements placed yet</div></div>
-      </div>
-
-      <div class="panel">
-        <div class="plabel">Safety &amp; Compliance</div>
-        <div id="wl"><div class="w info"><i class="ti ti-info-circle"></i><span>Place elements to run checks.</span></div></div>
-      </div>
-
-      <div class="panel">
-        <div class="plabel">First Aid Contacts</div>
-        <div id="fal"><div style="font-size:10px;color:var(--tx3)">None added</div></div>
-      </div>
-
-      <div class="panel">
-        <div class="plabel">Color Key</div>
-        <div id="ckey"></div>
+      <div class="panel" style="display:none">
+        <div id="fal"></div>
       </div>
     </div>
   </div>
@@ -350,14 +346,14 @@ const TYPES={
   truck:{lbl:'Food Truck',color:'#ef4444',wFt:20,hFt:8,sqft:0,rot:true},
   gen:{lbl:'Generator',color:'#fbbf24',wFt:6,hFt:6,icon:'⚡',sqft:0,rot:true},
   ingress:{lbl:'Ingress/Egress',color:'#22c55e',wFt:12,hFt:8,sqft:0,rot:true},
-  firstaid:{lbl:'First Aid',color:'#f05252',wFt:10,hFt:10,icon:'🏥',sqft:0,rot:true},
-  extinguisher:{lbl:'Fire Ext.',color:'#f05252',wFt:2,hFt:3,icon:'🧯',sqft:0,rot:true},
+  firstaid:{lbl:'First Aid',color:'#f05252',wFt:10,hFt:10,sqft:0,noRender:true},
+  extinguisher:{lbl:'Fire Ext.',color:'#f05252',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
   mix:{lbl:'Mix Platform',color:'#c084fc',wFt:10,hFt:8,icon:'🎛',sqft:0,rot:true},
   custom:{lbl:'Custom',color:'#8b93a8',wFt:10,hFt:10,sqft:0,rot:true},
   customtent:{lbl:'Custom Tent',color:'#2dd4a0',wFt:20,hFt:20,tent:true,sqft:1,rot:true},
-  electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:3,hFt:3,sqft:0,circle:true,rot:false},
-  water:{lbl:'Water Source',color:'#3B82F6',wFt:3,hFt:3,sqft:0,circle:true,rot:false},
-  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:3,hFt:3,sqft:0,circle:true,rot:false}
+  electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
+  water:{lbl:'Water Source',color:'#3B82F6',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
+  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:6,hFt:6,sqft:0,circle:true,rot:false}
 };
 const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'I',firstaid:'FA',extinguisher:'E',mix:'M',custom:'C',customtent:'T',electric:'EL',water:'WS',trash:'BIN'};
 
@@ -428,7 +424,7 @@ function undo(){
   const snap=S.undoStack.pop();
   S.els=snap.els;S.zonePolys=snap.zonePolys;
   S.adaPaths=snap.adaPaths;S.dims=snap.dims;S.firstAids=snap.firstAids;
-  renderEls();redrawZones();drawAda();drawDims();renderFal();renderVendorList();runRules();
+  renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
 }
 document.getElementById('bundo').addEventListener('click',undo);
 
@@ -695,7 +691,7 @@ function runRules(){
   if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.'});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.'});}
   if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.'});
   document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
-  renderEls();updateCap();
+  renderEls();updateCap();renderSiteManagement();
 }
 
 // ── Render Elements ────────────────────────────────────────────────────────
@@ -704,6 +700,7 @@ function renderEls(){
   elDiv.innerHTML='';
   S.els.forEach(el=>{
     const t=TYPES[el.type]||TYPES.custom;
+    if(t.noRender)return;
     const rot=el.rot||0,w=elW(el),h=elH(el);
     const xy=elXY(el);
     const fs=Math.min(20,Math.max(10,Math.floor(h*0.45)));
@@ -753,16 +750,18 @@ function renderEls(){
     });
     wrap.appendChild(rb);
 
-    const lbl=document.createElement('div');lbl.className='el-lbl';
-    lbl.style.fontSize=fs+'px';
-    lbl.textContent=String(tnMap[el.id]||'?');
-    lbl.title=`${elCode(el,tnMap)}${el.vendorName?' · '+el.vendorName:''}`;
-    lbl.addEventListener('click',ev=>{
-      ev.stopPropagation();
-      const inp=document.querySelector(`.vl-inp[data-id="${el.id}"]`);
-      if(inp){inp.focus();inp.select();inp.scrollIntoView({block:'nearest',behavior:'smooth'});}
-    });
-    wrap.appendChild(lbl);
+    if(!t.circle){
+      const lbl=document.createElement('div');lbl.className='el-lbl';
+      lbl.style.fontSize=fs+'px';
+      lbl.textContent=String(tnMap[el.id]||'?');
+      lbl.title=`${elCode(el,tnMap)}${el.vendorName?' · '+el.vendorName:''}`;
+      lbl.addEventListener('click',ev=>{
+        ev.stopPropagation();
+        const inp=document.querySelector(`.vl-inp[data-id="${el.id}"]`);
+        if(inp){inp.focus();inp.select();inp.scrollIntoView({block:'nearest',behavior:'smooth'});}
+      });
+      wrap.appendChild(lbl);
+    }
 
     const ri=document.createElement('div');ri.className='rot-deg';ri.textContent=`${Math.round(((rot%360)+360)%360)}°`;
     wrap.appendChild(ri);
@@ -818,17 +817,50 @@ function makeDrag(div,el){
   });
 }
 
-// ── First Aid / Vendor list ────────────────────────────────────────────────
-function renderFal(){
-  const d=document.getElementById('fal');
-  d.innerHTML=S.firstAids.length?S.firstAids.map(c=>`<div class="fa-item"><strong>${c.name}</strong><span>${c.cert}</span></div>`).join(''):'<div style="font-size:10px;color:var(--tx3)">None added</div>';
+// ── Site Management sidebar ────────────────────────────────────────────────
+function renderSiteManagement(){
+  const d=document.getElementById('sml');if(!d)return;
+  const smTypes=['electric','water','trash','extinguisher'];
+  const smLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',extinguisher:'Fire Extinguisher'};
+  const counts={};
+  smTypes.forEach(type=>{const c=S.els.filter(e=>e.type===type).length;if(c)counts[type]=c;});
+  let html='<div class="plabel-sub" style="margin-top:0">First Aid</div>';
+  if(S.firstAids.length){
+    html+=S.firstAids.map(c=>`<div class="fa-item"><strong>${c.name}</strong><span>${c.cert}</span></div>`).join('');
+  }else{
+    html+='<div style="font-size:10px;color:var(--tx3)">None added</div>';
+  }
+  html+=`<div style="margin-top:6px"><button class="vbtn" id="add-fa-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-plus" style="font-size:11px"></i>Add First Aid Contact</button></div>`;
+  const countKeys=Object.keys(counts);
+  if(countKeys.length){
+    html+='<div class="plabel-sub" style="margin-top:10px">Placed</div>';
+    smTypes.forEach(type=>{
+      if(!counts[type])return;
+      html+=`<div class="ec-row"><span class="ec-name">${smLabels[type]}</span><span class="ec-val">(${counts[type]})</span></div>`;
+    });
+  }
+  d.innerHTML=html;
+  const addBtn=d.querySelector('#add-fa-btn');
+  if(addBtn){
+    addBtn.addEventListener('click',()=>{
+      modal('First Aid Point of Contact','Add contact details for a first aid responder on site.',
+        mf('Responder Name','fan','text','','Full name')+mf('Certification','fac2','text','','e.g. CPR/AED, EMT, Paramedic'),
+        ()=>{
+          const name=document.getElementById('fan').value.trim()||'Unknown';
+          const cert=document.getElementById('fac2').value.trim()||'CPR';
+          S.firstAids.push({name,cert});renderSiteManagement();
+        },'Add Contact');
+    });
+  }
 }
+function renderFal(){renderSiteManagement();}
 function renderVendorList(){
   const vl=document.getElementById('vl');if(!vl)return;
   const tnMap=getTypeNums();
   const active=document.activeElement,wasId=active&&active.classList&&active.classList.contains('vl-inp')?active.dataset.id:null;
-  if(!S.els.length){vl.innerHTML='<div style="font-size:10px;color:var(--tx3)">No elements placed yet</div>';return;}
-  vl.innerHTML=S.els.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');const isCustom=['customtent','custom'].includes(el.type);const dimBadge=isCustom?`<span style="font-size:9px;color:var(--tx3);flex-shrink:0;white-space:nowrap">${el.wFt}×${el.hFt} ft</span>`:'';return`<div class="vl-row"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${(TYPES[el.type]||TYPES.custom).lbl}">${dimBadge}<button class="vl-del" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
+  const actEls=S.els.filter(e=>{const t=TYPES[e.type]||TYPES.custom;return!t.circle&&!t.noRender;});
+  if(!actEls.length){vl.innerHTML='<div style="font-size:10px;color:var(--tx3)">No elements placed yet</div>';return;}
+  vl.innerHTML=actEls.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');const isCustom=['customtent','custom'].includes(el.type);const dimBadge=isCustom?`<span style="font-size:9px;color:var(--tx3);flex-shrink:0;white-space:nowrap">${el.wFt}×${el.hFt} ft</span>`:'';return`<div class="vl-row"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${(TYPES[el.type]||TYPES.custom).lbl}">${dimBadge}<button class="vl-del" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
   vl.querySelectorAll('.vl-inp').forEach(inp=>{
     inp.addEventListener('input',ev=>{const id=parseInt(ev.target.dataset.id),found=S.els.find(x=>x.id===id);if(found)found.vendorName=ev.target.value;});
     inp.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const all=[...vl.querySelectorAll('.vl-inp')],idx=all.indexOf(ev.target);if(idx<all.length-1)all[idx+1].focus();else ev.target.blur();}});
@@ -839,10 +871,10 @@ function renderVendorList(){
       const id=parseInt(ev.currentTarget.dataset.id);
       pushUndo();
       const found=S.els.find(x=>x.id===id);
-      if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==id);renderFal();}
+      if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==id);}
       S.els=S.els.filter(x=>x.id!==id);
       if(S.selId===id)S.selId=null;
-      renderVendorList();renderEls();runRules();
+      renderVendorList();renderEls();renderSiteManagement();runRules();
     });
   });
   if(wasId){const ni=vl.querySelector(`.vl-inp[data-id="${wasId}"]`);if(ni)ni.focus();}
@@ -914,7 +946,7 @@ function place(type,x,y){
     modal('Place First Aid Station','Document the certified responder at this station.',mf('Responder Name','fan','text','','Full name')+mf('Certification','fac2','text','','e.g. CPR/AED, EMT, Paramedic'),()=>{
       pushUndo();const name=document.getElementById('fan').value.trim()||'Unknown',cert=document.getElementById('fac2').value.trim()||'CPR',eid=S.idCtr++;
       S.els.push({id:eid,type,lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:'First Aid',vendorName:name,cpName:name,rot:0,hr:false,sr:false});
-      S.firstAids.push({eid,name,cert});renderFal();renderVendorList();renderEls();runRules();
+      S.firstAids.push({eid,name,cert});renderSiteManagement();renderVendorList();renderEls();runRules();
     });return;
   }
   if(type==='custom'){
@@ -929,7 +961,7 @@ function place(type,x,y){
 
 // ── Tool management ────────────────────────────────────────────────────────
 const ZONE_TOOLS=['restrict','border','erase'];
-const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','firstaid','extinguisher','mix','custom','electric','water','trash'];
+const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','extinguisher','mix','custom','electric','water','trash'];
 const DRAWING_TOOLS=[...ZONE_TOOLS,'ada','dim'];
 
 function setTool(id){
@@ -940,7 +972,7 @@ function setTool(id){
   // Select passes clicks through to map; every other tool needs canvas input
   cw.style.pointerEvents=id==='select'?'none':'auto';
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'?'crosshair':'default';
-  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',firstaid:'Click to place a first aid station',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click corners to draw venue border · Double-click to close',erase:'Click inside a zone or border to remove it'};
+  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click corners to draw venue border · Double-click to close · You will be asked about enclosure',erase:'Click inside a zone or border to remove it'};
   document.getElementById('ins-txt').textContent=msgs[id]||'';
   if(!ZONE_TOOLS.includes(id))activePoly=null;if(id!=='dim')dimStart=null;
 }
@@ -956,7 +988,20 @@ cw.addEventListener('mousedown',e=>{
   }
   if(ZONE_TOOLS.includes(S.tool)){
     if(S.tool==='erase'){pushUndo();eraseZoneAt(x,y);runRules();return;}
-    if(e.detail===2){if(activePoly&&activePoly.pts.length>=3){pushUndo();activePoly.open=false;if(S._pendingZoneLabel){activePoly.label=S._pendingZoneLabel;S._pendingZoneLabel=null;}activePoly=null;redrawZones();runRules();}return;}
+    if(e.detail===2){
+      if(activePoly&&activePoly.pts.length>=3){
+        pushUndo();activePoly.open=false;
+        if(S._pendingZoneLabel){activePoly.label=S._pendingZoneLabel;S._pendingZoneLabel=null;}
+        const closedZone=activePoly;activePoly=null;
+        redrawZones();runRules();
+        if(closedZone.type==='border'){
+          modal('Zone Enclosure','Will this area be enclosed or fenced?',
+            msel('Enclosure','zone-enc',[{v:'yes',t:'Yes — enclosed or fenced'},{v:'no',t:'No — open outdoor area'}]),
+            ()=>{closedZone.enclosed=document.getElementById('zone-enc').value==='yes';},'Save');
+        }
+      }
+      return;
+    }
     const ll=pixelToLatLng(x,y);
     if(!activePoly){const z={type:S.tool,pts:[{lat:ll.lat,lng:ll.lng}],open:true,zid:S.idCtr++};S.zonePolys.push(z);activePoly=z;}
     else activePoly.pts.push({lat:ll.lat,lng:ll.lng});
@@ -1002,9 +1047,9 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Delete'||e.key==='Backspace'){
     if(S.selId!==null){
       pushUndo();const found=S.els.find(x=>x.id===S.selId);
-      if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==S.selId);renderFal();}
+      if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==S.selId);}
       S.els=S.els.filter(x=>x.id!==S.selId);S.selId=null;
-      renderVendorList();renderEls();runRules();
+      renderVendorList();renderEls();renderSiteManagement();runRules();
     }
   }
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}
@@ -1036,36 +1081,76 @@ document.getElementById('ba').addEventListener('click',()=>{
 document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
 document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
 
-// ── Venue save/load ────────────────────────────────────────────────────────
-function loadVenueList(){
-  const sel=document.getElementById('vsel'),names=Object.keys(S.venues);
-  sel.innerHTML=names.length?names.map(n=>`<option value="${n}">${n}</option>`):'<option value="">No saved venues</option>';
+// ── Save / Open Event ──────────────────────────────────────────────────────
+let savedEvents={};
+try{const _se=localStorage.getItem('esm_events_v1');if(_se)savedEvents=JSON.parse(_se);}catch(er){}
+
+function saveEvent(){
+  const currentName=document.getElementById('evt-name').value.trim();
+  modal('Save Event','Enter a name and 4-digit PIN to protect your event.',
+    mf('Event Name','se-name','text',currentName,'e.g. Summer Festival 2026')+
+    mr(mf('4-Digit PIN','se-pin','text','','e.g. 1234'),mf('Confirm PIN','se-pin2','text','','Repeat PIN')),
+    ()=>{
+      const name=document.getElementById('se-name').value.trim();
+      const pin=document.getElementById('se-pin').value.trim();
+      const pin2=document.getElementById('se-pin2').value.trim();
+      if(!name){document.getElementById('ins-txt').textContent='Event name is required.';return;}
+      if(!/^\d{4}$/.test(pin)){document.getElementById('ins-txt').textContent='PIN must be exactly 4 digits.';return;}
+      if(pin!==pin2){document.getElementById('ins-txt').textContent='PINs do not match — event not saved.';return;}
+      const evtDateEl=document.getElementById('evt-date');
+      savedEvents[name]={
+        pin,
+        savedAt:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+        state:{
+          els:JSON.parse(JSON.stringify(S.els)),
+          zonePolys:JSON.parse(JSON.stringify(S.zonePolys)),
+          adaPaths:JSON.parse(JSON.stringify(S.adaPaths)),
+          dims:JSON.parse(JSON.stringify(S.dims)),
+          firstAids:JSON.parse(JSON.stringify(S.firstAids)),
+          evtName:document.getElementById('evt-name').value.trim(),
+          evtDate:evtDateEl?evtDateEl.value:'',
+          mapCenter:S.mapCenter,mapZoom:S.mapZoom,
+          hasSoftSurface:S.hasSoftSurface,idCtr:S.idCtr
+        }
+      };
+      try{localStorage.setItem('esm_events_v1',JSON.stringify(savedEvents));}catch(er){}
+      document.getElementById('ins-txt').textContent=`"${name}" saved — use Open to resume later.`;
+    },'Save');
 }
-document.getElementById('vsave').addEventListener('click',()=>{
-  modal('Save Venue','Name this venue. Zones and map position will be saved.',mf('Venue Name','vname','text','','e.g. Freemason Harbor Park'),()=>{
-    const name=document.getElementById('vname').value.trim();if(!name)return;
-    S.venues[name]={
-      zonePolys:JSON.parse(JSON.stringify(S.zonePolys)),
-      venueWidthFt:S.venueWidthFt,scale:S.scale,
-      mapCenter:S.mapCenter,mapZoom:S.mapZoom
-    };
-    try{localStorage.setItem('esm_venues2',JSON.stringify(S.venues));}catch(er){}
-    loadVenueList();document.getElementById('vsel').value=name;
-  },'Save');
-});
-document.getElementById('vload').addEventListener('click',()=>{
-  const name=document.getElementById('vsel').value;if(!name||!S.venues[name])return;
-  const v=S.venues[name];
-  if(v.zonePolys)S.zonePolys=JSON.parse(JSON.stringify(v.zonePolys));
-  S.els=[];S.firstAids=[];S.adaPaths=[];S.curAda=[];S.dims=[];S.hasSoftSurface=null;S.undoStack=[];
-  if(gmap&&v.mapCenter&&v.mapZoom){gmap.setCenter(v.mapCenter);gmap.setZoom(v.mapZoom);}
-  redrawZones();renderEls();drawAda();drawDims();renderFal();renderVendorList();runRules();
-});
-document.getElementById('vdel').addEventListener('click',()=>{
-  const name=document.getElementById('vsel').value;if(!name||!S.venues[name])return;
-  if(!confirm(`Delete venue "${name}"?`))return;
-  delete S.venues[name];try{localStorage.setItem('esm_venues2',JSON.stringify(S.venues));}catch(er){}loadVenueList();
-});
+
+function openEvents(){
+  const names=Object.keys(savedEvents);
+  if(!names.length){
+    modal('Open Event','No saved events found.',
+      '<div style="font-size:11px;color:var(--tx3);text-align:center;padding:8px 0">No events have been saved yet. Click Save Event to preserve your work.</div>',
+      null,'Close');
+    return;
+  }
+  modal('Open Saved Event','Select an event and enter its PIN to resume.',
+    msel('Event','oe-sel',names.map(n=>({v:n,t:`${n} — ${savedEvents[n].savedAt}`})))+
+    mf('4-Digit PIN','oe-pin','password','','Enter your PIN'),
+    ()=>{
+      const name=document.getElementById('oe-sel').value;
+      const pin=document.getElementById('oe-pin').value.trim();
+      if(!savedEvents[name])return;
+      if(savedEvents[name].pin!==pin){document.getElementById('ins-txt').textContent='Incorrect PIN — event not loaded.';return;}
+      const state=savedEvents[name].state;
+      pushUndo();
+      S.els=state.els||[];S.zonePolys=state.zonePolys||[];S.adaPaths=state.adaPaths||[];
+      S.dims=state.dims||[];S.firstAids=state.firstAids||[];
+      S.hasSoftSurface=state.hasSoftSurface!==undefined?state.hasSoftSurface:null;
+      if(state.idCtr)S.idCtr=state.idCtr;
+      const evtNEl=document.getElementById('evt-name');const evtDEl=document.getElementById('evt-date');
+      if(evtNEl&&state.evtName)evtNEl.value=state.evtName;
+      if(evtDEl&&state.evtDate)evtDEl.value=state.evtDate;
+      if(gmap&&state.mapCenter&&state.mapZoom){gmap.setCenter(state.mapCenter);gmap.setZoom(state.mapZoom);}
+      redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+      document.getElementById('ins-txt').textContent=`"${name}" loaded.`;
+    },'Open');
+}
+
+document.getElementById('bsave-evt').addEventListener('click',saveEvent);
+document.getElementById('bopen').addEventListener('click',openEvents);
 
 // ── Clear ──────────────────────────────────────────────────────────────────
 document.getElementById('bclr').addEventListener('click',()=>{
@@ -1073,7 +1158,7 @@ document.getElementById('bclr').addEventListener('click',()=>{
     `<div class="mf"><label>Clear</label><select id="clr-opt"><option value="els">Elements &amp; measurements</option><option value="zones">Zones &amp; borders only</option><option value="dims">Measurements only</option><option value="all">Everything — full reset</option></select></div>`,
     ()=>{
       pushUndo();const v=document.getElementById('clr-opt').value;
-      if(v==='els'||v==='all'){S.els=[];S.firstAids=[];S.selId=null;renderEls();renderFal();renderVendorList();}
+      if(v==='els'||v==='all'){S.els=[];S.firstAids=[];S.selId=null;renderEls();renderSiteManagement();renderVendorList();}
       if(v==='els'||v==='dims'||v==='all'){S.dims=[];drawDims();}
       if(v==='zones'||v==='all'){S.zonePolys=[];redrawZones();}
       if(v==='all'){S.adaPaths=[];S.curAda=[];S.hasSoftSurface=null;S.undoStack=[];}
@@ -1150,6 +1235,8 @@ async function exportPDF(){
 
   // ── 2. Reverse-geocode map center for street address ─────────────────────
   const evtName=document.getElementById('evt-name').value.trim();
+  const evtDateRaw=document.getElementById('evt-date')?.value||'';
+  const evtDateDisplay=evtDateRaw?new Date(evtDateRaw+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'long',day:'numeric',year:'numeric'}):'';
   const searchVal=document.getElementById('map-search').value.trim();
   let venueAddr=searchVal;
   try{
@@ -1184,7 +1271,7 @@ async function exportPDF(){
   const titleMid=venueAddr?(titleH-1.2)/2:titleH/2;
   pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(255,255,255);
   pdf.text('SITEMAP',M,titleMid-0.5);
-  if(evtName){pdf.setFontSize(10);pdf.setFont('helvetica','normal');pdf.setTextColor(220,235,238);pdf.text('·  '+evtName,M+26,titleMid-0.5);}
+  if(evtName){pdf.setFontSize(10);pdf.setFont('helvetica','normal');pdf.setTextColor(220,235,238);pdf.text('·  '+evtName+(evtDateDisplay?' · '+evtDateDisplay:''),M+26,titleMid-0.5,{maxWidth:PW-M-40});}
   if(venueAddr){pdf.setFontSize(7.5);pdf.setFont('helvetica','normal');pdf.setTextColor(180,220,222);pdf.text(venueAddr,M,titleMid+5.5,{maxWidth:PW-2*M});}
 
   // ── 5. Map image — full width ─────────────────────────────────────────────
@@ -1206,9 +1293,12 @@ async function exportPDF(){
   function hexRgb(h){const c=(h||'#888').replace('#','');return[parseInt(c.slice(0,2),16)||128,parseInt(c.slice(2,4),16)||128,parseInt(c.slice(4,6),16)||128];}
 
   // ── 7. Draw zones ─────────────────────────────────────────────────────────
+  const pdfClosedBorders=S.zonePolys.filter(z=>z.type==='border'&&!z.open&&z.pts.length>=3);
   S.zonePolys.forEach(z=>{
     if(z.open||z.pts.length<3)return;
-    const d=ZD[z.type];const[r,g,b]=hexRgb(d.stroke);
+    const isSubzonePdf=z.type==='border'&&pdfClosedBorders.some(outer=>outer!==z&&isBorderNestedIn(z,outer));
+    const zStyle=isSubzonePdf?ZD_SUBZONE:(ZD[z.type]||ZD.border);
+    const[r,g,b]=hexRgb(zStyle.stroke);
     const pps=z.pts.map(p=>ll2pdf(p.lat,p.lng));
     pdf.setDrawColor(r,g,b);pdf.setLineWidth(z.type==='border'?0.6:0.35);
     if(z.type==='border')pdf.setLineDashPattern([2.5,1.5],0);else pdf.setLineDashPattern([],0);
@@ -1252,14 +1342,12 @@ async function exportPDF(){
     // Draw element
     const rotDeg=el.rot||0;
     const code=elCode(el,tnMap);
+    if(t.noRender)return;
     if(t.circle){
-      // Circle utility markers
+      // Circle utility markers — no label
       const r=Math.min(wMm,hMm)/2;
       pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
       pdf.circle(center.x,center.y,r,'FD');
-      const fs=Math.max(4,Math.min(6,r*1.2));
-      pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
-      if(r>2)pdf.text(code,center.x,center.y,{align:'center',baseline:'middle'});
     }else if(el.type==='ingress'){
       // Ingress: 2-way arrow shape
       const headW=Math.min(hMm*0.7,wMm*0.35);
@@ -1276,7 +1364,7 @@ async function exportPDF(){
       pdf.lines(aSegs,arrowPts[0].x,arrowPts[0].y,[1,1],'FD',true);
       const fs=Math.max(4,Math.min(7,wMm*0.7));
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
-      if(wMm>4)pdf.text(code,center.x,center.y,{align:'center',baseline:'middle',angle:rotDeg});
+      if(wMm>4){const tOff=fs*0.353*0.36;pdf.text(code,center.x,center.y+tOff,{align:'center',angle:-rotDeg});}
     }else{
       // Standard rotated rectangle
       const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
@@ -1287,11 +1375,11 @@ async function exportPDF(){
       const segLines=corners.slice(1).map((p,i)=>[p.x-corners[i].x,p.y-corners[i].y]);
       pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
       pdf.lines(segLines,corners[0].x,corners[0].y,[1,1],'FD',true);
-      const fs=Math.max(5,Math.min(8,Math.min(wMm,hMm)*0.9));
+      const fs=Math.max(5,Math.min(11,Math.min(wMm,hMm)*0.45));
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
       const dark=t.tent&&(el.tentType!=='food'&&el.tentType!=='cooking');
       pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
-      if(wMm>3&&hMm>3)pdf.text(code,center.x,center.y,{align:'center',baseline:'middle',angle:rotDeg});
+      if(wMm>3&&hMm>3){const tOff=fs*0.353*0.36;pdf.text(code,center.x,center.y+tOff,{align:'center',angle:-rotDeg});}
     }
   });
 
@@ -1299,67 +1387,96 @@ async function exportPDF(){
   pdf.setFillColor(248,248,246);pdf.rect(M,legY,PW-2*M,legH,'F');
   pdf.setDrawColor(210,205,195);pdf.setLineWidth(0.3);pdf.line(M,legY,PW-M,legY);
 
-  const legTotalW=PW-2*M; // 263mm
+  const legTotalW=PW-2*M;
   const borders=getClosedBorders();
   const showZones=borders.length>0;
+  const smTypesPdf=['electric','water','trash','extinguisher'];
+  const smLabelsPdf={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',extinguisher:'Fire Extinguisher'};
+  const smCountsPdf={};smTypesPdf.forEach(tp=>{const c=S.els.filter(e=>e.type===tp).length;if(c)smCountsPdf[tp]=c;});
+  const showSM=Object.keys(smCountsPdf).length>0||S.firstAids.length>0;
   const colGap=5;
-  const col1W=showZones?62:0;
-  const col3W=76;
-  const col2W=legTotalW-(showZones?col1W+colGap:0)-col3W-colGap;
+  const col1W=(showZones||showSM)?62:0;
+  const col3W=74;
+  const col2W=legTotalW-(col1W>0?col1W+colGap:0)-col3W-colGap;
   const col1X=M;
-  const col2X=M+(showZones?col1W+colGap:0);
+  const col2X=M+(col1W>0?col1W+colGap:0);
   const col3X=col2X+col2W+colGap;
   const legLineH=4.1;
   const legMaxY=legY+legH-3;
 
   // Legend column header helper
-  const lcolHdr=(txt,x,w)=>{
+  const lcolHdr=(txt,x,w,yBase)=>{
+    const yb=yBase||legY;
     pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);pdf.setTextColor(244,81,64);
-    pdf.text(txt,x,legY+5.5);
-    pdf.setDrawColor(244,81,64);pdf.setLineWidth(0.25);pdf.line(x,legY+6.8,x+w,legY+6.8);
+    pdf.text(txt,x,yb+5.5);
+    pdf.setDrawColor(244,81,64);pdf.setLineWidth(0.25);pdf.line(x,yb+6.8,x+w,yb+6.8);
   };
 
-  // ── Col 1: Boundary Zones ─────────────────────────────────────────────────
-  if(showZones){
-    lcolHdr('BOUNDARY ZONES',col1X,col1W-2);
-    const rawAreas=borders.map(b=>polyArea(b.pts)/(S.scale*S.scale));
-    const parentIdxPdf=borders.map((inner,i)=>{
-      let best=-1,bestA=Infinity;
-      borders.forEach((outer,j)=>{if(i!==j&&isBorderNestedIn(inner,outer)&&rawAreas[j]<bestA){best=j;bestA=rawAreas[j];}});
-      return best;
-    });
-    const netAreasPdf=rawAreas.slice();
-    borders.forEach((_,i)=>{if(parentIdxPdf[i]>=0)netAreasPdf[parentIdxPdf[i]]-=rawAreas[i];});
+  // track overflow for page 2
+  let p2Content=[];
+
+  // ── Col 1: Boundary Zones + Site Management ───────────────────────────────
+  if(showZones||showSM){
     let zy=legY+10;
-    borders.forEach((b,i)=>{
-      if(zy>=legMaxY)return;
-      const label=b.label||(parentIdxPdf[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`);
-      const sqFt=Math.round(Math.max(0,netAreasPdf[i]));
-      const cap=Math.max(0,Math.floor(netAreasPdf[i]/10));
-      pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);pdf.setTextColor(28,27,46);
-      pdf.text(label,col1X,zy);zy+=3.6;
-      pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);pdf.setTextColor(90,88,120);
-      pdf.text(`${sqFt.toLocaleString()} sq ft`,col1X,zy);zy+=legLineH;
-      pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);pdf.setTextColor(42,95,100);
-      pdf.text(`Est. Capacity: ~${cap.toLocaleString()}`,col1X,zy);zy+=legLineH+1.5;
-    });
+    if(showZones){
+      lcolHdr('BOUNDARY ZONES',col1X,col1W-2);
+      const rawAreas=borders.map(b=>polyArea(b.pts)/(S.scale*S.scale));
+      const parentIdxPdf=borders.map((inner,i)=>{
+        let best=-1,bestA=Infinity;
+        borders.forEach((outer,j)=>{if(i!==j&&isBorderNestedIn(inner,outer)&&rawAreas[j]<bestA){best=j;bestA=rawAreas[j];}});
+        return best;
+      });
+      const netAreasPdf=rawAreas.slice();
+      borders.forEach((_,i)=>{if(parentIdxPdf[i]>=0)netAreasPdf[parentIdxPdf[i]]-=rawAreas[i];});
+      borders.forEach((b,i)=>{
+        if(zy>=legMaxY){p2Content.push({type:'zone',label:b.label||(parentIdxPdf[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`),sq:Math.round(Math.max(0,netAreasPdf[i])),cap:Math.max(0,Math.floor(netAreasPdf[i]/10))});return;}
+        const label=b.label||(parentIdxPdf[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`);
+        const sqFt=Math.round(Math.max(0,netAreasPdf[i]));
+        const cap=Math.max(0,Math.floor(netAreasPdf[i]/10));
+        pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);pdf.setTextColor(28,27,46);
+        pdf.text(label,col1X,zy);zy+=3.6;
+        pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);pdf.setTextColor(90,88,120);
+        pdf.text(`${sqFt.toLocaleString()} sq ft`,col1X,zy);zy+=legLineH;
+        pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);pdf.setTextColor(42,95,100);
+        pdf.text(`Est. Capacity: ~${cap.toLocaleString()}`,col1X,zy);zy+=legLineH+1.5;
+      });
+    }
+    if(showSM&&zy<legMaxY-8){
+      pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);pdf.setTextColor(244,81,64);
+      pdf.text('SITE MANAGEMENT',col1X,zy+1.5);
+      pdf.setDrawColor(244,81,64);pdf.setLineWidth(0.25);pdf.line(col1X,zy+2.8,col1X+col1W-2,zy+2.8);
+      zy+=5;
+      smTypesPdf.forEach(tp=>{
+        if(!smCountsPdf[tp])return;
+        if(zy>=legMaxY){p2Content.push({type:'sm',label:`${smLabelsPdf[tp]} (${smCountsPdf[tp]})`});return;}
+        pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(28,27,46);
+        pdf.text(`${smLabelsPdf[tp]} (${smCountsPdf[tp]})`,col1X,zy);zy+=legLineH;
+      });
+      S.firstAids.forEach(fa=>{
+        if(zy>=legMaxY){p2Content.push({type:'sm',label:`FA: ${fa.name} — ${fa.cert}`});return;}
+        pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(28,27,46);
+        let faTxt=`FA: ${fa.name} — ${fa.cert}`;
+        while(faTxt.length>1&&pdf.getTextWidth(faTxt)>col1W-2)faTxt=faTxt.slice(0,-1);
+        pdf.text(faTxt,col1X,zy);zy+=legLineH;
+      });
+    }
   }
 
-  // ── Col 2: Activations (two sub-columns) ─────────────────────────────────
+  // ── Col 2: Activations (non-site-management, two sub-columns) ────────────
   lcolHdr('ACTIVATIONS',col2X,col2W-2);
   const actColW=Math.floor((col2W-4)/2);
   let ax=col2X,ay=legY+10,inActCol2=false;
-  if(S.els.length){
-    S.els.forEach(el=>{
+  const actElsPdf=S.els.filter(e=>{const t=TYPES[e.type]||TYPES.custom;return!t.circle&&!t.noRender;});
+  if(actElsPdf.length){
+    actElsPdf.forEach(el=>{
       if(!inActCol2&&ay>=legMaxY){ax=col2X+actColW+4;ay=legY+10;inActCol2=true;}
-      if(ay>=legMaxY)return;
+      if(ay>=legMaxY){p2Content.push({type:'act',code:elCode(el,tnMap),name:(el.vendorName||(TYPES[el.type]||TYPES.custom).lbl)+((['customtent','custom'].includes(el.type))?` (${el.wFt}×${el.hFt} ft)`:'')});return;}
       const isCustomEl=['customtent','custom'].includes(el.type);
       const baseName=el.vendorName||(TYPES[el.type]||TYPES.custom).lbl;
       const name=isCustomEl?`${baseName} (${el.wFt}×${el.hFt} ft)`:baseName;
       pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(244,81,64);
       pdf.text(elCode(el,tnMap),ax,ay);
       pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(28,27,46);
-      // Truncate name to fit column
       let nm=name;const nmMax=actColW-13;
       while(nm.length>1&&pdf.getTextWidth(nm)>nmMax)nm=nm.slice(0,-1);
       if(nm!==name)nm=nm.slice(0,-1)+'…';
@@ -1377,9 +1494,9 @@ async function exportPDF(){
   const stdKey={
     stage:{r:167,g:139,b:250,l:'Stage'},truck:{r:239,g:68,b:68,l:'Food Truck'},
     gen:{r:251,g:191,b:36,l:'Generator'},ingress:{r:34,g:197,b:94,l:'Ingress/Egress'},
-    firstaid:{r:240,g:82,b:82,l:'First Aid Stn.'},extinguisher:{r:240,g:82,b:82,l:'Fire Ext.'},
     mix:{r:192,g:132,b:252,l:'Mix Platform'}
   };
+  const smCircleKey={electric:{r:251,g:189,b:47,l:'Electric Source'},water:{r:59,g:130,b:246,l:'Water Source'},trash:{r:139,g:147,b:168,l:'Trash Bin'},extinguisher:{r:240,g:82,b:82,l:'Fire Ext.'}};
   const tentBuckets={};const customGroups=new Map();
   S.els.forEach(el=>{
     if(['tent10','tent20','customtent'].includes(el.type)){
@@ -1395,6 +1512,10 @@ async function exportPDF(){
       seenStd.add(el.type);
       const cnt=S.els.filter(x=>x.type===el.type).length;
       keyRows.push({...stdKey[el.type],l:`${stdKey[el.type].l} (${cnt})`});
+    }else if(smCircleKey[el.type]&&!seenStd.has(el.type)){
+      seenStd.add(el.type);
+      const cnt=S.els.filter(x=>x.type===el.type).length;
+      keyRows.push({...smCircleKey[el.type],l:`${smCircleKey[el.type].l} (${cnt})`,circle:true});
     }
   });
   Object.values(tentBuckets).sort((a,tb)=>a.cooking-tb.cooking||a.wFt-tb.wFt||a.hFt-tb.hFt).forEach(t=>{
@@ -1405,13 +1526,24 @@ async function exportPDF(){
     const[cr,cg,cb]=hexRgb(c.color);
     keyRows.push({r:cr,g:cg,b:cb,l:`${c.name} (${c.count})`});
   });
-  if(S.zonePolys.some(z=>z.type==='border'&&!z.open))keyRows.push({r:251,g:189,b:47,l:'Venue Border'});
+  if(S.zonePolys.some(z=>z.type==='border'&&!z.open)){
+    if(pdfClosedBorders.some(z=>pdfClosedBorders.some(o=>o!==z&&isBorderNestedIn(z,o))))keyRows.push({r:45,g:212,b:160,l:'Sub-zone',zone:true});
+    keyRows.push({r:251,g:189,b:47,l:'Venue Border',zone:true});
+  }
+  if(S.zonePolys.some(z=>z.type==='restrict'&&!z.open))keyRows.push({r:240,g:82,b:82,l:'Restricted Zone',zone:true});
   if(S.adaPaths.length)keyRows.push({r:79,g:126,b:248,l:'ADA Path'});
   let ky=legY+10;
   keyRows.forEach(k=>{
-    if(ky>=legMaxY)return;
-    pdf.setFillColor(k.r,k.g,k.b);pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.15);
-    pdf.rect(col3X,ky-2.8,3,3,'FD');
+    if(ky>=legMaxY){p2Content.push({type:'key',k});return;}
+    if(k.circle){
+      pdf.setFillColor(k.r,k.g,k.b);pdf.circle(col3X+1.5,ky-1.5,1.5,'F');
+    }else if(k.zone){
+      pdf.setDrawColor(k.r,k.g,k.b);pdf.setFillColor(k.r,k.g,k.b,0.1);pdf.setLineWidth(0.4);
+      pdf.setLineDashPattern([1,0.8],0);pdf.rect(col3X,ky-2.8,3,3);pdf.setLineDashPattern([],0);
+    }else{
+      pdf.setFillColor(k.r,k.g,k.b);pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.15);
+      pdf.rect(col3X,ky-2.8,3,3,'FD');
+    }
     pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(28,27,46);
     let kl=k.l;const klMax=col3W-5;
     while(kl.length>1&&pdf.getTextWidth(kl)>klMax)kl=kl.slice(0,-1);
@@ -1419,6 +1551,33 @@ async function exportPDF(){
     pdf.text(kl,col3X+4.5,ky);
     ky+=legLineH;
   });
+
+  // ── Page 2 if overflow ────────────────────────────────────────────────────
+  if(p2Content.length){
+    pdf.addPage();
+    pdf.setFillColor(42,95,100);pdf.rect(0,0,PW,10,'F');
+    pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.setTextColor(255,255,255);
+    pdf.text('SITEMAP — Continued',M,7);
+    pdf.setFontSize(7);pdf.setFont('helvetica','normal');pdf.setTextColor(180,220,222);
+    pdf.text(evtName||'Event Site Plan',M+50,7);
+    pdf.setFillColor(248,248,246);pdf.rect(M,14,PW-2*M,PH-24,'F');
+    let p2y=22;
+    pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(244,81,64);
+    pdf.text('OVERFLOW CONTENT',M,p2y);p2y+=5;
+    p2Content.forEach(item=>{
+      if(item.type==='act'){
+        pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(244,81,64);pdf.text(item.code,M,p2y);
+        pdf.setFont('helvetica','normal');pdf.setTextColor(28,27,46);pdf.text(item.name,M+11,p2y);p2y+=legLineH;
+      }else if(item.type==='sm'||item.type==='zone'){
+        pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(28,27,46);pdf.text(item.label,M,p2y);p2y+=legLineH;
+      }else if(item.type==='key'&&item.k){
+        const k=item.k;
+        pdf.setFillColor(k.r,k.g,k.b);pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.15);
+        pdf.rect(M,p2y-2.8,3,3,'FD');
+        pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(28,27,46);pdf.text(k.l,M+4.5,p2y);p2y+=legLineH;
+      }
+    });
+  }
 
   // ── 11. Footer ────────────────────────────────────────────────────────────
   const footerY=PH-footerH;
@@ -1484,9 +1643,8 @@ async function init(){
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────
-try{const saved=localStorage.getItem('esm_venues2');if(saved)S.venues=JSON.parse(saved);}catch(er){}
 sz();
-loadVenueList();renderColorKey();renderVendorList();
+renderColorKey();renderVendorList();renderSiteManagement();
 // pointer-events: none on cw initially (select tool)
 cw.style.pointerEvents='none';
 init();
