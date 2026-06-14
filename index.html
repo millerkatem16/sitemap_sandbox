@@ -1328,7 +1328,7 @@ function startMapCapture(){
     }
 
     function showInstructions(){
-      instrCard.style.display='';
+      instrCard.style.display='block';
       prevWrap.style.display='none';
       capturedDataUrl=null;
     }
@@ -1428,7 +1428,7 @@ function startMapCapture(){
       capX=relX;capY=relY;capW=outW;capH=outH;
       prevImg.src=capturedDataUrl;
       instrCard.style.display='none';
-      prevWrap.style.display='';
+      prevWrap.style.display='block';
       dragging=false;
       rafId=requestAnimationFrame(animate);
       console.log('PREVIEW STATE SET — prevWrap display:',prevWrap.style.display,'instrCard display:',instrCard.style.display);
