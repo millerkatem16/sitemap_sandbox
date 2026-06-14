@@ -1334,21 +1334,23 @@ function startMapCapture(){
     }
 
     async function doCapture(){
+      console.log('CAPTURE STARTED');
       const r=getSelRect(sx,sy,ex,ey);
-      if(r.w<20||r.h<20)return;
+      console.log('Selection rect:',r.w.toFixed(0)+'×'+r.h.toFixed(0),'at',r.x.toFixed(0)+','+r.y.toFixed(0));
+      if(r.w<20||r.h<20){console.log('CAPTURE ABORTED — selection too small');return;}
       cancelAnimationFrame(rafId);
       ctx.clearRect(0,0,selCv.width,selCv.height);
       await new Promise(res=>setTimeout(res,80));
       const relX=r.x-cvRect.left,relY=r.y-cvRect.top;
       const outW=Math.round(r.w),outH=Math.round(r.h);
+      console.log('Canvas dims:',outW+'×'+outH,'cvRect offset:',relX.toFixed(0)+','+relY.toFixed(0));
 
-      // Build composite manually — html2canvas on the full map DOM fails due to
-      // Google Maps cross-origin iframes/WebGL canvases; this approach never throws.
       const comp=document.createElement('canvas');
       comp.width=outW;comp.height=outH;
       const cctx=comp.getContext('2d');
+      if(!cctx){console.error('CAPTURE FAILED — could not get 2d context');return;}
 
-      // 1. Satellite background via Static Maps API (fetched as blob → no canvas taint)
+      // 1. Satellite background via Static Maps API
       let bgDone=false;
       try{
         const ctr=pixelToLatLng(relX+outW/2,relY+outH/2);
@@ -1356,43 +1358,80 @@ function startMapCapture(){
         const maxD=640,ratio=Math.min(1,Math.min(maxD/outW,maxD/outH));
         const smW=Math.max(1,Math.round(outW*ratio)),smH=Math.max(1,Math.round(outH*ratio));
         const smUrl=`https://maps.googleapis.com/maps/api/staticmap?center=${ctr.lat},${ctr.lng}&zoom=${zoom}&size=${smW}x${smH}&maptype=satellite&key=${mapsApiKey}`;
+        console.log('Fetching static map:',smUrl.replace(mapsApiKey,'[KEY]'));
         const resp=await fetch(smUrl,{mode:'cors'});
+        console.log('Static map response: HTTP',resp.status,resp.statusText,'type:',resp.headers.get('content-type'));
         if(resp.ok){
           const blob=await resp.blob();
+          console.log('STATIC MAP FETCH COMPLETE — blob size:',blob.size,'bytes, type:',blob.type);
           const objUrl=URL.createObjectURL(blob);
+          console.log('Object URL created:',objUrl);
           await new Promise(res=>{
             const img=new Image();
-            img.onload=()=>{cctx.drawImage(img,0,0,outW,outH);URL.revokeObjectURL(objUrl);bgDone=true;res();};
-            img.onerror=()=>{URL.revokeObjectURL(objUrl);res();};
+            img.onload=()=>{
+              cctx.drawImage(img,0,0,outW,outH);
+              URL.revokeObjectURL(objUrl);
+              bgDone=true;
+              console.log('STATIC MAP DRAWN to canvas');
+              res();
+            };
+            img.onerror=(err)=>{
+              console.error('Static map image failed to load:',err);
+              URL.revokeObjectURL(objUrl);
+              res();
+            };
             img.src=objUrl;
           });
+        }else{
+          const txt=await resp.text().catch(()=>'(unreadable)');
+          console.warn('STATIC MAP FETCH FAILED — HTTP',resp.status,': ',txt.slice(0,200));
         }
-      }catch(e){}
-      if(!bgDone){cctx.fillStyle='#1c2b2c';cctx.fillRect(0,0,outW,outH);}
+      }catch(e){
+        console.error('STATIC MAP FETCH FAILED — exception:',e);
+      }
+      if(!bgDone){
+        console.log('Using dark fill fallback for background');
+        try{cctx.fillStyle='#1c2b2c';cctx.fillRect(0,0,outW,outH);}
+        catch(e){console.error('Dark fill also failed:',e);}
+      }
 
-      // 2. Canvas overlays — same-origin 2D canvases, always readable
-      [zc,bc,dc].forEach(oc=>{
-        try{if(oc&&oc.width>0)cctx.drawImage(oc,relX,relY,outW,outH,0,0,outW,outH);}catch(e){}
-      });
+      // 2. Canvas overlays
+      for(const [name,oc] of [['zc',zc],['bc',bc],['dc',dc]]){
+        try{
+          if(oc&&oc.width>0){
+            cctx.drawImage(oc,relX,relY,outW,outH,0,0,outW,outH);
+            console.log('Overlay drawn:',name,'('+oc.width+'×'+oc.height+')');
+          }else{
+            console.log('Overlay skipped:',name,'(empty or missing, width='+( oc?oc.width:'null')+')');
+          }
+        }catch(e){console.error('Overlay draw failed for',name,':',e);}
+      }
 
-      // 3. Placed elements — html2canvas on #el only (pure same-origin DOM, no map tiles)
+      // 3. DOM elements via html2canvas on #el only
       try{
+        console.log('Starting html2canvas on #el, region:',relX+','+relY,outW+'×'+outH);
         const elCv=await html2canvas(elDiv,{
           x:relX,y:relY,width:outW,height:outH,
           scale:1,useCORS:false,allowTaint:false,
           logging:false,imageTimeout:4000,backgroundColor:null
         });
+        console.log('ELEMENTS CAPTURED — canvas:',elCv.width+'×'+elCv.height);
         cctx.drawImage(elCv,0,0,outW,outH);
-      }catch(e){}
+      }catch(e){
+        console.error('html2canvas on #el failed:',e);
+      }
 
-      // Always produce a result — every step above is fault-tolerant
+      // Always produce a result
       capturedDataUrl=comp.toDataURL('image/jpeg',0.93);
+      console.log('capturedDataUrl length:',capturedDataUrl.length,'prefix:',capturedDataUrl.slice(0,60));
+      if(capturedDataUrl.length<10000)console.warn('WARNING — data URL is suspiciously short; canvas may be blank');
       capX=relX;capY=relY;capW=outW;capH=outH;
       prevImg.src=capturedDataUrl;
       instrCard.style.display='none';
       prevWrap.style.display='';
       dragging=false;
       rafId=requestAnimationFrame(animate);
+      console.log('PREVIEW STATE SET — prevWrap display:',prevWrap.style.display,'instrCard display:',instrCard.style.display);
     }
 
     function cleanup(){
