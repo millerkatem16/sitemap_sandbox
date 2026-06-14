@@ -94,8 +94,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .w.ok{background:rgba(45,212,160,0.08);color:#14705a;border-color:rgba(45,212,160,0.28)}
 
 /* ── Zone & tool button semantic states ──────────────────────────────────── */
-#zg:hover,#zg.active{background:rgba(45,212,160,0.22);color:#2dd4a0;border-color:rgba(45,212,160,0.45)}
-#zp:hover,#zp.active{background:rgba(139,147,168,0.22);color:#b8bdd0;border-color:rgba(139,147,168,0.45)}
 #zr:hover,#zr.active{background:rgba(240,82,82,0.22);color:#f58b8b;border-color:rgba(240,82,82,0.48)}
 #zbrd:hover,#zbrd.active{background:rgba(251,189,47,0.22);color:#FBBD2F;border-color:rgba(251,189,47,0.48)}
 #ze:hover,#ze.active{background:rgba(244,81,64,0.2);color:var(--crimson);border-color:rgba(244,81,64,0.42)}
@@ -194,8 +192,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <input id="map-search" type="text" placeholder="Search venue or address…" autocomplete="off" spellcheck="false">
   </div>
   <div class="tg">
-    <button class="tb" id="zg"><i class="ti ti-plant-2"></i>Grass</button>
-    <button class="tb" id="zp"><i class="ti ti-road"></i>Pave</button>
     <button class="tb" id="zr"><i class="ti ti-ban"></i>Restrict</button>
     <button class="tb" id="ze"><i class="ti ti-eraser"></i>Erase Zone</button>
   </div>
@@ -215,11 +211,20 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <option value="truck">Food Truck</option>
       <option value="gen">Generator</option>
       <option value="ingress">Ingress/Egress</option>
-      <option value="firstaid">First Aid Station</option>
-      <option value="extinguisher">Fire Extinguisher</option>
       <option value="mix">Mix Platform</option>
       <option value="─────────" disabled>─────────</option>
       <option value="custom">+ Add your own element…</option>
+    </select>
+  </div>
+  <div class="tg">
+    <select class="el-drop" id="sm-drop">
+      <option value="" disabled selected>Site Management</option>
+      <option value="firstaid">First Aid Station</option>
+      <option value="extinguisher">Fire Extinguisher</option>
+      <option value="─────────" disabled>─────────</option>
+      <option value="electric">Electric Source</option>
+      <option value="water">Water Source</option>
+      <option value="trash">Trash Bin</option>
     </select>
   </div>
   <div class="tg">
@@ -349,9 +354,12 @@ const TYPES={
   extinguisher:{lbl:'Fire Ext.',color:'#f05252',wFt:2,hFt:3,icon:'🧯',sqft:0,rot:true},
   mix:{lbl:'Mix Platform',color:'#c084fc',wFt:10,hFt:8,icon:'🎛',sqft:0,rot:true},
   custom:{lbl:'Custom',color:'#8b93a8',wFt:10,hFt:10,sqft:0,rot:true},
-  customtent:{lbl:'Custom Tent',color:'#2dd4a0',wFt:20,hFt:20,tent:true,sqft:1,rot:true}
+  customtent:{lbl:'Custom Tent',color:'#2dd4a0',wFt:20,hFt:20,tent:true,sqft:1,rot:true},
+  electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:3,hFt:3,sqft:0,circle:true,rot:false},
+  water:{lbl:'Water Source',color:'#3B82F6',wFt:3,hFt:3,sqft:0,circle:true,rot:false},
+  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:3,hFt:3,sqft:0,circle:true,rot:false}
 };
-const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'I',firstaid:'FA',extinguisher:'E',mix:'M',custom:'C',customtent:'T'};
+const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'I',firstaid:'FA',extinguisher:'E',mix:'M',custom:'C',customtent:'T',electric:'EL',water:'WS',trash:'BIN'};
 
 // ── Coordinate conversion ──────────────────────────────────────────────────
 function latLngToPixel(lat,lng){
@@ -439,11 +447,10 @@ function renderAll(){
 
 // ── Zones ──────────────────────────────────────────────────────────────────
 const ZD={
-  grass:{stroke:'#2dd4a0',fill:'rgba(45,212,160,0.05)',lbl:'GRASS'},
-  pave:{stroke:'#8b93a8',fill:'rgba(139,147,168,0.05)',lbl:'PAVE'},
   restrict:{stroke:'#f05252',fill:'rgba(240,82,82,0.05)',lbl:'RESTRICTED'},
   border:{stroke:'#FBBD2F',fill:'rgba(251,189,47,0.05)',lbl:'BOUNDARY'}
 };
+const ZD_SUBZONE={stroke:'#2dd4a0',fill:'rgba(45,212,160,0.08)',lbl:'SUB-ZONE'};
 let activePoly=null;
 
 function ptsToPixels(pts){
@@ -452,9 +459,19 @@ function ptsToPixels(pts){
 
 function redrawZones(){
   zcx.clearRect(0,0,zc.width,zc.height);
+  // Detect which border zones are sub-zones (nested inside another border)
+  const closedBorders=S.zonePolys.filter(z=>z.type==='border'&&!z.open&&z.pts.length>=3);
+  const subzoneSet=new Set();
+  closedBorders.forEach((inner,i)=>{
+    closedBorders.forEach((outer,j)=>{
+      if(i!==j&&isBorderNestedIn(inner,outer))subzoneSet.add(inner);
+    });
+  });
   S.zonePolys.forEach(z=>{
     if(z.pts.length<2)return;
-    const d=ZD[z.type],px=ptsToPixels(z.pts);
+    const baseD=ZD[z.type]||(z.type==='border'?ZD.border:ZD.restrict);
+    const d=(z.type==='border'&&subzoneSet.has(z))?ZD_SUBZONE:baseD;
+    const px=ptsToPixels(z.pts);
     zcx.save();
     zcx.beginPath();zcx.moveTo(px[0].x,px[0].y);px.forEach(p=>zcx.lineTo(p.x,p.y));
     const isBorder=z.type==='border';
@@ -465,7 +482,7 @@ function redrawZones(){
     if(!z.open&&z.pts.length>=3){
       const cx=px.reduce((s,p)=>s+p.x,0)/px.length,cy=px.reduce((s,p)=>s+p.y,0)/px.length;
       zcx.font='bold 9px Montserrat,sans-serif';zcx.fillStyle=d.stroke;zcx.globalAlpha=.65;
-      zcx.textAlign='center';zcx.textBaseline='middle';zcx.fillText(d.lbl,cx,cy);
+      zcx.textAlign='center';zcx.textBaseline='middle';zcx.fillText(z.label?z.label.toUpperCase():d.lbl,cx,cy);
       zcx.globalAlpha=1;zcx.textAlign='start';zcx.textBaseline='alphabetic';
     }
     zcx.restore();
@@ -583,19 +600,26 @@ function updateCap(){
   const netAreas=rawAreas.slice();
   borders.forEach((_,i)=>{if(parentIdx[i]>=0)netAreas[parentIdx[i]]-=rawAreas[i];});
 
-  let struc=0;S.els.forEach(e=>{const t=TYPES[e.type];if(t&&(t.sqft>0||['stage','truck','gen','mix','custom','customtent'].includes(e.type)))struc+=e.wFt*e.hFt;});
+  const structTypes=['stage','truck','gen','mix','custom','customtent'];
+  let struc=0;S.els.forEach(e=>{
+    const t=TYPES[e.type];
+    if(t&&(t.sqft>0||structTypes.includes(e.type))&&!t.circle){
+      const ePx=latLngToPixel(e.lat,e.lng);
+      if(borders.some(b=>pip(ePx,b.pts)))struc+=e.wFt*e.hFt;
+    }
+  });
   // Per-zone structural footprint: assign each structure to its smallest enclosing zone
   const zoneStruc=borders.map(()=>0);
   S.els.forEach(e=>{
     const t=TYPES[e.type];
-    if(!t||(!(t.sqft>0)&&!['stage','truck','gen','mix','custom','customtent'].includes(e.type)))return;
+    if(!t||t.circle||(!(t.sqft>0)&&!structTypes.includes(e.type)))return;
     const ePx=latLngToPixel(e.lat,e.lng);
     let bestZone=-1,bestArea=Infinity;
     borders.forEach((b,i)=>{if(pip(ePx,b.pts)&&rawAreas[i]<bestArea){bestZone=i;bestArea=rawAreas[i];}});
     if(bestZone>=0)zoneStruc[bestZone]+=e.wFt*e.hFt;
   });
   const totalFtSq=netAreas.reduce((s,a)=>s+Math.max(0,a),0);
-  const totalCap=Math.max(0,Math.floor((totalFtSq-struc)/8));
+  const totalCap=Math.max(0,Math.floor((totalFtSq-struc)/10));
 
   const bordersEl=document.getElementById('cap-borders');
   const multi=borders.length>1;
@@ -609,7 +633,7 @@ function updateCap(){
     const sub=parentIdx[i]>=0?` <span style="font-size:8px;color:var(--acc);font-weight:700;vertical-align:middle">SUB</span>`:'';
     const zs=zoneStruc[i];
     const sqFt=Math.round(Math.max(0,(multi?netAreas[i]:rawAreas[0])-zs));
-    const cap=Math.max(0,Math.floor(((multi?netAreas[i]:rawAreas[0])-zs)/8));
+    const cap=Math.max(0,Math.floor(((multi?netAreas[i]:rawAreas[0])-zs)/10));
     const escapedLabel=(b.label||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--brd)"><div style="flex:1;min-width:0"><input class="vl-inp zone-name-inp" type="text" data-zid="${b.zid}" value="${escapedLabel}" placeholder="${placeholder}" style="width:100%;margin-bottom:2px">${sub}<br><span style="font-size:9px;color:var(--tx3);font-family:var(--mono)">${sqFt.toLocaleString()} sq ft usable</span></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:4px"><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${cap.toLocaleString()}</span><button class="vl-del zone-del-btn" data-zid="${b.zid}" title="Remove zone">×</button></div></div>`;
   }).join('');
@@ -652,7 +676,7 @@ function runRules(){
   trucks.forEach(t=>{
     tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)} — 20ft required (~${Math.round(clr)}ft).`});t.hr=true;n.hr=true;}});
     trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} within 10ft of each other (~${Math.round(clr)}ft edge to edge).`});t.hr=true;o.hr=true;}});
-    const z=zoneAt(ecx(t),ecy(t));if(z==='grass'){warns.push({type:'hard',msg:`${N(t)} on grass — vehicles must be on pavement.`});t.hr=true;}if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} in restricted zone.`});t.hr=true;}
+    const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} in restricted zone.`});t.hr=true;}
   });
   gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`});});
   if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:'No ingress/egress placed.'});
@@ -697,8 +721,11 @@ function renderEls(){
 
     const icon=document.createElement('div');icon.className='ei';
     if(t.tent){
-      const isFood=el.tentType==='food';
-      icon.style.cssText=`width:${w}px;height:${h}px;background:${isFood?'#facc15':'#fff'};border-color:${isFood?'#eab308':t.color};border-width:2.5px;`;
+      const isCooking=el.tentType==='cooking'||el.tentType==='food';
+      icon.style.cssText=`width:${w}px;height:${h}px;background:${isCooking?'#facc15':'#fff'};border-color:${isCooking?'#eab308':t.color};border-width:2.5px;`;
+    }else if(t.circle){
+      const d=Math.min(w,h);
+      icon.style.cssText=`width:${d}px;height:${d}px;background:${t.color};border:2px solid ${t.color};border-radius:50%;`;
     }else if(el.type==='truck'){
       icon.style.cssText=`width:${w}px;height:${h}px;background:#ef4444;border-color:#b91c1c;border-width:2px;`;
     }else if(el.type==='ingress'){
@@ -841,7 +868,7 @@ function place(type,x,y){
   const t=TYPES[type]||TYPES.custom;
   const base=(extra={})=>({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:t.lbl,vendorName:'',rot:0,hr:false,sr:false,...extra});
   if(type==='tent10'||type==='tent20'){
-    modal(`Place ${t.lbl}`,'Label this tent and select its use type.',mf('Tent Label','tlbl','text','','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'nonfood',t:'Non-food / Non-beverage'},{v:'food',t:'Food or Beverage'}]),()=>{
+    modal(`Place ${t.lbl}`,'Label this tent and select its use type.',mf('Tent Label','tlbl','text','','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'vendor',t:'Vendor / Activity'},{v:'event',t:'Event Use'},{v:'cooking',t:'Cooking'}]),()=>{
       pushUndo();const lbl=document.getElementById('tlbl').value.trim()||t.lbl;
       S.els.push(base({label:lbl,vendorName:lbl,tentType:document.getElementById('tent-type').value}));
       renderVendorList();renderEls();runRules();
@@ -851,7 +878,7 @@ function place(type,x,y){
     modal('Add Custom Tent Size','Specify dimensions and use type. Tent-to-food-truck clearance rules still apply.',
       mf('Tent Label','ctlbl','text','','e.g. 20×40 Frame Tent')+
       mr(mf('Width (ft)','ctw','number','20'),mf('Length (ft)','ctl','number','40'))+
-      msel('Tent Use','ct-type',[{v:'nonfood',t:'Non-food / Non-beverage'},{v:'food',t:'Food or Beverage'}]),
+      msel('Tent Use','ct-type',[{v:'vendor',t:'Vendor / Activity'},{v:'event',t:'Event Use'},{v:'cooking',t:'Cooking'}]),
       ()=>{
         pushUndo();
         const lbl=document.getElementById('ctlbl').value.trim()||'Custom Tent';
@@ -901,19 +928,19 @@ function place(type,x,y){
 }
 
 // ── Tool management ────────────────────────────────────────────────────────
-const ZONE_TOOLS=['grass','pave','restrict','border','erase'];
-const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','firstaid','extinguisher','mix','custom'];
+const ZONE_TOOLS=['restrict','border','erase'];
+const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','firstaid','extinguisher','mix','custom','electric','water','trash'];
 const DRAWING_TOOLS=[...ZONE_TOOLS,'ada','dim'];
 
 function setTool(id){
   S.tool=id;
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
-  const m={select:'bsel',ada:'ba',dim:'bdim',grass:'zg',pave:'zp',restrict:'zr',border:'zbrd',erase:'ze'};
+  const m={select:'bsel',ada:'ba',dim:'bdim',restrict:'zr',border:'zbrd',erase:'ze'};
   const btn=document.getElementById(m[id]);if(btn)btn.classList.add('active');
   // Select passes clicks through to map; every other tool needs canvas input
   cw.style.pointerEvents=id==='select'?'none':'auto';
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'?'crosshair':'default';
-  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',firstaid:'Click to place a first aid station',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',grass:'Click corners to draw grass zone · Double-click to close',pave:'Click corners to draw pavement zone · Double-click to close',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click corners to draw venue border · Double-click to close',erase:'Click inside a zone or border to remove it'};
+  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',firstaid:'Click to place a first aid station',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click corners to draw venue border · Double-click to close',erase:'Click inside a zone or border to remove it'};
   document.getElementById('ins-txt').textContent=msgs[id]||'';
   if(!ZONE_TOOLS.includes(id))activePoly=null;if(id!=='dim')dimStart=null;
 }
@@ -945,7 +972,7 @@ cw.addEventListener('mousemove',e=>{
   if(S.tool==='dim'&&dimStart){drawDims();drawDimArrow(dcx,dimStart.x,dimStart.y,x,y,true);}
   if(ZONE_TOOLS.includes(S.tool)&&activePoly&&activePoly.open){
     redrawZones();
-    const d=ZD[activePoly.type];
+    const d=ZD[activePoly.type]||ZD.border;
     const px=ptsToPixels(activePoly.pts);
     zcx.save();zcx.strokeStyle=d.stroke;zcx.lineWidth=2;zcx.setLineDash([5,4]);zcx.globalAlpha=.45;
     zcx.beginPath();zcx.moveTo(px[0].x,px[0].y);px.forEach(p=>zcx.lineTo(p.x,p.y));zcx.lineTo(x,y);
@@ -997,7 +1024,7 @@ document.getElementById('zbrd-vip').addEventListener('click',()=>{
 });
 
 // ── Tool buttons ───────────────────────────────────────────────────────────
-[['bsel','select'],['zg','grass'],['zp','pave'],['zr','restrict'],['ze','erase'],['bdim','dim']].forEach(([id,tool])=>{
+[['bsel','select'],['zr','restrict'],['ze','erase'],['bdim','dim']].forEach(([id,tool])=>{
   const b=document.getElementById(id);if(b)b.addEventListener('click',()=>setTool(tool));
 });
 document.getElementById('ba').addEventListener('click',()=>{
@@ -1007,6 +1034,7 @@ document.getElementById('ba').addEventListener('click',()=>{
     ()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');
 });
 document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
+document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
 
 // ── Venue save/load ────────────────────────────────────────────────────────
 function loadVenueList(){
@@ -1056,8 +1084,8 @@ document.getElementById('bclr').addEventListener('click',()=>{
 // ── Color key ──────────────────────────────────────────────────────────────
 function renderColorKey(){
   const rows=[
-    {type:'swatch',bg:'#fff',bord:'#2dd4a0',lbl:'Non-food Tent',dim:'10×10 or 10×20 ft'},
-    {type:'swatch',bg:'#facc15',bord:'#eab308',lbl:'Food / Beverage Tent',dim:'10×10 or 10×20 ft'},
+    {type:'swatch',bg:'#fff',bord:'#2dd4a0',lbl:'Vendor/Activity Tent',dim:'Non-cooking use'},
+    {type:'swatch',bg:'#facc15',bord:'#eab308',lbl:'Cooking Tent',dim:'Cooking use — food safety rules apply'},
     {type:'swatch',bg:'#ef4444',bord:'#b91c1c',lbl:'Food Truck',dim:'20×8 ft (default)'},
     {type:'swatch',bg:'#a78bfa25',bord:'#a78bfa',lbl:'Stage',dim:'20×16 ft (default)'},
     {type:'swatch',bg:'rgba(34,197,94,0.2)',bord:'#22c55e',lbl:'Ingress / Egress',dim:'10+ ft wide'},
@@ -1065,16 +1093,19 @@ function renderColorKey(){
     {type:'swatch',bg:'#fbbf2425',bord:'#fbbf24',lbl:'Generator',dim:'6×6 ft'},
     {type:'swatch',bg:'#c084fc25',bord:'#c084fc',lbl:'Mix Platform',dim:'10×8 ft'},
     {type:'swatch',bg:'#8b93a825',bord:'#8b93a8',lbl:'Custom Element',dim:'User-defined'},
+    {type:'circle',color:'#FBBD2F',lbl:'Electric Source',dim:'Utility marker'},
+    {type:'circle',color:'#3B82F6',lbl:'Water Source',dim:'Utility marker'},
+    {type:'circle',color:'#8b93a8',lbl:'Trash Bin',dim:'Utility marker'},
     {type:'line',color:'rgba(79,126,248,0.65)',lbl:'ADA Path',dim:'Accessible routes'},
     {type:'line',color:'#f5a623',lbl:'Dimension',dim:'Measured distances'},
-    {type:'zone',color:'#2dd4a0',lbl:'Grass Zone',dim:'Natural surface'},
-    {type:'zone',color:'#8b93a8',lbl:'Pave Zone',dim:'Hard surface'},
     {type:'zone',color:'#f05252',lbl:'Restricted Zone',dim:'Off-limits area'},
-    {type:'zone',color:'#f5a623',lbl:'Venue Border',dim:'Event boundary / capacity'}
+    {type:'zone',color:'#f5a623',lbl:'Venue Border',dim:'Event boundary / capacity'},
+    {type:'zone',color:'#2dd4a0',lbl:'Sub-zone',dim:'VIP, Beer Garden, etc.'}
   ];
   document.getElementById('ckey').innerHTML=rows.map(r=>{
     let sw;
     if(r.type==='swatch')sw=`<div class="ck-swatch" style="background:${r.bg};border-color:${r.bord}"></div>`;
+    else if(r.type==='circle')sw=`<div class="ck-swatch" style="background:${r.color};border-color:${r.color};border-radius:50%"></div>`;
     else if(r.type==='line')sw=`<div class="ck-line" style="background:${r.color}"></div>`;
     else sw=`<div class="ck-zone" style="border-color:${r.color};background:${r.color}18"></div>`;
     return`<div class="ck-row">${sw}<div><span>${r.lbl}</span>${r.dim?`<div style="font-size:8px;color:var(--tx3);margin-top:1px">${r.dim}</div>`:''}</div></div>`;
@@ -1214,27 +1245,54 @@ async function exportPDF(){
     const center=ll2pdf(el.lat,el.lng);
     const wMm=el.wFt*ftToMm,hMm=el.hFt*ftToMm;
     let fr=255,fg=255,fb=255,dr=180,dg=180,db=180;
-    if(t.tent){const food=el.tentType==='food';fr=food?250:255;fg=food?204:255;fb=food?21:255;[dr,dg,db]=food?[234,179,8]:[45,212,160];}
+    if(t.tent){const isCooking=el.tentType==='cooking'||el.tentType==='food';fr=isCooking?250:255;fg=isCooking?204:255;fb=isCooking?21:255;[dr,dg,db]=isCooking?[234,179,8]:[45,212,160];}
     else if(el.type==='truck'){[fr,fg,fb]=[239,68,68];[dr,dg,db]=[185,28,28];}
     else if(el.type==='ingress'){[fr,fg,fb]=[34,197,94];[dr,dg,db]=[22,163,74];}
     else{[fr,fg,fb]=hexRgb(el.color||t.color);dr=Math.max(0,fr-50);dg=Math.max(0,fg-50);db=Math.max(0,fb-50);}
-    // Draw as rotated polygon so el.rot is respected
+    // Draw element
     const rotDeg=el.rot||0;
-    const rad=rotDeg*Math.PI/180;
-    const cos=Math.cos(rad),sin=Math.sin(rad);
-    const hw=wMm/2,hh=hMm/2;
-    const corners=[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([dx,dy])=>({
-      x:center.x+dx*cos-dy*sin,y:center.y+dx*sin+dy*cos
-    }));
-    const segLines=corners.slice(1).map((p,i)=>[p.x-corners[i].x,p.y-corners[i].y]);
-    pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
-    pdf.lines(segLines,corners[0].x,corners[0].y,[1,1],'FD',true);
     const code=elCode(el,tnMap);
-    const fs=Math.max(4,Math.min(8,wMm*1.4));
-    pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
-    const dark=t.tent&&el.tentType!=='food';
-    pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
-    if(wMm>2&&hMm>2)pdf.text(code,center.x,center.y+fs*0.18,{align:'center',angle:rotDeg});
+    if(t.circle){
+      // Circle utility markers
+      const r=Math.min(wMm,hMm)/2;
+      pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
+      pdf.circle(center.x,center.y,r,'FD');
+      const fs=Math.max(4,Math.min(6,r*1.2));
+      pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
+      if(r>2)pdf.text(code,center.x,center.y,{align:'center',baseline:'middle'});
+    }else if(el.type==='ingress'){
+      // Ingress: 2-way arrow shape
+      const headW=Math.min(hMm*0.7,wMm*0.35);
+      const bodyH=hMm*0.4;
+      const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
+      const arrowPts=[
+        [-wMm/2,0],[-wMm/2+headW,-hMm/2],[-wMm/2+headW,-bodyH/2],
+        [wMm/2-headW,-bodyH/2],[wMm/2-headW,-hMm/2],[wMm/2,0],
+        [wMm/2-headW,hMm/2],[wMm/2-headW,bodyH/2],
+        [-wMm/2+headW,bodyH/2],[-wMm/2+headW,hMm/2]
+      ].map(([dx,dy])=>({x:center.x+dx*cos2-dy*sin2,y:center.y+dx*sin2+dy*cos2}));
+      const aSegs=arrowPts.slice(1).map((p,i)=>[p.x-arrowPts[i].x,p.y-arrowPts[i].y]);
+      pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
+      pdf.lines(aSegs,arrowPts[0].x,arrowPts[0].y,[1,1],'FD',true);
+      const fs=Math.max(4,Math.min(7,wMm*0.7));
+      pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
+      if(wMm>4)pdf.text(code,center.x,center.y,{align:'center',baseline:'middle',angle:rotDeg});
+    }else{
+      // Standard rotated rectangle
+      const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
+      const hw=wMm/2,hh=hMm/2;
+      const corners=[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([dx,dy])=>({
+        x:center.x+dx*cos2-dy*sin2,y:center.y+dx*sin2+dy*cos2
+      }));
+      const segLines=corners.slice(1).map((p,i)=>[p.x-corners[i].x,p.y-corners[i].y]);
+      pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
+      pdf.lines(segLines,corners[0].x,corners[0].y,[1,1],'FD',true);
+      const fs=Math.max(5,Math.min(8,Math.min(wMm,hMm)*0.9));
+      pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
+      const dark=t.tent&&(el.tentType!=='food'&&el.tentType!=='cooking');
+      pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
+      if(wMm>3&&hMm>3)pdf.text(code,center.x,center.y,{align:'center',baseline:'middle',angle:rotDeg});
+    }
   });
 
   // ── 10. Legend strip (bottom) ─────────────────────────────────────────────
@@ -1277,7 +1335,7 @@ async function exportPDF(){
       if(zy>=legMaxY)return;
       const label=b.label||(parentIdxPdf[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`);
       const sqFt=Math.round(Math.max(0,netAreasPdf[i]));
-      const cap=Math.max(0,Math.floor(netAreasPdf[i]/8));
+      const cap=Math.max(0,Math.floor(netAreasPdf[i]/10));
       pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);pdf.setTextColor(28,27,46);
       pdf.text(label,col1X,zy);zy+=3.6;
       pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);pdf.setTextColor(90,88,120);
@@ -1325,9 +1383,9 @@ async function exportPDF(){
   const tentBuckets={};const customGroups=new Map();
   S.els.forEach(el=>{
     if(['tent10','tent20','customtent'].includes(el.type)){
-      const food=el.tentType==='food';
-      const key=`${food?'food':'nonfood'}|${el.wFt}|${el.hFt}`;
-      if(!tentBuckets[key])tentBuckets[key]={food,wFt:el.wFt,hFt:el.hFt,count:0};
+      const cooking=el.tentType==='cooking'||el.tentType==='food';
+      const key=`${cooking?'cooking':'vendor'}|${el.wFt}|${el.hFt}`;
+      if(!tentBuckets[key])tentBuckets[key]={cooking,wFt:el.wFt,hFt:el.hFt,count:0};
       tentBuckets[key].count++;
     }else if(el.type==='custom'){
       const ck=el.color||'#8b93a8';
@@ -1339,9 +1397,9 @@ async function exportPDF(){
       keyRows.push({...stdKey[el.type],l:`${stdKey[el.type].l} (${cnt})`});
     }
   });
-  Object.values(tentBuckets).sort((a,tb)=>a.food-tb.food||a.wFt-tb.wFt||a.hFt-tb.hFt).forEach(t=>{
-    keyRows.unshift({r:t.food?250:255,g:t.food?204:255,b:t.food?21:255,
-      l:`${t.food?'Food/Bev':'Non-food'} Tent ${t.wFt}×${t.hFt} ft (${t.count})`});
+  Object.values(tentBuckets).sort((a,tb)=>a.cooking-tb.cooking||a.wFt-tb.wFt||a.hFt-tb.hFt).forEach(t=>{
+    keyRows.unshift({r:t.cooking?250:255,g:t.cooking?204:255,b:t.cooking?21:255,
+      l:`${t.cooking?'Cooking':'Vendor/Activity'} Tent ${t.wFt}×${t.hFt} ft (${t.count})`});
   });
   customGroups.forEach(c=>{
     const[cr,cg,cb]=hexRgb(c.color);
