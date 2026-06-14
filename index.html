@@ -801,7 +801,7 @@ function renderVendorList(){
   const tnMap=getTypeNums();
   const active=document.activeElement,wasId=active&&active.classList&&active.classList.contains('vl-inp')?active.dataset.id:null;
   if(!S.els.length){vl.innerHTML='<div style="font-size:10px;color:var(--tx3)">No elements placed yet</div>';return;}
-  vl.innerHTML=S.els.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');return`<div class="vl-row"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${(TYPES[el.type]||TYPES.custom).lbl}"><button class="vl-del" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
+  vl.innerHTML=S.els.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');const isCustom=['customtent','custom'].includes(el.type);const dimBadge=isCustom?`<span style="font-size:9px;color:var(--tx3);flex-shrink:0;white-space:nowrap">${el.wFt}×${el.hFt} ft</span>`:'';return`<div class="vl-row"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${(TYPES[el.type]||TYPES.custom).lbl}">${dimBadge}<button class="vl-del" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
   vl.querySelectorAll('.vl-inp').forEach(inp=>{
     inp.addEventListener('input',ev=>{const id=parseInt(ev.target.dataset.id),found=S.els.find(x=>x.id===id);if(found)found.vendorName=ev.target.value;});
     inp.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const all=[...vl.querySelectorAll('.vl-inp')],idx=all.indexOf(ev.target);if(idx<all.length-1)all[idx+1].focus();else ev.target.blur();}});
@@ -1117,10 +1117,24 @@ async function exportPDF(){
     if(resp.ok){const blob=await resp.blob();mapDataUrl=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);});}
   }catch(e){console.warn('Static map failed',e);}
 
-  // ── 2. Page metrics ───────────────────────────────────────────────────────
+  // ── 2. Reverse-geocode map center for street address ─────────────────────
+  const evtName=document.getElementById('evt-name').value.trim();
+  const searchVal=document.getElementById('map-search').value.trim();
+  let venueAddr=searchVal;
+  try{
+    const geocoder=new google.maps.Geocoder();
+    await new Promise(resolve=>{
+      geocoder.geocode({location:gmap.getCenter()},(results,status)=>{
+        if(status==='OK'&&results[0])venueAddr=results[0].formatted_address;
+        resolve();
+      });
+    });
+  }catch(e){}
+
+  // ── 3. Page metrics ───────────────────────────────────────────────────────
   const pdf=new jsPDF({orientation:'l',unit:'mm',format:'letter'});
   const PW=279,PH=216,M=8;
-  const titleH=12,legH=52,footerH=7;
+  const titleH=venueAddr?16:12,legH=52,footerH=7;
   const imgX=M,imgY=titleH+2;
   // Map: full page width, aspect-correct height
   let imgW=PW-2*M,imgH=PH-legH-footerH-imgY-2;
@@ -1130,22 +1144,23 @@ async function exportPDF(){
     if(fitH>imgH){imgW=imgH*asp;}else{imgH=fitH;}
   }
   const legY=imgY+imgH+2;
-  const evtName=document.getElementById('evt-name').value.trim();
   const dateStr=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
 
-  // ── 3. Title bar (no date — date goes in footer only) ─────────────────────
+  // ── 4. Title bar ─────────────────────────────────────────────────────────
   pdf.setFillColor(42,95,100);pdf.rect(0,0,PW*0.6,titleH,'F');
   pdf.setFillColor(146,39,100);pdf.rect(PW*0.4,0,PW*0.6,titleH,'F');
   pdf.setFillColor(251,189,47);pdf.rect(0,titleH-1.2,PW,1.2,'F');
+  const titleMid=venueAddr?(titleH-1.2)/2:titleH/2;
   pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(255,255,255);
-  pdf.text('SITEMAP',M,9);
-  if(evtName){pdf.setFontSize(10);pdf.setFont('helvetica','normal');pdf.setTextColor(220,235,238);pdf.text('·  '+evtName,M+26,9);}
+  pdf.text('SITEMAP',M,titleMid-0.5);
+  if(evtName){pdf.setFontSize(10);pdf.setFont('helvetica','normal');pdf.setTextColor(220,235,238);pdf.text('·  '+evtName,M+26,titleMid-0.5);}
+  if(venueAddr){pdf.setFontSize(7.5);pdf.setFont('helvetica','normal');pdf.setTextColor(180,220,222);pdf.text(venueAddr,M,titleMid+5.5,{maxWidth:PW-2*M});}
 
-  // ── 4. Map image — full width ─────────────────────────────────────────────
+  // ── 5. Map image — full width ─────────────────────────────────────────────
   pdf.setFillColor(28,43,44);pdf.rect(imgX,imgY,imgW,imgH,'F');
   if(mapDataUrl)pdf.addImage(mapDataUrl,'JPEG',imgX,imgY,imgW,imgH);
 
-  // ── 5. Coordinate helpers ─────────────────────────────────────────────────
+  // ── 6. Coordinate helpers ─────────────────────────────────────────────────
   const pdfProj=gmap.getProjection();
   const pdfPjScale=Math.pow(2,staticZoom);
   const pdfCPt=pdfProj.fromLatLngToPoint(new google.maps.LatLng(pdfLat,pdfLng));
@@ -1159,7 +1174,7 @@ async function exportPDF(){
   const ftToMm=(1/(mppPdf*3.28084))*(imgW/smW);
   function hexRgb(h){const c=(h||'#888').replace('#','');return[parseInt(c.slice(0,2),16)||128,parseInt(c.slice(2,4),16)||128,parseInt(c.slice(4,6),16)||128];}
 
-  // ── 6. Draw zones ─────────────────────────────────────────────────────────
+  // ── 7. Draw zones ─────────────────────────────────────────────────────────
   S.zonePolys.forEach(z=>{
     if(z.open||z.pts.length<3)return;
     const d=ZD[z.type];const[r,g,b]=hexRgb(d.stroke);
@@ -1171,7 +1186,7 @@ async function exportPDF(){
     if(z.label){const cx=pps.reduce((s,p)=>s+p.x,0)/pps.length,cy=pps.reduce((s,p)=>s+p.y,0)/pps.length;pdf.setFont('helvetica','bold');pdf.setFontSize(6);pdf.setTextColor(r,g,b);pdf.text(z.label.toUpperCase(),cx,cy,{align:'center'});}
   });
 
-  // ── 7. Draw ADA paths ─────────────────────────────────────────────────────
+  // ── 8. Draw ADA paths ─────────────────────────────────────────────────────
   S.adaPaths.forEach(path=>{
     if(path.length<2)return;
     const pps=path.map(p=>ll2pdf(p.lat,p.lng));
@@ -1179,7 +1194,7 @@ async function exportPDF(){
     for(let i=0;i<pps.length-1;i++)pdf.line(pps[i].x,pps[i].y,pps[i+1].x,pps[i+1].y);
   });
 
-  // ── 8. Draw dimension arrows ──────────────────────────────────────────────
+  // ── 9. Draw dimension arrows ──────────────────────────────────────────────
   S.dims.forEach(d=>{
     const p1=ll2pdf(d.lat1,d.lng1),p2=ll2pdf(d.lat2,d.lng2);
     pdf.setDrawColor(245,166,35);pdf.setLineWidth(0.4);pdf.line(p1.x,p1.y,p2.x,p2.y);
@@ -1192,26 +1207,34 @@ async function exportPDF(){
     }
   });
 
-  // ── 9. Draw elements ──────────────────────────────────────────────────────
+  // ── 10. Draw elements (rotation-aware) ────────────────────────────────────
   const tnMap=getTypeNums();
   S.els.forEach(el=>{
     const t=TYPES[el.type]||TYPES.custom;
     const center=ll2pdf(el.lat,el.lng);
     const wMm=el.wFt*ftToMm,hMm=el.hFt*ftToMm;
-    const x=center.x-wMm/2,y=center.y-hMm/2;
     let fr=255,fg=255,fb=255,dr=180,dg=180,db=180;
     if(t.tent){const food=el.tentType==='food';fr=food?250:255;fg=food?204:255;fb=food?21:255;[dr,dg,db]=food?[234,179,8]:[45,212,160];}
     else if(el.type==='truck'){[fr,fg,fb]=[239,68,68];[dr,dg,db]=[185,28,28];}
     else if(el.type==='ingress'){[fr,fg,fb]=[34,197,94];[dr,dg,db]=[22,163,74];}
     else{[fr,fg,fb]=hexRgb(el.color||t.color);dr=Math.max(0,fr-50);dg=Math.max(0,fg-50);db=Math.max(0,fb-50);}
+    // Draw as rotated polygon so el.rot is respected
+    const rotDeg=el.rot||0;
+    const rad=rotDeg*Math.PI/180;
+    const cos=Math.cos(rad),sin=Math.sin(rad);
+    const hw=wMm/2,hh=hMm/2;
+    const corners=[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([dx,dy])=>({
+      x:center.x+dx*cos-dy*sin,y:center.y+dx*sin+dy*cos
+    }));
+    const segLines=corners.slice(1).map((p,i)=>[p.x-corners[i].x,p.y-corners[i].y]);
     pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
-    pdf.rect(x,y,wMm,hMm,'FD');
+    pdf.lines(segLines,corners[0].x,corners[0].y,[1,1],'FD',true);
     const code=elCode(el,tnMap);
     const fs=Math.max(4,Math.min(8,wMm*1.4));
     pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
     const dark=t.tent&&el.tentType!=='food';
     pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
-    if(wMm>2&&hMm>2)pdf.text(code,center.x,center.y+fs*0.18,{align:'center'});
+    if(wMm>2&&hMm>2)pdf.text(code,center.x,center.y+fs*0.18,{align:'center',angle:rotDeg});
   });
 
   // ── 10. Legend strip (bottom) ─────────────────────────────────────────────
@@ -1272,7 +1295,9 @@ async function exportPDF(){
     S.els.forEach(el=>{
       if(!inActCol2&&ay>=legMaxY){ax=col2X+actColW+4;ay=legY+10;inActCol2=true;}
       if(ay>=legMaxY)return;
-      const name=el.vendorName||(TYPES[el.type]||TYPES.custom).lbl;
+      const isCustomEl=['customtent','custom'].includes(el.type);
+      const baseName=el.vendorName||(TYPES[el.type]||TYPES.custom).lbl;
+      const name=isCustomEl?`${baseName} (${el.wFt}×${el.hFt} ft)`:baseName;
       pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(244,81,64);
       pdf.text(elCode(el,tnMap),ax,ay);
       pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(28,27,46);
