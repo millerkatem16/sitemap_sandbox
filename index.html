@@ -200,6 +200,13 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #pdf-ok-btn:hover{background:#20c49a}
 #pdf-retry-btn{padding:10px 16px;background:var(--surf2);border:1px solid var(--brd2);border-radius:10px;font-size:13px;font-family:var(--font);font-weight:600;color:var(--tx2);cursor:pointer;transition:all .14s}
 #pdf-retry-btn:hover{background:var(--surf3);color:var(--tx)}
+#pdf-ready-card{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);z-index:9000;display:flex;align-items:center;gap:10px;background:var(--surf);border:1px solid var(--brd2);border-radius:14px;padding:14px 20px;box-shadow:0 8px 40px rgba(0,0,0,0.45);font-family:var(--font);white-space:nowrap}
+.pdf-rc-msg{font-size:13px;color:var(--tx2);margin-right:4px}
+.pdf-rc-msg strong{color:var(--tx)}
+#pdf-rc-ok{padding:8px 16px;background:var(--gold);color:#1a1a1a;border:none;border-radius:9px;font-size:13px;font-family:var(--font);font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity .14s}
+#pdf-rc-ok:hover{opacity:.85}
+#pdf-rc-can{padding:8px 12px;background:transparent;border:1px solid var(--brd2);border-radius:9px;font-size:12px;font-family:var(--font);font-weight:500;color:var(--tx3);cursor:pointer;transition:all .14s}
+#pdf-rc-can:hover{background:var(--surf2);color:var(--tx2)}
 </style>
 </head>
 <body>
@@ -389,9 +396,10 @@ const TYPES={
   customtent:{lbl:'Custom Tent',color:'#2dd4a0',wFt:20,hFt:20,tent:true,sqft:1,rot:true},
   electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
   water:{lbl:'Water Source',color:'#3B82F6',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
-  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:6,hFt:6,sqft:0,circle:true,rot:false}
+  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
+  security:{lbl:'Security',color:'#1e3a8a',wFt:6,hFt:6,sqft:0,circle:true,rot:false}
 };
-const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'I',firstaid:'FA',extinguisher:'E',mix:'M',custom:'C',customtent:'T',electric:'EL',water:'WS',trash:'BIN'};
+const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'I',firstaid:'FA',extinguisher:'E',mix:'M',custom:'C',customtent:'T',electric:'EL',water:'WS',trash:'BIN',security:'SEC'};
 
 // ── Coordinate conversion ──────────────────────────────────────────────────
 function latLngToPixel(lat,lng){
@@ -856,8 +864,8 @@ function makeDrag(div,el){
 // ── Site Management sidebar ────────────────────────────────────────────────
 function renderSiteManagement(){
   const d=document.getElementById('sml');if(!d)return;
-  const smTypes=['electric','water','trash','extinguisher'];
-  const smLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',extinguisher:'Fire Extinguisher'};
+  const smTypes=['electric','water','trash','extinguisher','security'];
+  const smLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',extinguisher:'Fire Extinguisher',security:'Security'};
   const counts={};
   smTypes.forEach(type=>{const c=S.els.filter(e=>e.type===type).length;if(c)counts[type]=c;});
   let html='<div class="plabel-sub" style="margin-top:0">First Aid</div>';
@@ -997,7 +1005,7 @@ function place(type,x,y){
 
 // ── Tool management ────────────────────────────────────────────────────────
 const ZONE_TOOLS=['restrict','border','erase'];
-const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','extinguisher','mix','custom','electric','water','trash'];
+const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','extinguisher','mix','custom','electric','water','trash','security'];
 const DRAWING_TOOLS=[...ZONE_TOOLS,'ada','dim'];
 
 function setTool(id){
@@ -1393,7 +1401,15 @@ document.getElementById('bpdf').addEventListener('click',async()=>{
     if(!window.html2canvas)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
     if(!window.jspdf)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
     btn.innerHTML=orig;btn.disabled=false;
-    // Start user-guided capture
+    // Let user position map before capture overlay appears
+    await new Promise((res,rej)=>{
+      const card=document.createElement('div');
+      card.id='pdf-ready-card';
+      card.innerHTML='<span class="pdf-rc-msg"><i class="ti ti-map-pin"></i> Position your map, then click <strong>Start Capture</strong></span><button id="pdf-rc-ok"><i class="ti ti-capture"></i> Start Capture</button><button id="pdf-rc-can">Cancel</button>';
+      document.body.appendChild(card);
+      document.getElementById('pdf-rc-ok').onclick=()=>{card.remove();res();};
+      document.getElementById('pdf-rc-can').onclick=()=>{card.remove();rej('cancelled');};
+    });
     const capture=await startMapCapture();
     btn.innerHTML='<i class="ti ti-loader-2"></i>Building…';btn.disabled=true;
     await exportPDF(capture);
@@ -1570,8 +1586,8 @@ async function exportPDF(capture){
   const legTotalW=PW-2*M;
   const borders=getClosedBorders();
   const showZones=borders.length>0;
-  const smTypesPdf=['electric','water','trash','extinguisher'];
-  const smLabelsPdf={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',extinguisher:'Fire Extinguisher'};
+  const smTypesPdf=['electric','water','trash','extinguisher','security'];
+  const smLabelsPdf={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',extinguisher:'Fire Extinguisher',security:'Security'};
   const smCountsPdf={};smTypesPdf.forEach(tp=>{const c=S.els.filter(e=>e.type===tp).length;if(c)smCountsPdf[tp]=c;});
   const showSM=Object.keys(smCountsPdf).length>0||S.firstAids.length>0;
   const colGap=5;
