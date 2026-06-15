@@ -60,6 +60,16 @@ html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--fon
 #grid{position:absolute;inset:0;pointer-events:none;opacity:.07;background-image:linear-gradient(rgba(255,255,255,0.4) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.4) 1px,transparent 1px);background-size:40px 40px}
 canvas{position:absolute;inset:0;pointer-events:none}
 #el{position:absolute;inset:0;pointer-events:none}
+#map-overlay{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;background:#000;opacity:0.25;pointer-events:none}
+#opacity-ctrl{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:8px;padding:5px 14px 5px 12px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:20px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
+#opacity-ctrl label{color:rgba(255,255,255,0.6);font-size:11px;font-family:var(--font);font-weight:600;cursor:default;user-select:none}
+#opacity-val-lbl{color:var(--gold);font-family:var(--mono);font-size:11px;min-width:28px;text-align:right}
+#opacity-slider{-webkit-appearance:none;appearance:none;width:108px;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;outline:none;cursor:pointer;vertical-align:middle}
+#opacity-slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.35)}
+#opacity-slider::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,0.35)}
+.util-sub{font-size:8px;font-weight:400;letter-spacing:0;line-height:1.1;opacity:0.65;margin-top:-1px;display:block;text-align:center}
+.tb.util-hidden{background:rgba(244,81,64,0.22)!important;color:#F45140!important;border-color:rgba(244,81,64,0.48)!important}
+.tb.util-hidden:hover{background:rgba(244,81,64,0.32)!important;border-color:rgba(244,81,64,0.65)!important}
 
 /* ── Status bar ──────────────────────────────────────────────────────────── */
 #statusbar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(20,32,33,0.96);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;padding:0 16px;gap:16px;z-index:8;font-size:11.5px;color:rgba(255,255,255,0.44)}
@@ -261,6 +271,9 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div class="tg">
     <button class="tb active" id="bsel"><i class="ti ti-map-2"></i>Adjust Map</button>
   </div>
+  <div class="tg">
+    <button class="tb" id="bhideutil"><i class="ti ti-eye-off"></i><span id="bhideutil-lbl">Hide Utilities</span><span class="util-sub">for Public Safety Review</span></button>
+  </div>
   <div class="spacer"></div>
   <div class="tg">
     <button class="tb exp" id="bsave-evt"><i class="ti ti-device-floppy"></i>Save Event</button>
@@ -273,6 +286,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
 <div id="main">
   <div id="cv-area">
     <div id="map"></div>
+    <div id="map-overlay"></div>
+    <div id="opacity-ctrl">
+      <label for="opacity-slider">Map Opacity</label>
+      <input type="range" id="opacity-slider" min="0" max="50" value="25" step="1">
+      <span id="opacity-val-lbl">25%</span>
+    </div>
     <div id="cw">
       <div id="grid"></div>
       <canvas id="zc"></canvas><canvas id="bc"></canvas><canvas id="dc"></canvas>
@@ -376,7 +395,7 @@ const S={
   venues:{},isRotating:false,
   hasSoftSurface:null,undoStack:[],
   mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17,
-  _pendingZoneLabel:null
+  _pendingZoneLabel:null,hideUtils:false
 };
 
 let gmap=null,mapsApiKey='';
@@ -398,9 +417,9 @@ const TYPES={
   mix:{lbl:'Mix Platform',color:'#c084fc',wFt:10,hFt:8,icon:'🎛',sqft:0,rot:true},
   custom:{lbl:'Custom',color:'#8b93a8',wFt:10,hFt:10,sqft:0,rot:true},
   customtent:{lbl:'Custom Tent',color:'#2dd4a0',wFt:20,hFt:20,tent:true,sqft:1,rot:true},
-  electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
-  water:{lbl:'Water Source',color:'#3B82F6',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
-  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:4,hFt:4,sqft:0,circle:true,rot:false},
+  electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:6,hFt:6,sqft:0,circle:true,rot:false,utility:true},
+  water:{lbl:'Water Source',color:'#3B82F6',wFt:6,hFt:6,sqft:0,circle:true,rot:false,utility:true},
+  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:4,hFt:4,sqft:0,circle:true,rot:false,utility:true},
   security:{lbl:'Security',color:'#7c3aed',wFt:6,hFt:6,sqft:0,circle:true,rot:false}
 };
 const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'E',firstaid:'FA',extinguisher:'EX',mix:'M',custom:'C',customtent:'T',electric:'EL',water:'WS',trash:'BIN',security:'SEC'};
@@ -475,6 +494,32 @@ function undo(){
   renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
 }
 document.getElementById('bundo').addEventListener('click',undo);
+
+// ── Map opacity overlay ────────────────────────────────────────────────────
+(()=>{
+  const ov=document.getElementById('map-overlay');
+  const sl=document.getElementById('opacity-slider');
+  const vl=document.getElementById('opacity-val-lbl');
+  sl.addEventListener('input',()=>{
+    ov.style.opacity=sl.value/100;
+    vl.textContent=sl.value+'%';
+  });
+})();
+
+// ── Hide Utilities toggle ──────────────────────────────────────────────────
+(()=>{
+  const btn=document.getElementById('bhideutil');
+  const lbl=document.getElementById('bhideutil-lbl');
+  function applyHideUtils(){
+    btn.classList.toggle('util-hidden',S.hideUtils);
+    lbl.textContent=S.hideUtils?'Utilities Hidden':'Hide Utilities';
+    renderEls();
+  }
+  btn.addEventListener('click',()=>{S.hideUtils=!S.hideUtils;applyHideUtils();});
+  document.addEventListener('keydown',ev=>{
+    if(ev.key==='Escape'&&S.hideUtils){S.hideUtils=false;applyHideUtils();}
+  });
+})();
 
 // ── Canvas sizing ──────────────────────────────────────────────────────────
 function sz(){
@@ -761,6 +806,7 @@ function renderEls(){
   S.els.forEach(el=>{
     const t=TYPES[el.type]||TYPES.custom;
     if(t.noRender)return;
+    if(t.utility&&S.hideUtils)return;
     const rot=el.rot||0,w=elW(el),h=elH(el);
     const xy=elXY(el);
     const fs=Math.min(20,Math.max(10,Math.floor(h*0.45)));
@@ -1441,7 +1487,7 @@ function startMapCapture(){
             height:cw.offsetHeight+'px',
             overflow:'visible'
           },
-          filter:node=>node.id!=='statusbar'&&node.id!=='grid'&&node.id!=='el'&&node.id!=='dc'&&!(node.classList&&node.classList.contains('rbtn'))
+          filter:node=>node.id!=='statusbar'&&node.id!=='grid'&&node.id!=='el'&&node.id!=='dc'&&node.id!=='map-overlay'&&node.id!=='opacity-ctrl'&&!(node.classList&&node.classList.contains('rbtn'))
         });
         await new Promise(res=>{
           const img=new Image();
@@ -1595,10 +1641,18 @@ async function exportPDF(capture){
   pdf.text('SITEMAP',M,titleMid-0.5);
   if(evtName){pdf.setFontSize(10);pdf.setFont('helvetica','normal');pdf.setTextColor(220,235,238);pdf.text('·  '+evtName+(evtDateDisplay?' · '+evtDateDisplay:''),M+26,titleMid-0.5,{maxWidth:PW-M-40});}
   if(venueAddr){pdf.setFontSize(7.5);pdf.setFont('helvetica','normal');pdf.setTextColor(180,220,222);pdf.text(venueAddr,M,titleMid+5.5,{maxWidth:PW-2*M});}
+  if(S.hideUtils){pdf.setFontSize(6.5);pdf.setFont('helvetica','italic');pdf.setTextColor(242,95,136);pdf.text('★ Utility elements hidden — for Public Safety Review',PW-M,titleMid-0.5,{align:'right'});}
 
   // ── 5. Map image — full width ─────────────────────────────────────────────
   pdf.setFillColor(28,43,44);pdf.rect(imgX,imgY,imgW,imgH,'F');
   if(mapDataUrl)pdf.addImage(mapDataUrl,'JPEG',imgX,imgY,imgW,imgH);
+  // Map opacity overlay
+  const pdfOverlayOpacity=parseInt(document.getElementById('opacity-slider').value)/100;
+  if(pdfOverlayOpacity>0.005){
+    try{pdf.setGState(pdf.GState({opacity:pdfOverlayOpacity}));}catch(e){}
+    pdf.setFillColor(0,0,0);pdf.rect(imgX,imgY,imgW,imgH,'F');
+    try{pdf.setGState(pdf.GState({opacity:1}));}catch(e){}
+  }
 
   // ── 6. Coordinate helpers ─────────────────────────────────────────────────
   // ll2pdf maps lat/lng → PDF coordinates using live map pixel positions
@@ -1670,6 +1724,7 @@ async function exportPDF(capture){
     const rotDeg=el.rot||0;
     const code=elCode(el,tnMap);
     if(t.noRender)return;
+    if(t.utility&&S.hideUtils)return;
     if(t.circle){
       const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
       if(el.type==='electric'){
