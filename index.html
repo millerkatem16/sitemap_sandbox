@@ -1460,10 +1460,15 @@ function startMapCapture(){
 }
 
 document.getElementById('bpdf').addEventListener('click',async()=>{
+  console.log('EXPORT TRIGGERED');
   const btn=document.getElementById('bpdf'),orig=btn.innerHTML;
   try{
     btn.innerHTML='<i class="ti ti-loader-2"></i>Loading…';btn.disabled=true;
-    if(!window.domtoimage)await loadScript('https://cdn.jsdelivr.net/npm/dom-to-image-more@2.11.0/dist/dom-to-image-more.min.js');
+    if(!window.domtoimage){
+      console.log('Loading dom-to-image-more…');
+      await loadScript('https://unpkg.com/dom-to-image-more/dist/dom-to-image-more.min.js');
+      console.log('dom-to-image-more loaded, window.domtoimage=',typeof window.domtoimage);
+    }
     if(!window.jspdf)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
     btn.innerHTML=orig;btn.disabled=false;
     // Let user position map before capture overlay appears
@@ -1481,8 +1486,8 @@ document.getElementById('bpdf').addEventListener('click',async()=>{
     document.getElementById('ins-txt').textContent='PDF saved.';
   }catch(err){
     if(err!=='cancelled'){
+      console.error('PDF EXPORT ERROR:',err);
       document.getElementById('ins-txt').textContent='PDF export failed — check internet connection.';
-      console.error(err);
     }
   }finally{btn.innerHTML=orig;btn.disabled=false;}
 });
