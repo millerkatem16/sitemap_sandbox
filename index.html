@@ -400,7 +400,7 @@ const TYPES={
   customtent:{lbl:'Custom Tent',color:'#2dd4a0',wFt:20,hFt:20,tent:true,sqft:1,rot:true},
   electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
   water:{lbl:'Water Source',color:'#3B82F6',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
-  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:4,hFt:4,sqft:0,circle:true,rot:false},
+  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:2,hFt:2,sqft:0,circle:true,rot:false},
   security:{lbl:'Security',color:'#7c3aed',wFt:6,hFt:6,sqft:0,circle:true,rot:false}
 };
 const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'E',firstaid:'FA',extinguisher:'EX',mix:'M',custom:'C',customtent:'T',electric:'EL',water:'WS',trash:'BIN',security:'SEC'};
@@ -745,7 +745,7 @@ function runRules(){
   const vis=new Set();
   tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft — over 900 sq ft may need a building permit.`});grp.forEach(e=>e.sr=true);}});
   stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft) — over 256 sq ft may need a building permit.`});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft — over 3ft may need a building permit.`});s.sr=true;}});
-  S.els.forEach(e=>{if(e.type!=='ingress'&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone.`});e.hr=true;}});
+  S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||(_t2.tent&&e.tentType==='event');if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone.`});e.hr=true;}});
   // Overlap check — no two elements may occupy the same space
   for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){if(ovlp(S.els[i],S.els[j])){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping.`});S.els[i].hr=true;S.els[j].hr=true;}}}
   if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.'});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.'});}
@@ -783,8 +783,8 @@ function renderEls(){
     }else if(t.circle){
       const d=Math.min(w,h);
       if(el.type==='electric'){
-        icon.style.cssText=`width:${d}px;height:${d}px;`;
-        icon.innerHTML=`<svg viewBox="0 0 24 24" width="${d}" height="${d}" style="display:block"><circle cx="12" cy="12" r="11" fill="#FBBD2F" stroke="#d4a012" stroke-width="1.5"/><path d="M14.5 3 5 13.5h7.5L10 21l9.5-11H12z" fill="white"/></svg>`;
+        icon.style.cssText=`width:${d}px;height:${d}px;background:none;border:none;`;
+        icon.innerHTML=`<svg viewBox="0 0 24 24" width="${d}" height="${d}" style="display:block"><path d="M14.5 3 5 13.5h7.5L10 21l9.5-11H12z" fill="#FBBD2F" stroke="#d4a012" stroke-width="0.5"/></svg>`;
       }else if(el.type==='water'){
         icon.style.cssText=`width:${d}px;height:${d}px;`;
         icon.innerHTML=`<svg viewBox="0 0 24 24" width="${d}" height="${d}" style="display:block"><path d="M12 2C10 6 4 12 4 16a8 8 0 0016 0C20 12 14 6 12 2z" fill="#3B82F6" stroke="#2563eb" stroke-width="0.8"/><ellipse cx="10" cy="14" rx="1.8" ry="2.8" fill="white" opacity="0.35"/></svg>`;
@@ -809,7 +809,7 @@ function renderEls(){
 
     if(t.circle&&['trash','electric','water','security'].includes(el.type)){
       const db=document.createElement('button');db.className='rbtn';
-      db.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:${btnOff}px;left:${btnOff}px;font-size:${btnSz}px;background:#ef4444;color:#fff;border-color:#dc2626;line-height:1;`;
+      db.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:${btnOff}px;left:${btnOff}px;font-size:${btnSz}px;background:#ef4444;color:#fff;border-color:#dc2626;line-height:1;display:flex;pointer-events:auto;`;
       db.innerHTML='×';
       db.addEventListener('click',ev=>{
         ev.stopPropagation();ev.preventDefault();
@@ -1247,6 +1247,7 @@ function openEvents(){
       document.getElementById('ins-txt').textContent=`"${name}" loaded.`;
     },'Open');
   // Inject Delete button into modal footer
+  document.querySelectorAll('#mo .oe-del-btn').forEach(b=>b.remove());
   const _mbtns=document.querySelector('#mo .mbtns');
   if(_mbtns){
     const _del=document.createElement('button');
@@ -1297,8 +1298,8 @@ function renderColorKey(){
     {type:'swatch',bg:'#fbbf2425',bord:'#fbbf24',lbl:'Generator',dim:'6×6 ft'},
     {type:'swatch',bg:'#c084fc25',bord:'#c084fc',lbl:'Mix Platform',dim:'10×8 ft'},
     {type:'swatch',bg:'#8b93a825',bord:'#8b93a8',lbl:'Custom Element',dim:'User-defined'},
-    {type:'circle',color:'#FBBD2F',lbl:'Electric Source',dim:'Utility marker'},
-    {type:'circle',color:'#3B82F6',lbl:'Water Source',dim:'Utility marker'},
+    {type:'svg',svg:`<svg viewBox="0 0 24 24" width="14" height="14"><path d="M14.5 3 5 13.5h7.5L10 21l9.5-11H12z" fill="#FBBD2F" stroke="#d4a012" stroke-width="0.5"/></svg>`,lbl:'Electric Source',dim:'Utility marker'},
+    {type:'svg',svg:`<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2C10 6 4 12 4 16a8 8 0 0016 0C20 12 14 6 12 2z" fill="#3B82F6" stroke="#2563eb" stroke-width="0.8"/></svg>`,lbl:'Water Source',dim:'Utility marker'},
     {type:'circle',color:'#8b93a8',lbl:'Trash Bin',dim:'Utility marker'},
     {type:'line',color:'rgba(79,126,248,0.65)',lbl:'ADA Path',dim:'Accessible routes'},
     {type:'line',color:'#f5a623',lbl:'Dimension',dim:'Measured distances'},
@@ -1309,6 +1310,7 @@ function renderColorKey(){
   document.getElementById('ckey').innerHTML=rows.map(r=>{
     let sw;
     if(r.type==='swatch')sw=`<div class="ck-swatch" style="background:${r.bg};border-color:${r.bord}"></div>`;
+    else if(r.type==='svg')sw=`<div class="ck-swatch" style="background:none;border:none;display:flex;align-items:center;justify-content:center">${r.svg}</div>`;
     else if(r.type==='circle')sw=`<div class="ck-swatch" style="background:${r.color};border-color:${r.color};border-radius:50%"></div>`;
     else if(r.type==='line')sw=`<div class="ck-line" style="background:${r.color}"></div>`;
     else sw=`<div class="ck-zone" style="border-color:${r.color};background:${r.color}18"></div>`;
@@ -1667,13 +1669,28 @@ async function exportPDF(capture){
     const code=elCode(el,tnMap);
     if(t.noRender)return;
     if(t.circle){
-      const r=Math.min(wMm,hMm)/2;
-      pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
-      pdf.circle(center.x,center.y,r,'FD');
-      if(el.type==='security'){
-        const sFs=Math.max(6,Math.min(10,r*1.5));
-        pdf.setFont('helvetica','bold');pdf.setFontSize(sFs);pdf.setTextColor(255,255,255);
-        pdf.text('S',center.x,center.y+sFs*0.353*0.45,{align:'center'});
+      const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
+      if(el.type==='electric'){
+        const hw=wMm/2,hh=hMm/2;
+        const bN=[[0.208,-0.75],[-0.583,0.125],[0.042,0.125],[-0.167,0.75],[0.625,-0.167],[0,-0.167]];
+        const bP=bN.map(([dx,dy])=>{const x2=dx*hw,y2=dy*hh;return{x:center.x+x2*cos2-y2*sin2,y:center.y+x2*sin2+y2*cos2};});
+        pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.15);
+        pdf.lines(bP.slice(1).map((p,i)=>[p.x-bP[i].x,p.y-bP[i].y]),bP[0].x,bP[0].y,[1,1],'FD',true);
+      }else if(el.type==='water'){
+        const hw=wMm/2,hh=hMm/2;
+        const dN=[[0,-0.85],[-0.45,-0.3],[-0.7,0.2],[-0.6,0.6],[0,0.95],[0.6,0.6],[0.7,0.2],[0.45,-0.3]];
+        const dP=dN.map(([dx,dy])=>{const x2=dx*hw,y2=dy*hh;return{x:center.x+x2*cos2-y2*sin2,y:center.y+x2*sin2+y2*cos2};});
+        pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.15);
+        pdf.lines(dP.slice(1).map((p,i)=>[p.x-dP[i].x,p.y-dP[i].y]),dP[0].x,dP[0].y,[1,1],'FD',true);
+      }else{
+        const r=Math.min(wMm,hMm)/2;
+        pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
+        pdf.circle(center.x,center.y,r,'FD');
+        if(el.type==='security'){
+          const sFs=Math.max(6,Math.min(10,r*1.5));
+          pdf.setFont('helvetica','bold');pdf.setFontSize(sFs);pdf.setTextColor(255,255,255);
+          pdf.text('S',center.x,center.y+sFs*0.353*0.45,{align:'center'});
+        }
       }
     }else if(el.type==='ingress'){
       // Ingress: 2-way arrow shape
@@ -1691,7 +1708,7 @@ async function exportPDF(capture){
       pdf.lines(aSegs,arrowPts[0].x,arrowPts[0].y,[1,1],'FD',true);
       const fs=Math.max(12,Math.min(18,wMm*0.7));
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
-      if(wMm>4){const tOff=fs*0.353*0.36;pdf.text(code,center.x,center.y+tOff,{align:'center',angle:-rotDeg});}
+      if(wMm>4){pdf.text(code,center.x,center.y,{align:'center',baseline:'middle',angle:-rotDeg});}
     }else{
       // Standard rotated rectangle
       const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
@@ -1706,7 +1723,7 @@ async function exportPDF(capture){
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
       const dark=t.tent&&(el.tentType!=='food'&&el.tentType!=='cooking');
       pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
-      if(wMm>3&&hMm>3){const tOff=fs*0.353*0.36;pdf.text(code,center.x,center.y+tOff,{align:'center',angle:-rotDeg});}
+      if(wMm>3&&hMm>3){pdf.text(code,center.x,center.y,{align:'center',baseline:'middle',angle:-rotDeg});}
     }
   });
 
@@ -1779,7 +1796,7 @@ async function exportPDF(capture){
     S.firstAids.forEach(fa=>{
       if(c1y>=p2MaxY)return;
       pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(28,27,46);
-      let faTxt=`FA: ${fa.name} — ${fa.cert}`;
+      let faTxt=`First Aid Contact: ${fa.name} — ${fa.cert}`;
       while(faTxt.length>1&&pdf.getTextWidth(faTxt)>p2C1W-2)faTxt=faTxt.slice(0,-1);
       pdf.text(faTxt,p2C1X,c1y);c1y+=p2LH;
     });
@@ -1843,7 +1860,7 @@ async function exportPDF(capture){
     mix:{r:192,g:132,b:252,l:'Mix Platform'}
   };
   const p2CircleKey={
-    electric:{r:251,g:189,b:47,l:'Electric Source'},water:{r:59,g:130,b:246,l:'Water Source'},
+    electric:{r:251,g:189,b:47,l:'Electric Source',bolt:true},water:{r:59,g:130,b:246,l:'Water Source',drop:true},
     trash:{r:139,g:147,b:168,l:'Trash Bin'},extinguisher:{r:240,g:82,b:82,l:'Fire Ext.'},
     security:{r:124,g:58,b:237,l:'Security'}
   };
@@ -1890,7 +1907,19 @@ async function exportPDF(capture){
   if(S.adaPaths.length)p2KeyRows.push({r:79,g:126,b:248,l:'ADA Path'});
   p2KeyRows.forEach(k=>{
     if(c3y>=p2MaxY)return;
-    if(k.circle){
+    if(k.bolt){
+      const bx=p2C3X+1.5,by=c3y-1.5,hs=1.1;
+      const bN=[[0.208,-0.75],[-0.583,0.125],[0.042,0.125],[-0.167,0.75],[0.625,-0.167],[0,-0.167]];
+      const bA=bN.map(([dx,dy])=>({x:bx+dx*hs,y:by+dy*hs}));
+      pdf.setFillColor(k.r,k.g,k.b);pdf.setDrawColor(212,160,18);pdf.setLineWidth(0.1);
+      pdf.lines(bA.slice(1).map((p,i)=>[p.x-bA[i].x,p.y-bA[i].y]),bA[0].x,bA[0].y,[1,1],'FD',true);
+    }else if(k.drop){
+      const bx=p2C3X+1.5,by=c3y-1.5,hs=1.1;
+      const dN=[[0,-0.85],[-0.45,-0.3],[-0.7,0.2],[-0.6,0.6],[0,0.95],[0.6,0.6],[0.7,0.2],[0.45,-0.3]];
+      const dA=dN.map(([dx,dy])=>({x:bx+dx*hs,y:by+dy*hs}));
+      pdf.setFillColor(k.r,k.g,k.b);pdf.setDrawColor(37,99,235);pdf.setLineWidth(0.1);
+      pdf.lines(dA.slice(1).map((p,i)=>[p.x-dA[i].x,p.y-dA[i].y]),dA[0].x,dA[0].y,[1,1],'FD',true);
+    }else if(k.circle){
       pdf.setFillColor(k.r,k.g,k.b);pdf.circle(p2C3X+1.5,c3y-1.5,1.5,'F');
     }else if(k.zone){
       pdf.setDrawColor(k.r,k.g,k.b);pdf.setFillColor(k.r,k.g,k.b,0.1);pdf.setLineWidth(0.4);
