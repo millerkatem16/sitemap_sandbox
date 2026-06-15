@@ -400,7 +400,7 @@ const TYPES={
   customtent:{lbl:'Custom Tent',color:'#2dd4a0',wFt:20,hFt:20,tent:true,sqft:1,rot:true},
   electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
   water:{lbl:'Water Source',color:'#3B82F6',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
-  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:1,hFt:1,sqft:0,circle:true,rot:false},
+  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:4,hFt:4,sqft:0,circle:true,rot:false},
   security:{lbl:'Security',color:'#7c3aed',wFt:6,hFt:6,sqft:0,circle:true,rot:false}
 };
 const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'E',firstaid:'FA',extinguisher:'EX',mix:'M',custom:'C',customtent:'T',electric:'EL',water:'WS',trash:'BIN',security:'SEC'};
@@ -1441,7 +1441,7 @@ function startMapCapture(){
             height:cw.offsetHeight+'px',
             overflow:'visible'
           },
-          filter:node=>node.id!=='statusbar'&&node.id!=='grid'&&!(node.classList&&node.classList.contains('rbtn'))
+          filter:node=>node.id!=='statusbar'&&node.id!=='grid'&&node.id!=='el'&&node.id!=='dc'&&!(node.classList&&node.classList.contains('rbtn'))
         });
         await new Promise(res=>{
           const img=new Image();
@@ -1710,7 +1710,7 @@ async function exportPDF(capture){
       pdf.lines(aSegs,arrowPts[0].x,arrowPts[0].y,[1,1],'FD',true);
       const fs=Math.max(12,Math.min(18,wMm*0.7));
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
-      if(wMm>4){const fOff=fs*0.353*0.36;pdf.text(code,center.x-fOff*sin2,center.y+fOff*cos2,{align:'center',angle:-rotDeg});}
+      if(wMm>4){const tw=pdf.getTextWidth(code);const fOff=fs*0.353*0.36;pdf.text(code,center.x-(tw/2)*cos2-fOff*sin2,center.y-(tw/2)*sin2+fOff*cos2,{angle:-rotDeg});}
     }else{
       // Standard rotated rectangle
       const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
@@ -1725,7 +1725,7 @@ async function exportPDF(capture){
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
       const dark=t.tent&&(el.tentType!=='food'&&el.tentType!=='cooking');
       pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
-      if(wMm>3&&hMm>3){const fOff=fs*0.353*0.36;pdf.text(code,center.x-fOff*sin2,center.y+fOff*cos2,{align:'center',angle:-rotDeg});}
+      if(wMm>3&&hMm>3){const tw=pdf.getTextWidth(code);const fOff=fs*0.353*0.36;pdf.text(code,center.x-(tw/2)*cos2-fOff*sin2,center.y-(tw/2)*sin2+fOff*cos2,{angle:-rotDeg});}
     }
   });
 
@@ -1798,9 +1798,8 @@ async function exportPDF(capture){
     S.firstAids.forEach(fa=>{
       if(c1y>=p2MaxY)return;
       pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(28,27,46);
-      let faTxt=`First Aid Contact: ${fa.name} — ${fa.cert}`;
-      while(faTxt.length>1&&pdf.getTextWidth(faTxt)>p2C1W-2)faTxt=faTxt.slice(0,-1);
-      pdf.text(faTxt,p2C1X,c1y);c1y+=p2LH;
+      const faLines=pdf.splitTextToSize(`First Aid Contact: ${fa.name} — ${fa.cert}`,p2C1W-2);
+      faLines.forEach(ln=>{if(c1y<p2MaxY){pdf.text(ln,p2C1X,c1y);c1y+=p2LH;}});
     });
     c1y+=2;
   }
