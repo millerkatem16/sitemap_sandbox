@@ -400,7 +400,7 @@ const TYPES={
   customtent:{lbl:'Custom Tent',color:'#2dd4a0',wFt:20,hFt:20,tent:true,sqft:1,rot:true},
   electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
   water:{lbl:'Water Source',color:'#3B82F6',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
-  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:2,hFt:2,sqft:0,circle:true,rot:false},
+  trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:1,hFt:1,sqft:0,circle:true,rot:false},
   security:{lbl:'Security',color:'#7c3aed',wFt:6,hFt:6,sqft:0,circle:true,rot:false}
 };
 const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'E',firstaid:'FA',extinguisher:'EX',mix:'M',custom:'C',customtent:'T',electric:'EL',water:'WS',trash:'BIN',security:'SEC'};
@@ -783,14 +783,15 @@ function renderEls(){
     }else if(t.circle){
       const d=Math.min(w,h);
       if(el.type==='electric'){
-        icon.style.cssText=`width:${d}px;height:${d}px;background:none;border:none;`;
-        icon.innerHTML=`<svg viewBox="0 0 24 24" width="${d}" height="${d}" style="display:block"><path d="M14.5 3 5 13.5h7.5L10 21l9.5-11H12z" fill="#FBBD2F" stroke="#d4a012" stroke-width="0.5"/></svg>`;
+        const d2=d*2,dOff=Math.round(d/2);
+        icon.style.cssText=`width:${d}px;height:${d}px;background:none;border:none;overflow:visible;`;
+        icon.innerHTML=`<svg viewBox="0 0 24 24" width="${d2}" height="${d2}" style="display:block;margin-top:-${dOff}px;margin-left:-${dOff}px"><path d="M14.5 3 5 13.5h7.5L10 21l9.5-11H12z" fill="#FBBD2F" stroke="#d4a012" stroke-width="0.5"/></svg>`;
       }else if(el.type==='water'){
         icon.style.cssText=`width:${d}px;height:${d}px;`;
         icon.innerHTML=`<svg viewBox="0 0 24 24" width="${d}" height="${d}" style="display:block"><path d="M12 2C10 6 4 12 4 16a8 8 0 0016 0C20 12 14 6 12 2z" fill="#3B82F6" stroke="#2563eb" stroke-width="0.8"/><ellipse cx="10" cy="14" rx="1.8" ry="2.8" fill="white" opacity="0.35"/></svg>`;
       }else if(el.type==='security'){
         icon.style.cssText=`width:${d}px;height:${d}px;background:#7c3aed;border:2px solid #6d28d9;border-radius:50%;display:flex;align-items:center;justify-content:center;`;
-        icon.innerHTML=`<span style="color:white;font-weight:800;font-size:${Math.round(d*0.52)}px;line-height:1;font-family:var(--font),sans-serif">S</span>`;
+        icon.innerHTML=`<span style="color:white;font-weight:800;font-size:${Math.round(d*0.52)+4}px;line-height:1;font-family:var(--font),sans-serif">S</span>`;
       }else{
         icon.style.cssText=`width:${d}px;height:${d}px;background:${t.color};border:2px solid ${t.color};border-radius:50%;`;
       }
@@ -809,9 +810,10 @@ function renderEls(){
 
     if(t.circle&&['trash','electric','water','security'].includes(el.type)){
       const db=document.createElement('button');db.className='rbtn';
-      db.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:${btnOff}px;left:${btnOff}px;font-size:${btnSz}px;background:#ef4444;color:#fff;border-color:#dc2626;line-height:1;display:flex;pointer-events:auto;`;
+      db.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:${btnOff}px;left:${btnOff}px;font-size:${btnSz}px;background:#ef4444;color:#fff;border-color:#dc2626;line-height:1;`;
       db.innerHTML='×';
-      db.addEventListener('click',ev=>{
+      db.addEventListener('mousedown',ev=>{
+        if(ev.button!==0)return;
         ev.stopPropagation();ev.preventDefault();
         pushUndo();S.els=S.els.filter(x=>x.id!==el.id);
         if(S.selId===el.id)S.selId=null;
@@ -1439,7 +1441,7 @@ function startMapCapture(){
             height:cw.offsetHeight+'px',
             overflow:'visible'
           },
-          filter:node=>node.id!=='statusbar'&&node.id!=='grid'
+          filter:node=>node.id!=='statusbar'&&node.id!=='grid'&&!(node.classList&&node.classList.contains('rbtn'))
         });
         await new Promise(res=>{
           const img=new Image();
@@ -1671,13 +1673,13 @@ async function exportPDF(capture){
     if(t.circle){
       const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
       if(el.type==='electric'){
-        const hw=wMm/2,hh=hMm/2;
+        const hw=wMm,hh=hMm;
         const bN=[[0.208,-0.75],[-0.583,0.125],[0.042,0.125],[-0.167,0.75],[0.625,-0.167],[0,-0.167]];
         const bP=bN.map(([dx,dy])=>{const x2=dx*hw,y2=dy*hh;return{x:center.x+x2*cos2-y2*sin2,y:center.y+x2*sin2+y2*cos2};});
         pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.15);
         pdf.lines(bP.slice(1).map((p,i)=>[p.x-bP[i].x,p.y-bP[i].y]),bP[0].x,bP[0].y,[1,1],'FD',true);
       }else if(el.type==='water'){
-        const hw=wMm/2,hh=hMm/2;
+        const hw=wMm,hh=hMm;
         const dN=[[0,-0.85],[-0.45,-0.3],[-0.7,0.2],[-0.6,0.6],[0,0.95],[0.6,0.6],[0.7,0.2],[0.45,-0.3]];
         const dP=dN.map(([dx,dy])=>{const x2=dx*hw,y2=dy*hh;return{x:center.x+x2*cos2-y2*sin2,y:center.y+x2*sin2+y2*cos2};});
         pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.15);
@@ -1708,7 +1710,7 @@ async function exportPDF(capture){
       pdf.lines(aSegs,arrowPts[0].x,arrowPts[0].y,[1,1],'FD',true);
       const fs=Math.max(12,Math.min(18,wMm*0.7));
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
-      if(wMm>4){pdf.text(code,center.x,center.y,{align:'center',baseline:'middle',angle:-rotDeg});}
+      if(wMm>4){const fOff=fs*0.353*0.36;pdf.text(code,center.x-fOff*sin2,center.y+fOff*cos2,{align:'center',angle:-rotDeg});}
     }else{
       // Standard rotated rectangle
       const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
@@ -1723,7 +1725,7 @@ async function exportPDF(capture){
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
       const dark=t.tent&&(el.tentType!=='food'&&el.tentType!=='cooking');
       pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
-      if(wMm>3&&hMm>3){pdf.text(code,center.x,center.y,{align:'center',baseline:'middle',angle:-rotDeg});}
+      if(wMm>3&&hMm>3){const fOff=fs*0.353*0.36;pdf.text(code,center.x-fOff*sin2,center.y+fOff*cos2,{align:'center',angle:-rotDeg});}
     }
   });
 
