@@ -1882,9 +1882,9 @@ async function exportPDF(capture){
         pdf.text(lbl2,p2C1X+txtOff,c1y);c1y+=p2LH;
         pdf.setFont('helvetica','normal');pdf.setFontSize(10.5);pdf.setTextColor(90,88,120);
         pdf.text(`${sqFt2.toLocaleString()} sq ft`,p2C1X+txtOff,c1y);c1y+=p2LH;
-        pdf.text(`− ${actSqFt.toLocaleString()} sq ft (activations)`,p2C1X+txtOff,c1y);c1y+=p2LH;
+        pdf.text(`- ${actSqFt.toLocaleString()} sq ft (activations)`,p2C1X+txtOff,c1y);c1y+=p2LH;
         pdf.setFont('helvetica','bold');pdf.setTextColor(42,95,100);
-        pdf.text(`≈ ${usableSqFt.toLocaleString()} sq ft usable`,p2C1X+txtOff,c1y);c1y+=p2LH;
+        pdf.text(`~${usableSqFt.toLocaleString()} sq ft usable`,p2C1X+txtOff,c1y);c1y+=p2LH;
         if(!S.hideUtils){
           pdf.setFont('helvetica','bold');pdf.setFontSize(10.5);pdf.setTextColor(42,95,100);
           pdf.text(`Est. Capacity: ~${cap2.toLocaleString()}`,p2C1X+txtOff,c1y);c1y+=p2LH;
