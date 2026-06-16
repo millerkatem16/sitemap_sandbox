@@ -1855,8 +1855,6 @@ async function exportPDF(capture){
   let c1y=p2Y;
   const p2Borders=getClosedBorders();
   const hasRestricted=S.zonePolys.some(z=>z.type==='restrict'&&!z.open);
-  // Activation footprint for the usable sq ft formula
-  const actSqFt=Math.round(S.els.filter(e=>{const t=TYPES[e.type]||TYPES.custom;return!t.circle&&!t.noRender;}).reduce((a,e)=>a+e.wFt*e.hFt,0));
 
   if(p2Borders.length>0||hasRestricted){
     c1y=secHdr('BOUNDARY ZONES',p2C1X,p2C1W,c1y);
@@ -1869,22 +1867,38 @@ async function exportPDF(capture){
       });
       const netAreas2=rawAreas2.slice();
       p2Borders.forEach((_,i)=>{if(parIdx2[i]>=0)netAreas2[parIdx2[i]]-=rawAreas2[i];});
+      const multi2=p2Borders.length>1;
+      // Mirror updateCap()'s zoneStruc: only structural types inside each zone
+      const p2StructTypes=new Set(['stage','truck','gen','mix','custom','customtent']);
+      const zoneStruc2=p2Borders.map(()=>0);
+      S.els.forEach(e=>{
+        const t=TYPES[e.type];
+        if(!t||t.circle||(!(t.sqft>0)&&!p2StructTypes.has(e.type)))return;
+        const ePx=latLngToPixel(e.lat,e.lng);
+        let bestZone=-1,bestArea=Infinity;
+        p2Borders.forEach((b,i)=>{if(pip(ePx,b.pts)&&rawAreas2[i]<bestArea){bestZone=i;bestArea=rawAreas2[i];}});
+        if(bestZone>=0)zoneStruc2[bestZone]+=e.wFt*e.hFt;
+      });
       p2Borders.forEach((b,i)=>{
         if(c1y>=p2MaxY)return;
         const isSub=parIdx2[i]>=0;
         const[kr,kg,kb]=isSub?[45,212,160]:[251,189,47];
         pdfIcon('zone',p2C1X+iconSz,c1y-iconSz,{rgb:[kr,kg,kb]});
         const lbl2=b.label||(isSub?`Sub-zone ${i+1}`:`Zone ${i+1}`);
-        const sqFt2=Math.round(Math.max(0,netAreas2[i]));
-        const cap2=Math.max(0,Math.floor(netAreas2[i]/10));
-        const usableSqFt=Math.max(0,sqFt2-actSqFt);
+        // Use same base-area logic as updateCap: rawAreas[0] for single zone, netAreas[i] for multi
+        const baseArea=multi2?netAreas2[i]:rawAreas2[0];
+        const zs=zoneStruc2[i];
+        const totalSqFt=Math.round(Math.max(0,baseArea));
+        const sqFt2=Math.round(Math.max(0,baseArea-zs));
+        const cap2=Math.max(0,Math.floor((baseArea-zs)/10));
+        console.log('[PDF BZ]',lbl2,'baseArea=',Math.round(baseArea),'zs=',Math.round(zs),'sqFt2=',sqFt2,'cap2=',cap2);
         pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
         pdf.text(lbl2,p2C1X+txtOff,c1y);c1y+=p2LH;
         pdf.setFont('helvetica','normal');pdf.setFontSize(10.5);pdf.setTextColor(90,88,120);
-        pdf.text(`${sqFt2.toLocaleString()} sq ft`,p2C1X+txtOff,c1y);c1y+=p2LH;
-        pdf.text(`- ${actSqFt.toLocaleString()} sq ft (activations)`,p2C1X+txtOff,c1y);c1y+=p2LH;
+        pdf.text(`${totalSqFt.toLocaleString()} sq ft`,p2C1X+txtOff,c1y);c1y+=p2LH;
+        if(zs>0){pdf.text(`- ${Math.round(zs).toLocaleString()} sq ft (structures)`,p2C1X+txtOff,c1y);c1y+=p2LH;}
         pdf.setFont('helvetica','bold');pdf.setTextColor(42,95,100);
-        pdf.text(`~${usableSqFt.toLocaleString()} sq ft usable`,p2C1X+txtOff,c1y);c1y+=p2LH;
+        pdf.text(`~${sqFt2.toLocaleString()} sq ft usable`,p2C1X+txtOff,c1y);c1y+=p2LH;
         if(!S.hideUtils){
           pdf.setFont('helvetica','bold');pdf.setFontSize(10.5);pdf.setTextColor(42,95,100);
           pdf.text(`Est. Capacity: ~${cap2.toLocaleString()}`,p2C1X+txtOff,c1y);c1y+=p2LH;
