@@ -1801,7 +1801,7 @@ async function exportPDF(capture){
   if(evtName){pdf.setFontSize(7.5);pdf.setFont('helvetica','normal');pdf.setTextColor(180,220,222);pdf.text('·  '+evtName+(evtDateDisplay?' · '+evtDateDisplay:''),M+70,8.5,{maxWidth:PW-M-80});}
 
   const p2Y=17,p2MaxY=PH-footerH-2,p2LH=6.0;
-  const p2C1W=75,p2CG=10;const p2C2W=PW-2*M-p2C1W-p2CG;
+  const p2C1W=88,p2CG=18;const p2C2W=PW-2*M-p2C1W-p2CG;
   const p2C1X=M,p2C2X=M+p2C1W+p2CG;
   const iconSz=2.25;const txtOff=iconSz*2+1;  // icon 1.5× previous; text starts after icon
 
@@ -1889,20 +1889,24 @@ async function exportPDF(capture){
           pdf.setFont('helvetica','bold');pdf.setFontSize(10.5);pdf.setTextColor(42,95,100);
           pdf.text(`Est. Capacity: ~${cap2.toLocaleString()}`,p2C1X+txtOff,c1y);c1y+=p2LH;
         }
-        c1y+=2;
+        c1y+=1;
       });
-      c1y+=2;
     }
     if(hasRestricted&&c1y<p2MaxY){
       pdfIcon('zone',p2C1X+iconSz,c1y-iconSz,{rgb:[240,82,82]});
       pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
-      pdf.text('Restricted Zone',p2C1X+txtOff,c1y);c1y+=p2LH+2;
+      pdf.text('Restricted Zone',p2C1X+txtOff,c1y);c1y+=p2LH;
     }
+    c1y+=2;
   }
 
   const p2SmTypes=['electric','water','trash','extinguisher'];
+  const p2SmUtility=new Set(['electric','water','trash']);
   const p2SmLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',extinguisher:'Fire Extinguisher'};
-  const p2SmCounts={};p2SmTypes.forEach(tp=>{const c=S.els.filter(e=>e.type===tp).length;if(c)p2SmCounts[tp]=c;});
+  const p2SmCounts={};p2SmTypes.forEach(tp=>{
+    if(S.hideUtils&&p2SmUtility.has(tp))return;
+    const c=S.els.filter(e=>e.type===tp).length;if(c)p2SmCounts[tp]=c;
+  });
   const p2HasSM=Object.keys(p2SmCounts).length>0;
   if(p2HasSM&&c1y<p2MaxY-10){
     c1y=secHdr('SITE MANAGEMENT',p2C1X,p2C1W,c1y);
@@ -1931,9 +1935,18 @@ async function exportPDF(capture){
     }
     S.firstAids.forEach(fa=>{
       if(c1y>=p2MaxY)return;
-      pdf.setFont('helvetica','normal');pdf.setFontSize(11);pdf.setTextColor(28,27,46);
-      const faLines=pdf.splitTextToSize(`First Aid Contact: ${fa.name} — ${fa.cert}`,p2C1W-2);
-      faLines.forEach(ln=>{if(c1y<p2MaxY){pdf.text(ln,p2C1X,c1y);c1y+=p2LH;}});
+      pdf.setFontSize(11);pdf.setTextColor(28,27,46);
+      pdf.setFont('helvetica','bold');
+      const faLbl='First Aid Contact:';
+      pdf.text(faLbl,p2C1X,c1y);
+      const faLblW=pdf.getTextWidth(faLbl+' ');
+      pdf.setFont('helvetica','normal');
+      const faDetail=`${fa.name} — ${fa.cert}`;
+      const faDetailLines=pdf.splitTextToSize(faDetail,p2C1W-faLblW);
+      if(faDetailLines.length>0&&c1y<p2MaxY){
+        pdf.text(faDetailLines[0],p2C1X+faLblW,c1y);c1y+=p2LH;
+        faDetailLines.slice(1).forEach(ln=>{if(c1y<p2MaxY){pdf.text(ln,p2C1X+3,c1y);c1y+=p2LH;}});
+      }
     });
     if(p2IngressEls.length>0&&c1y<p2MaxY-8){
       if(p2SecCount>0||S.firstAids.length>0)c1y+=1;
