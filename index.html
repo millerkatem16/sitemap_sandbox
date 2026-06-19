@@ -1467,13 +1467,13 @@ async function useVenue(id){
   redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
   renderVenueChanges();
 
-  modal('Venue Loaded',
-    'This venue’s boundaries and utilities were mapped by its venue manager. '+
-    'You’re free to plan your event right on top of it — move things, remove things, make it work for you. '+
-    'Just know that any changes you make to the venue layout itself (not your event elements) are temporary for your session. '+
-    'They’ll show up under Venue Change Requests in the side panel and on your exported PDF, so the venue manager can see exactly what you needed and decide whether to make it permanent. '+
-    'Plan away — nothing here is set in stone.',
-    '',null,'Got it',{noCancel:true});
+  modal(‘Venue Loaded’,
+    "This venue’s boundaries and utilities were mapped by its venue manager. "+
+    "You’re free to plan your event right on top of it — move things, remove things, make it work for you. "+
+    "Just know that any changes you make to the venue layout itself (not your event elements) are temporary for your session. "+
+    "They’ll show up under Venue Change Requests in the side panel and on your exported PDF, so the venue manager can see exactly what you needed and decide whether to make it permanent. "+
+    "Plan away — nothing here is set in stone.",
+    ‘’,null,’Got it’,{noCancel:true});
 }
 
 function editVenuePinPrompt(id,name){
