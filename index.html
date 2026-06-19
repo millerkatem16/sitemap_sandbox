@@ -1479,7 +1479,7 @@ async function useVenue(id){
   if(S.idCtr<2)S.idCtr=2;
   redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
   renderVenueChanges();
-  document.getElementById(‘ins-txt’).textContent=`"${data.name}" loaded.`;
+  document.getElementById('ins-txt').textContent=`"${data.name}" loaded.`;
 
   const flyDelay=vd.mapCenter&&vd.mapZoom?700:0;
   if(vd.mapCenter&&vd.mapZoom&&gmap){
@@ -1487,13 +1487,13 @@ async function useVenue(id){
     setTimeout(()=>gmap.setZoom(vd.mapZoom),350);
   }
   setTimeout(()=>{
-    modal(‘Venue Loaded’,
+    modal('Venue Loaded',
       "This venue’s boundaries and utilities were mapped by its venue manager. "+
       "You’re free to plan your event right on top of it — move things, remove things, make it work for you. "+
       "Just know that any changes you make to the venue layout itself (not your event elements) are temporary for your session. "+
       "They’ll show up under Venue Change Requests in the side panel and on your exported PDF, so the venue manager can see exactly what you needed and decide whether to make it permanent. "+
       "Plan away — nothing here is set in stone.",
-      ‘’,null,’Got it’,{noCancel:true});
+      '',null,'Got it',{noCancel:true});
   },flyDelay);
 }
 
