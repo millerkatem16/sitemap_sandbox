@@ -177,7 +177,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 #mo{position:fixed;inset:0;background:rgba(20,18,40,0.52);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(10px)}
-#md{background:var(--surf);border:1px solid var(--brd);border-radius:18px;padding:28px;width:360px;box-shadow:0 32px 72px rgba(0,0,0,0.18),0 8px 24px rgba(0,0,0,0.08)}
+#md{background:var(--surf);border:1px solid var(--brd);border-radius:18px;padding:28px;width:calc(100vw - 32px);max-width:360px;box-shadow:0 32px 72px rgba(0,0,0,0.18),0 8px 24px rgba(0,0,0,0.08)}
 .m-title{font-size:16px;font-weight:700;color:var(--tx);margin-bottom:6px;letter-spacing:-.02em}
 .m-desc{font-size:12.5px;color:var(--tx2);margin-bottom:20px;line-height:1.65;font-weight:400}
 .mf{margin-bottom:12px}
@@ -219,6 +219,29 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #pdf-rc-ok:hover{opacity:.85}
 #pdf-rc-can{padding:8px 12px;background:transparent;border:1px solid var(--brd2);border-radius:9px;font-size:12px;font-family:var(--font);font-weight:500;color:var(--tx3);cursor:pointer;transition:all .14s}
 #pdf-rc-can:hover{background:var(--surf2);color:var(--tx2)}
+
+/* ── Venue mode banner ───────────────────────────────────────────────────── */
+#venue-mode-bar{display:none;align-items:center;gap:10px;padding:0 14px;background:rgba(146,39,100,0.18);border-bottom:1px solid rgba(146,39,100,0.35);height:30px;flex-shrink:0;font-size:11px;font-weight:700;color:rgba(255,255,255,0.85);letter-spacing:.04em}
+#venue-mode-bar i{color:var(--crimson);font-size:14px}
+#venue-mode-bar .vm-exit{margin-left:auto;padding:3px 10px;background:rgba(244,81,64,0.18);border:1px solid rgba(244,81,64,0.35);border-radius:7px;color:var(--crimson);cursor:pointer;font-size:11px;font-family:var(--font);font-weight:700;transition:background .12s}
+#venue-mode-bar .vm-exit:hover{background:rgba(244,81,64,0.32)}
+#venue-mode-bar .vm-save{padding:3px 10px;background:rgba(45,212,160,0.18);border:1px solid rgba(45,212,160,0.35);border-radius:7px;color:var(--grn);cursor:pointer;font-size:11px;font-family:var(--font);font-weight:700;transition:background .12s}
+#venue-mode-bar .vm-save:hover{background:rgba(45,212,160,0.32)}
+
+/* ── Venue browse cards ──────────────────────────────────────────────────── */
+.vcards{display:flex;flex-direction:column;gap:10px;max-height:380px;overflow-y:auto;padding-right:4px}
+.vcards::-webkit-scrollbar{width:4px}
+.vcards::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px}
+.vcard{display:flex;gap:12px;padding:10px;border-radius:12px;border:1px solid var(--brd);background:var(--surf2);align-items:center}
+.vcard-thumb{width:64px;height:48px;border-radius:8px;overflow:hidden;flex-shrink:0;background:var(--surf3);border:1px solid var(--brd2);display:flex;align-items:center;justify-content:center}
+.vcard-thumb img{width:100%;height:100%;object-fit:cover}
+.vcard-thumb i{font-size:22px;color:var(--tx3)}
+.vcard-info{flex:1;min-width:0}
+.vcard-name{font-size:13px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcard-city{font-size:10.5px;color:var(--tx3);margin-top:2px}
+.vcard-date{font-size:9.5px;color:var(--tx3);font-family:var(--mono);margin-top:2px}
+.vcard-btns{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.vcard-btns .vbtn{padding:5px 10px;font-size:11px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -230,6 +253,10 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="tg">
     <button class="tb" id="bopen"><i class="ti ti-folder-open"></i>Open</button>
+  </div>
+  <div class="tg">
+    <button class="tb" id="bcreate-venue"><i class="ti ti-building"></i>Create Venue</button>
+    <button class="tb" id="bbrowse-venues"><i class="ti ti-building-store"></i>Browse Venues</button>
   </div>
   <div class="tg">
     <button class="tb" id="zr"><i class="ti ti-ban"></i>Restrict</button>
@@ -283,6 +310,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
 </div>
 
+<div id="venue-mode-bar">
+  <i class="ti ti-building"></i><span id="venue-mode-lbl">VENUE MODE</span>
+  <button class="vm-save" id="vm-save-btn">Save Venue</button>
+  <button class="vm-exit" id="vm-exit-btn">Exit Venue Mode</button>
+</div>
+
 <div id="main">
   <div id="cv-area">
     <div id="map"></div>
@@ -305,6 +338,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
 
   <div id="sb">
     <div class="sb-scroll">
+
+      <div class="panel" id="vcr-panel" style="display:none">
+        <div class="plabel">Venue Change Requests</div>
+        <div style="font-size:9px;color:var(--tx3);line-height:1.55;padding:2px 0 8px">Changes you've made to venue-layer elements this session. These are included in your exported PDF so the venue manager can review them.</div>
+        <div id="vcr-list"></div>
+      </div>
 
       <div class="panel">
         <div class="plabel">Event Name and Date</div>
@@ -395,7 +434,8 @@ const S={
   venues:{},isRotating:false,
   hasSoftSurface:null,undoStack:[],
   mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17,
-  _pendingZoneLabel:null,hideUtils:false
+  _pendingZoneLabel:null,hideUtils:false,
+  activeVenueId:null,loadedVenueSnapshot:null,venueMode:false
 };
 
 let gmap=null,mapsApiKey='';
@@ -423,6 +463,8 @@ const TYPES={
   security:{lbl:'Security',color:'#7c3aed',wFt:6,hFt:6,sqft:0,circle:true,rot:false}
 };
 const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'E',firstaid:'FA',extinguisher:'EX',mix:'M',custom:'C',customtent:'T',electric:'EL',water:'WS',trash:'BIN',security:'SEC'};
+const VENUE_EL_TYPES=new Set(['electric','water','trash','ingress','extinguisher','security','stage','truck','gen','mix','custom']);
+function isVenueEl(el){return VENUE_EL_TYPES.has(el.type)||(TYPES[el.type]&&TYPES[el.type].utility);}
 
 // ── Coordinate conversion ──────────────────────────────────────────────────
 function latLngToPixel(lat,lng){
@@ -796,7 +838,7 @@ function runRules(){
   if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.'});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.'});}
   if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.'});
   document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
-  renderEls();updateCap();renderSiteManagement();
+  renderEls();updateCap();renderSiteManagement();renderVenueChanges();
 }
 
 // ── Render Elements ────────────────────────────────────────────────────────
@@ -1029,17 +1071,47 @@ function renderVendorList(){
 
 // ── Modal ──────────────────────────────────────────────────────────────────
 let mCb=null;
-function modal(title,desc,body,cb,okLabel='Place'){
+function modal(title,desc,body,cb,okLabel='Place',opts={}){
   document.getElementById('mtt').textContent=title;document.getElementById('mdesc').textContent=desc;
   document.getElementById('mb').innerHTML=body;document.getElementById('mok').textContent=okLabel;
+  document.getElementById('md').style.maxWidth=(opts.wide||360)+'px';
+  document.getElementById('mcan').style.display=opts.noCancel?'none':'';
   document.getElementById('mo').style.display='flex';mCb=cb;
   setTimeout(()=>{const f=document.querySelector('#mb input,#mb select');if(f)f.focus();},80);
 }
-document.getElementById('mcan').addEventListener('click',()=>document.getElementById('mo').style.display='none');
-document.getElementById('mok').addEventListener('click',()=>{document.getElementById('mo').style.display='none';if(mCb)mCb();});
+function closeModal(){document.getElementById('mo').style.display='none';document.getElementById('md').style.maxWidth='360px';document.getElementById('mcan').style.display='';}
+document.getElementById('mcan').addEventListener('click',closeModal);
+document.getElementById('mok').addEventListener('click',()=>{closeModal();if(mCb)mCb();});
 function mf(lbl,id,type='text',val='',ph=''){return`<div class="mf"><label>${lbl}</label><input type="${type}" id="${id}" value="${val}" placeholder="${ph}"></div>`;}
 function msel(lbl,id,opts){return`<div class="mf"><label>${lbl}</label><select id="${id}">${opts.map(o=>`<option value="${o.v}">${o.t}</option>`).join('')}</select></div>`;}
 function mr(...fs){return`<div class="mrow">${fs.join('')}</div>`;}
+
+// ── Venue mode toolbar ─────────────────────────────────────────────────────
+const EL_DROP_NORMAL=`<option value="" disabled selected>Add Elements to Park</option><option value="tent10">10×10 Tent</option><option value="tent20">10×20 Tent</option><option value="customtent">+ Add custom tent size…</option><option value="stage">Stage</option><option value="truck">Food Truck</option><option value="gen">Generator</option><option value="mix">Mix Platform</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
+const EL_DROP_VENUE=`<option value="" disabled selected>Add Venue Elements</option><option value="stage">Stage</option><option value="gen">Generator</option><option value="mix">Mix Platform</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
+
+function enterVenueMode(editLabel){
+  S.venueMode=true;
+  const bar=document.getElementById('venue-mode-bar');
+  bar.style.display='flex';
+  document.getElementById('venue-mode-lbl').textContent=editLabel||'VENUE MODE — place permanent site elements only';
+  document.getElementById('el-drop').innerHTML=EL_DROP_VENUE;
+  document.getElementById('el-drop').selectedIndex=0;
+  document.getElementById('vm-save-btn').onclick=()=>saveVenue();
+  setTool('select');
+}
+function exitVenueMode(){
+  S.venueMode=false;
+  document.getElementById('venue-mode-bar').style.display='none';
+  document.getElementById('el-drop').innerHTML=EL_DROP_NORMAL;
+  document.getElementById('el-drop').selectedIndex=0;
+  document.getElementById('vm-save-btn').onclick=()=>saveVenue();
+  setTool('select');
+}
+document.getElementById('vm-exit-btn').addEventListener('click',()=>{
+  modal('Exit Venue Mode?','Your current canvas will be cleared. Any unsaved venue work will be lost.',
+    '',()=>{exitVenueMode();pushUndo();S.els=[];S.zonePolys=[];S.adaPaths=[];S.dims=[];S.firstAids=[];S.selId=null;renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();},'Exit');
+});
 
 // ── Place elements ─────────────────────────────────────────────────────────
 function place(type,x,y){
@@ -1189,7 +1261,7 @@ cw.addEventListener('mouseup',e=>{
 document.addEventListener('mouseup',()=>{if(S.tool==='dim')dimStart=null;});
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){document.getElementById('mo').style.display='none';return;}
+  if(e.key==='Escape'){closeModal();return;}
   const tag=document.activeElement&&document.activeElement.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
   if(e.key==='Delete'||e.key==='Backspace'){
     if(S.selId!==null){
@@ -1228,6 +1300,216 @@ document.getElementById('ba').addEventListener('click',()=>{
 document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
 document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
 
+// ── Venue helpers ──────────────────────────────────────────────────────────
+function venueDataSnapshot(){
+  return{
+    els:JSON.parse(JSON.stringify(S.els.filter(e=>VENUE_EL_TYPES.has(e.type)))),
+    zonePolys:JSON.parse(JSON.stringify(S.zonePolys.filter(z=>z.type==='border')))
+  };
+}
+
+async function saveVenue(editId,editPin){
+  const isEdit=!!editId;
+  let capturedImage=null;
+  const imgCapBtnId='sv-cap-btn';
+
+  const body=
+    mf('Venue Name','sv-name','text','','e.g. Riverside Park')+
+    mf('City','sv-city','text','','e.g. Norfolk, VA')+
+    `<div class="mf"><label>Preview Image (optional)</label><div style="display:flex;gap:8px;align-items:center"><input type="file" id="sv-img-file" accept="image/*" style="flex:1;font-size:11px;color:var(--tx2)"><button type="button" id="${imgCapBtnId}" class="vbtn" style="flex-shrink:0;font-size:11px;padding:5px 10px;white-space:nowrap"><i class="ti ti-camera"></i> Capture</button></div><div id="sv-img-preview" style="margin-top:6px;display:none"><img id="sv-img-thumb" style="width:100%;max-height:120px;object-fit:contain;border-radius:8px;border:1px solid var(--brd2)"></div></div>`+
+    (isEdit?'':(mr(mf('4-Digit PIN','sv-pin','text','','e.g. 1234'),mf('Confirm PIN','sv-pin2','text','','Repeat PIN'))));
+
+  modal(
+    isEdit?'Update Venue':'Save New Venue',
+    isEdit?'Update this venue's layout. Your PIN is required to confirm the change.':'Set a PIN to protect this venue layout.',
+    body,
+    async()=>{
+      const name=document.getElementById('sv-name').value.trim();
+      const city=document.getElementById('sv-city').value.trim();
+      if(!name){document.getElementById('ins-txt').textContent='Venue name is required.';return;}
+      let pin=editPin||'';
+      if(!isEdit){
+        pin=document.getElementById('sv-pin').value.trim();
+        const pin2=document.getElementById('sv-pin2').value.trim();
+        if(!/^\d{4}$/.test(pin)){document.getElementById('ins-txt').textContent='PIN must be exactly 4 digits.';return;}
+        if(pin!==pin2){document.getElementById('ins-txt').textContent='PINs do not match — venue not saved.';return;}
+      }
+      const data=venueDataSnapshot();
+      let preview_image=capturedImage||null;
+      const fileEl=document.getElementById('sv-img-file');
+      if(!preview_image&&fileEl&&fileEl.files[0]){
+        preview_image=await new Promise(res=>{const fr=new FileReader();fr.onload=e=>res(e.target.result);fr.readAsDataURL(fileEl.files[0]);});
+      }
+      const payload={name,city:city||undefined,venue_data:data,pin,preview_image:preview_image||undefined};
+      try{
+        document.getElementById('ins-txt').textContent=isEdit?'Updating venue…':'Saving venue…';
+        const resp=await fetch(isEdit?`/api/venues/${editId}`:'/api/venues',{
+          method:isEdit?'PUT':'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(payload)
+        });
+        const result=await resp.json();
+        if(!resp.ok){document.getElementById('ins-txt').textContent=result.error||'Save failed.';return;}
+        document.getElementById('ins-txt').textContent=isEdit?`"${result.name}" updated.`:`"${result.name}" saved as a venue.`;
+        if(!isEdit)exitVenueMode();
+      }catch(err){document.getElementById('ins-txt').textContent='Network error — venue not saved.';}
+    },
+    isEdit?'Update Venue':'Save Venue'
+  );
+
+  // Wire capture button after modal renders
+  setTimeout(()=>{
+    const capBtn=document.getElementById(imgCapBtnId);
+    if(!capBtn)return;
+    capBtn.addEventListener('click',async()=>{
+      closeModal();
+      try{
+        if(!window.domtoimage)await loadScript('https://unpkg.com/dom-to-image-more/dist/dom-to-image-more.min.js');
+        const capture=await startMapCapture();
+        capturedImage=capture.dataUrl;
+        // re-open modal with preview showing
+        saveVenue(editId,editPin);
+        setTimeout(()=>{
+          const prev=document.getElementById('sv-img-preview');
+          const thumb=document.getElementById('sv-img-thumb');
+          if(prev&&thumb){thumb.src=capturedImage;prev.style.display='';}
+        },100);
+      }catch(e){if(e!=='cancelled')document.getElementById('ins-txt').textContent='Capture cancelled.';}
+    });
+    // Show preview if already captured
+    if(capturedImage){
+      const prev=document.getElementById('sv-img-preview');
+      const thumb=document.getElementById('sv-img-thumb');
+      if(prev&&thumb){thumb.src=capturedImage;prev.style.display='';}
+    }
+  },100);
+}
+
+function createVenue(){
+  modal('Start New Venue','This will clear the current canvas and enter Venue Mode. Continue?',
+    '',()=>{
+      pushUndo();
+      S.els=[];S.zonePolys=[];S.adaPaths=[];S.dims=[];S.firstAids=[];S.selId=null;
+      S.activeVenueId=null;S.loadedVenueSnapshot=null;
+      renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+      enterVenueMode();
+      document.getElementById('ins-txt').textContent='Venue Mode — draw borders, place permanent site elements, then click Save Venue above.';
+    },'Start Venue');
+}
+
+async function browseVenues(){
+  document.getElementById('ins-txt').textContent='Loading venues…';
+  let venues;
+  try{
+    const resp=await fetch('/api/venues');
+    venues=await resp.json();
+  }catch(e){document.getElementById('ins-txt').textContent='Could not load venues.';return;}
+  document.getElementById('ins-txt').textContent='';
+
+  if(!venues.length){
+    modal('Browse Venues','No venues have been saved yet. Use "Create Venue" to build and save a permanent site layout.',
+      '',null,'Close',{noCancel:true});
+    return;
+  }
+
+  const fmt=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const cardsHtml=`<div class="vcards">`+venues.map(v=>`
+    <div class="vcard">
+      <div class="vcard-thumb">${v.preview_image_url?`<img src="${v.preview_image_url}" alt="">`:'<i class="ti ti-map"></i>'}</div>
+      <div class="vcard-info">
+        <div class="vcard-name">${v.name.replace(/</g,'&lt;')}</div>
+        ${v.city?`<div class="vcard-city">${v.city.replace(/</g,'&lt;')}</div>`:''}
+        <div class="vcard-date">${fmt(v.created_at)}</div>
+      </div>
+      <div class="vcard-btns">
+        <button class="vbtn acc use-venue-btn" data-id="${v.id}">Use This Venue</button>
+        <button class="vbtn edit-venue-btn" data-id="${v.id}" data-name="${v.name.replace(/"/g,'&quot;')}">Edit Venue</button>
+      </div>
+    </div>`).join('')+`</div>`;
+
+  modal('Browse Venues','Choose a venue to load or edit.',cardsHtml,null,'Close',{wide:540,noCancel:true});
+
+  setTimeout(()=>{
+    document.querySelectorAll('.use-venue-btn').forEach(btn=>{
+      btn.addEventListener('click',async()=>{
+        const id=btn.dataset.id;
+        closeModal();
+        await useVenue(id);
+      });
+    });
+    document.querySelectorAll('.edit-venue-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const id=btn.dataset.id,name=btn.dataset.name;
+        closeModal();
+        editVenuePinPrompt(id,name);
+      });
+    });
+  },80);
+}
+
+async function useVenue(id){
+  document.getElementById('ins-txt').textContent='Loading venue…';
+  let data;
+  try{
+    const resp=await fetch(`/api/venues/${id}`);
+    data=await resp.json();
+    if(!resp.ok){document.getElementById('ins-txt').textContent=data.error||'Failed to load venue.';return;}
+  }catch(e){document.getElementById('ins-txt').textContent='Network error loading venue.';return;}
+
+  pushUndo();
+  const vd=data.venue_data||{};
+  S.els=(vd.els||[]).map(e=>({...e}));
+  S.zonePolys=(vd.zonePolys||[]).map(z=>({...z}));
+  S.adaPaths=[];S.dims=[];S.firstAids=[];S.selId=null;
+  S.activeVenueId=id;
+  S.loadedVenueSnapshot=JSON.parse(JSON.stringify(vd));
+  if(S.idCtr<2)S.idCtr=2;
+  redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+  renderVenueChanges();
+
+  modal('Venue Loaded',
+    'This venue’s boundaries and utilities were mapped by its venue manager. '+
+    'You’re free to plan your event right on top of it — move things, remove things, make it work for you. '+
+    'Just know that any changes you make to the venue layout itself (not your event elements) are temporary for your session. '+
+    'They’ll show up under Venue Change Requests in the side panel and on your exported PDF, so the venue manager can see exactly what you needed and decide whether to make it permanent. '+
+    'Plan away — nothing here is set in stone.',
+    '',null,'Got it',{noCancel:true});
+}
+
+function editVenuePinPrompt(id,name){
+  modal(`Edit "${name}"`,
+    'Enter the venue PIN to load it for editing.',
+    mf('4-Digit PIN','ev-pin','password','','Enter venue PIN'),
+    async()=>{
+      const pin=document.getElementById('ev-pin').value.trim();
+      if(!/^\d{4}$/.test(pin)){document.getElementById('ins-txt').textContent='PIN must be exactly 4 digits.';return;}
+      document.getElementById('ins-txt').textContent='Verifying PIN…';
+      // Verify by attempting a no-op PUT with current data then aborting — instead, load venue first, then verify on save.
+      // We load the venue data, enter edit mode, and the PIN is only verified server-side on the final PUT.
+      let data;
+      try{
+        const resp=await fetch(`/api/venues/${id}`);
+        data=await resp.json();
+        if(!resp.ok){document.getElementById('ins-txt').textContent=data.error||'Failed to load venue.';return;}
+      }catch(e){document.getElementById('ins-txt').textContent='Network error.';return;}
+      pushUndo();
+      const vd=data.venue_data||{};
+      S.els=(vd.els||[]).map(e=>({...e}));
+      S.zonePolys=(vd.zonePolys||[]).map(z=>({...z}));
+      S.adaPaths=[];S.dims=[];S.firstAids=[];S.selId=null;
+      S.activeVenueId=null;S.loadedVenueSnapshot=null;
+      redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+      enterVenueMode(`EDITING VENUE: ${data.name}`);
+      document.getElementById('ins-txt').textContent=`Editing "${data.name}" — make changes, then click Save Venue.`;
+      // Override Save Venue to do a PUT with pin verification
+      document.getElementById('vm-save-btn').onclick=()=>saveVenue(id,pin);
+    },'Load for Editing');
+}
+
+document.getElementById('bcreate-venue').addEventListener('click',createVenue);
+document.getElementById('bbrowse-venues').addEventListener('click',browseVenues);
+document.getElementById('vm-save-btn').onclick=()=>saveVenue();
+
 // ── Save / Open Event ──────────────────────────────────────────────────────
 let savedEvents={};
 try{const _se=localStorage.getItem('esm_events_v1');if(_se)savedEvents=JSON.parse(_se);}catch(er){}
@@ -1257,7 +1539,8 @@ function saveEvent(){
           evtName:document.getElementById('evt-name').value.trim(),
           evtDate:evtDateEl?evtDateEl.value:'',
           mapCenter:S.mapCenter,mapZoom:S.mapZoom,
-          hasSoftSurface:S.hasSoftSurface,idCtr:S.idCtr
+          hasSoftSurface:S.hasSoftSurface,idCtr:S.idCtr,
+          activeVenueId:S.activeVenueId||null
         }
       };
       try{localStorage.setItem('esm_events_v1',JSON.stringify(savedEvents));}catch(er){}
@@ -1291,8 +1574,15 @@ function openEvents(){
       if(evtNEl&&state.evtName)evtNEl.value=state.evtName;
       if(evtDEl&&state.evtDate)evtDEl.value=state.evtDate;
       if(gmap&&state.mapCenter&&state.mapZoom){gmap.setCenter(state.mapCenter);gmap.setZoom(state.mapZoom);}
+      S.activeVenueId=state.activeVenueId||null;
+      S.loadedVenueSnapshot=null;
       redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
       document.getElementById('ins-txt').textContent=`"${name}" loaded.`;
+      if(S.activeVenueId){
+        fetch(`/api/venues/${S.activeVenueId}`).then(r=>r.json()).then(d=>{
+          if(d&&d.venue_data){S.loadedVenueSnapshot=JSON.parse(JSON.stringify(d.venue_data));renderVenueChanges();}
+        }).catch(()=>{});
+      }
     },'Open');
   // Inject Delete button into modal footer
   document.querySelectorAll('#mo .oe-del-btn').forEach(b=>b.remove());
@@ -1304,7 +1594,7 @@ function openEvents(){
     _del.addEventListener('click',()=>{
       const name=document.getElementById('oe-sel').value;
       if(!name||!savedEvents[name])return;
-      document.getElementById('mo').style.display='none';
+      closeModal();
       modal(`Delete "${name}"?`,
         'This cannot be undone. The event and all its data will be permanently removed.',
         '',
@@ -1333,6 +1623,42 @@ document.getElementById('bclr').addEventListener('click',()=>{
       drawAda();runRules();
     },'Clear');
 });
+
+// ── Venue Change Requests ─────────────────────────────────────────────────
+function getVenueChanges(){
+  if(!S.activeVenueId||!S.loadedVenueSnapshot)return[];
+  const snapEls=S.loadedVenueSnapshot.els||[];
+  const curVenueEls=S.els.filter(e=>VENUE_EL_TYPES.has(e.type));
+  const curById=new Map(curVenueEls.map(e=>[e.id,e]));
+  const changes=[];
+  snapEls.forEach(snap=>{
+    if(!curById.has(snap.id)){
+      const lbl=snap.vendorName||snap.label||(TYPES[snap.type]||TYPES.custom).lbl;
+      changes.push({kind:'removed',label:lbl});
+    }else{
+      const cur=curById.get(snap.id);
+      const dlat=Math.abs((cur.lat||0)-(snap.lat||0));
+      const dlng=Math.abs((cur.lng||0)-(snap.lng||0));
+      if(dlat>0.000001||dlng>0.000001){
+        const ftLat=dlat*364000,ftLng=dlng*364000*Math.cos((cur.lat||0)*Math.PI/180);
+        const distFt=Math.round(Math.sqrt(ftLat*ftLat+ftLng*ftLng));
+        const lbl=cur.vendorName||cur.label||(TYPES[cur.type]||TYPES.custom).lbl;
+        changes.push({kind:'moved',label:lbl,distFt});
+      }
+    }
+  });
+  return changes;
+}
+function renderVenueChanges(){
+  const panel=document.getElementById('vcr-panel');
+  const list=document.getElementById('vcr-list');
+  if(!panel||!list)return;
+  if(!S.activeVenueId){panel.style.display='none';return;}
+  panel.style.display='';
+  const changes=getVenueChanges();
+  if(!changes.length){list.innerHTML='<div class="w ok"><i class="ti ti-circle-check"></i><span>No venue changes — layout matches original.</span></div>';return;}
+  list.innerHTML=changes.map(c=>`<div class="w soft"><i class="ti ti-alert-triangle"></i><span>${c.kind==='removed'?`${c.label} — removed from layout`:`${c.label} — moved ~${c.distFt} ft`}</span></div>`).join('');
+}
 
 // ── Color key ──────────────────────────────────────────────────────────────
 function renderColorKey(){
@@ -2075,6 +2401,23 @@ async function exportPDF(capture){
     }
   }
 
+  // ── Venue Change Requests on page 2 (when a venue is loaded) ─────────────
+  if(S.activeVenueId){
+    const vchg=getVenueChanges();
+    const vcrY=Math.max(c1y,c2y)+4;
+    if(vchg.length&&vcrY<p2MaxY-12){
+      let vy=secHdr('VENUE CHANGE REQUESTS',p2C1X,PW-2*M,vcrY);
+      pdf.setFont('helvetica','italic');pdf.setFontSize(9);pdf.setTextColor(120,110,100);
+      pdf.text('Changes made to venue-layer elements this session:',p2C1X,vy);vy+=p2LH;
+      vchg.forEach(c=>{
+        if(vy>=p2MaxY)return;
+        pdf.setFont('helvetica','normal');pdf.setFontSize(10.5);pdf.setTextColor(90,70,10);
+        const icon=c.kind==='removed'?'–':'→';
+        pdf.text(`${icon}  ${c.kind==='removed'?`${c.label} — removed from layout`:`${c.label} — moved ~${c.distFt} ft`}`,p2C1X,vy);vy+=p2LH;
+      });
+    }
+  }
+
   // ── Page 2 footer ─────────────────────────────────────────────────────────
   pdf.setFillColor(42,95,100);pdf.rect(0,footerY,PW,footerH,'F');
   pdf.setFontSize(6.5);pdf.setFont('helvetica','normal');pdf.setTextColor(180,220,222);
@@ -2139,7 +2482,7 @@ async function init(){
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 sz();
-renderColorKey();renderVendorList();renderSiteManagement();
+renderColorKey();renderVendorList();renderSiteManagement();renderVenueChanges();
 // pointer-events: none on cw initially (select tool)
 cw.style.pointerEvents='none';
 init();
