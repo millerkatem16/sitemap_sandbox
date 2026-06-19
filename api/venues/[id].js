@@ -19,7 +19,8 @@ module.exports = async (req, res) => {
       if (!rows.length) { res.status(404).json({ error: 'Venue not found.' }); return; }
       res.json(rows[0]);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      console.error('[GET /api/venues/:id]', err);
+      res.status(500).json({ error: err.message, code: err.code || null });
     }
     return;
   }
@@ -52,7 +53,8 @@ module.exports = async (req, res) => {
       if (!rows.length) { res.status(404).json({ error: 'Venue not found.' }); return; }
       res.json(rows[0]);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      console.error('[PUT /api/venues/:id]', err);
+      res.status(500).json({ error: err.message, code: err.code || null });
     }
     return;
   }

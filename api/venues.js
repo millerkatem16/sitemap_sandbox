@@ -16,7 +16,8 @@ module.exports = async (req, res) => {
       `;
       res.json(rows);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      console.error('[GET /api/venues]', err);
+      res.status(500).json({ error: err.message, code: err.code || null });
     }
     return;
   }
@@ -48,7 +49,8 @@ module.exports = async (req, res) => {
       `;
       res.status(201).json(rows[0]);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      console.error('[POST /api/venues]', err);
+      res.status(500).json({ error: err.message, code: err.code || null });
     }
     return;
   }
