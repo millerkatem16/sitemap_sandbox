@@ -1321,7 +1321,7 @@ async function saveVenue(editId,editPin){
 
   modal(
     isEdit?'Update Venue':'Save New Venue',
-    isEdit?'Update this venue's layout. Your PIN is required to confirm the change.':'Set a PIN to protect this venue layout.',
+    isEdit?"Update this venue's layout. Your PIN is required to confirm the change.":'Set a PIN to protect this venue layout.',
     body,
     async()=>{
       const name=document.getElementById('sv-name').value.trim();
