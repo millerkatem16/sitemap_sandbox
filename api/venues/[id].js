@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
@@ -54,6 +54,22 @@ module.exports = async (req, res) => {
       res.json(rows[0]);
     } catch (err) {
       console.error('[PUT /api/venues/:id]', err);
+      res.status(500).json({ error: err.message, code: err.code || null });
+    }
+    return;
+  }
+
+  if (req.method === 'DELETE') {
+    const { pin } = req.body || {};
+    try {
+      const { rows: existing } = await sql`SELECT pin_hash, name FROM venues WHERE id = ${id}`;
+      if (!existing.length) { res.status(404).json({ error: 'Venue not found.' }); return; }
+      const valid = await bcrypt.compare(String(pin || ''), existing[0].pin_hash);
+      if (!valid) { res.status(401).json({ error: 'Incorrect PIN — venue not deleted.' }); return; }
+      await sql`DELETE FROM venues WHERE id = ${id}`;
+      res.json({ deleted: true, name: existing[0].name });
+    } catch (err) {
+      console.error('[DELETE /api/venues/:id]', err);
       res.status(500).json({ error: err.message, code: err.code || null });
     }
     return;

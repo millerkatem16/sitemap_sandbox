@@ -227,6 +227,8 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #venue-mode-bar .vm-exit:hover{background:rgba(244,81,64,0.32)}
 #venue-mode-bar .vm-save{padding:3px 10px;background:rgba(45,212,160,0.18);border:1px solid rgba(45,212,160,0.35);border-radius:7px;color:var(--grn);cursor:pointer;font-size:11px;font-family:var(--font);font-weight:700;transition:background .12s}
 #venue-mode-bar .vm-save:hover{background:rgba(45,212,160,0.32)}
+#venue-mode-bar .vm-del{padding:3px 10px;background:rgba(244,81,64,0.1);border:1px solid rgba(244,81,64,0.25);border-radius:7px;color:rgba(244,81,64,0.65);cursor:pointer;font-size:11px;font-family:var(--font);font-weight:700;transition:background .12s}
+#venue-mode-bar .vm-del:hover{background:rgba(244,81,64,0.28);color:var(--crimson);border-color:rgba(244,81,64,0.5)}
 
 /* ── Venue browse cards ──────────────────────────────────────────────────── */
 .vcards{display:flex;flex-direction:column;gap:10px;max-height:380px;overflow-y:auto;padding-right:4px}
@@ -313,6 +315,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 <div id="venue-mode-bar">
   <i class="ti ti-building"></i><span id="venue-mode-lbl">VENUE MODE</span>
   <button class="vm-save" id="vm-save-btn">Save Venue</button>
+  <button class="vm-del" id="vm-del-btn" style="display:none">Delete Venue</button>
   <button class="vm-exit" id="vm-exit-btn">Exit Venue Mode</button>
 </div>
 
@@ -1090,7 +1093,7 @@ function mr(...fs){return`<div class="mrow">${fs.join('')}</div>`;}
 const EL_DROP_NORMAL=`<option value="" disabled selected>Add Elements to Park</option><option value="tent10">10×10 Tent</option><option value="tent20">10×20 Tent</option><option value="customtent">+ Add custom tent size…</option><option value="stage">Stage</option><option value="truck">Food Truck</option><option value="gen">Generator</option><option value="mix">Mix Platform</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
 const EL_DROP_VENUE=`<option value="" disabled selected>Add Venue Elements</option><option value="stage">Stage</option><option value="gen">Generator</option><option value="mix">Mix Platform</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
 
-function enterVenueMode(editLabel){
+function enterVenueMode(editLabel,editId,editPin){
   S.venueMode=true;
   const bar=document.getElementById('venue-mode-bar');
   bar.style.display='flex';
@@ -1098,6 +1101,13 @@ function enterVenueMode(editLabel){
   document.getElementById('el-drop').innerHTML=EL_DROP_VENUE;
   document.getElementById('el-drop').selectedIndex=0;
   document.getElementById('vm-save-btn').onclick=()=>saveVenue();
+  const delBtn=document.getElementById('vm-del-btn');
+  if(editId&&editPin){
+    delBtn.style.display='';
+    delBtn.onclick=()=>deleteVenue(editId,editLabel?editLabel.replace('EDITING VENUE: ',''):editId,editPin);
+  }else{
+    delBtn.style.display='none';delBtn.onclick=null;
+  }
   setTool('select');
 }
 function exitVenueMode(){
@@ -1106,6 +1116,8 @@ function exitVenueMode(){
   document.getElementById('el-drop').innerHTML=EL_DROP_NORMAL;
   document.getElementById('el-drop').selectedIndex=0;
   document.getElementById('vm-save-btn').onclick=()=>saveVenue();
+  const delBtn=document.getElementById('vm-del-btn');
+  delBtn.style.display='none';delBtn.onclick=null;
   setTool('select');
 }
 document.getElementById('vm-exit-btn').addEventListener('click',()=>{
@@ -1304,7 +1316,8 @@ document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.tar
 function venueDataSnapshot(){
   return{
     els:JSON.parse(JSON.stringify(S.els.filter(e=>VENUE_EL_TYPES.has(e.type)))),
-    zonePolys:JSON.parse(JSON.stringify(S.zonePolys.filter(z=>z.type==='border')))
+    zonePolys:JSON.parse(JSON.stringify(S.zonePolys.filter(z=>z.type==='border'))),
+    mapCenter:S.mapCenter,mapZoom:S.mapZoom
   };
 }
 
@@ -1466,14 +1479,22 @@ async function useVenue(id){
   if(S.idCtr<2)S.idCtr=2;
   redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
   renderVenueChanges();
+  document.getElementById(‘ins-txt’).textContent=`"${data.name}" loaded.`;
 
-  modal('Venue Loaded',
-    "This venue’s boundaries and utilities were mapped by its venue manager. "+
-    "You’re free to plan your event right on top of it — move things, remove things, make it work for you. "+
-    "Just know that any changes you make to the venue layout itself (not your event elements) are temporary for your session. "+
-    "They’ll show up under Venue Change Requests in the side panel and on your exported PDF, so the venue manager can see exactly what you needed and decide whether to make it permanent. "+
-    "Plan away — nothing here is set in stone.",
-    '',null,'Got it',{noCancel:true});
+  const flyDelay=vd.mapCenter&&vd.mapZoom?700:0;
+  if(vd.mapCenter&&vd.mapZoom&&gmap){
+    gmap.panTo(vd.mapCenter);
+    setTimeout(()=>gmap.setZoom(vd.mapZoom),350);
+  }
+  setTimeout(()=>{
+    modal(‘Venue Loaded’,
+      "This venue’s boundaries and utilities were mapped by its venue manager. "+
+      "You’re free to plan your event right on top of it — move things, remove things, make it work for you. "+
+      "Just know that any changes you make to the venue layout itself (not your event elements) are temporary for your session. "+
+      "They’ll show up under Venue Change Requests in the side panel and on your exported PDF, so the venue manager can see exactly what you needed and decide whether to make it permanent. "+
+      "Plan away — nothing here is set in stone.",
+      ‘’,null,’Got it’,{noCancel:true});
+  },flyDelay);
 }
 
 function editVenuePinPrompt(id,name){
@@ -1499,11 +1520,34 @@ function editVenuePinPrompt(id,name){
       S.adaPaths=[];S.dims=[];S.firstAids=[];S.selId=null;
       S.activeVenueId=null;S.loadedVenueSnapshot=null;
       redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
-      enterVenueMode(`EDITING VENUE: ${data.name}`);
+      enterVenueMode(`EDITING VENUE: ${data.name}`,id,pin);
       document.getElementById('ins-txt').textContent=`Editing "${data.name}" — make changes, then click Save Venue.`;
-      // Override Save Venue to do a PUT with pin verification
       document.getElementById('vm-save-btn').onclick=()=>saveVenue(id,pin);
     },'Load for Editing');
+}
+
+async function deleteVenue(id,name,pin){
+  modal(`Delete "${name}"?`,
+    'This permanently removes the venue for everyone — not just this session. This cannot be undone.',
+    '',
+    async()=>{
+      try{
+        document.getElementById('ins-txt').textContent='Deleting venue…';
+        const resp=await fetch(`/api/venues/${id}`,{
+          method:'DELETE',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({pin})
+        });
+        const result=await resp.json();
+        if(!resp.ok){document.getElementById('ins-txt').textContent=result.error||'Delete failed.';return;}
+        exitVenueMode();
+        pushUndo();
+        S.els=[];S.zonePolys=[];S.adaPaths=[];S.dims=[];S.firstAids=[];S.selId=null;
+        S.activeVenueId=null;S.loadedVenueSnapshot=null;
+        renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+        document.getElementById('ins-txt').textContent=`"${result.name||name}" deleted.`;
+      }catch(err){document.getElementById('ins-txt').textContent='Network error — venue not deleted.';}
+    },'Delete Venue');
 }
 
 document.getElementById('bcreate-venue').addEventListener('click',createVenue);
