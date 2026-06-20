@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -267,6 +267,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 
 /* ── Fencing ─────────────────────────────────────────────────────────────── */
 #bfence:hover,#bfence.active{background:rgba(168,85,247,0.22);color:#d8b4fe;border-color:rgba(168,85,247,0.48)}
+#ba.active{background:rgba(79,126,248,0.15)!important;border-color:rgba(79,126,248,0.45)!important;color:rgba(79,126,248,0.9)!important}
 </style>
 </head>
 <body>
@@ -287,11 +288,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
     </div>
   </div>
   <div class="tg">
-    <button class="tb" id="ba"><i class="ti ti-accessible"></i>ADA Path</button>
-  </div>
-  <div class="tg">
     <button class="tb" id="bdim"><i class="ti ti-dimensions"></i>Measure</button>
-    <button class="tb" id="bfence"><i class="ti ti-barrier-block"></i>Fencing</button>
   </div>
   <div class="tg">
     <select class="el-drop" id="el-drop">
@@ -399,6 +396,10 @@ canvas{position:absolute;inset:0;pointer-events:none}
 
       <div class="panel">
         <div class="plabel">Site Management</div>
+        <div class="vrow" style="margin-bottom:8px">
+          <button class="vbtn" id="ba" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-accessible" style="font-size:13px"></i>ADA Path</button>
+          <button class="vbtn" id="bfence" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-barrier-block" style="font-size:13px"></i>Fencing</button>
+        </div>
         <div id="sml"></div>
       </div>
 
@@ -947,7 +948,7 @@ function renderEls(){
       const inner=document.createElement('div');
       inner.style.cssText='position:relative;width:'+w+'px;height:'+h+'px;display:flex;align-items:center;padding:0 8px;background:rgba(20,32,33,0.78);border-radius:5px;border:1.5px solid rgba(255,255,255,0.18);box-shadow:0 1px 6px rgba(0,0,0,0.35);';
       const txt=document.createElement('span');
-      txt.style.cssText='color:#fff;font-family:var(--font);font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,0.9);user-select:none;';
+      txt.style.cssText='color:#fff;font-family:var(--font);font-size:12px;font-weight:600;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.9);user-select:none;';
       txt.textContent=el.labelText||'Label';
       inner.appendChild(txt);
       if(S.selId===el.id){inner.style.borderColor='var(--acc)';inner.style.boxShadow='0 0 0 2px var(--acc),0 0 14px rgba(244,81,64,0.35)';}
@@ -1307,7 +1308,7 @@ function place(type,x,y){
   if(type==='label'){
     modal('Add Text Label','Enter the annotation text.',mf('Label Text','lbl-txt','text','','e.g. Parking entrance this way'),()=>{
       const txt=document.getElementById('lbl-txt').value.trim();if(!txt)return;
-      pushUndo();S.els.push({id:S.idCtr++,type:'label',lat:ll.lat,lng:ll.lng,wFt:10,hFt:2,labelText:txt,rot:0,hr:false,sr:false});
+      const lblWFt=Math.max(20,Math.ceil(txt.length*2.8+5));pushUndo();S.els.push({id:S.idCtr++,type:'label',lat:ll.lat,lng:ll.lng,wFt:lblWFt,hFt:2,labelText:txt,rot:0,hr:false,sr:false});
       renderEls();runRules();
     });return;
   }
@@ -1330,6 +1331,7 @@ const DRAWING_TOOLS=[...ZONE_TOOLS,'ada','dim','fence'];
 function setTool(id){
   S.tool=id;
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
+  ['ba','bfence'].forEach(bid=>{const _b=document.getElementById(bid);if(_b)_b.classList.remove('active');});
   const m={select:'bsel',ada:'ba',dim:'bdim',fence:'bfence',restrict:'zr',border:'zbrd',erase:'ze'};
   const btn=document.getElementById(m[id]);if(btn)btn.classList.add('active');
   // Select passes clicks through to map; every other tool needs canvas input
@@ -1694,13 +1696,12 @@ async function deleteVenue(id,name,pin){
 document.getElementById('bcreate-venue').addEventListener('click',()=>{document.getElementById('venue-dd').style.display='none';createVenue();});
 document.getElementById('bbrowse-venues').addEventListener('click',()=>{document.getElementById('venue-dd').style.display='none';browseVenues();});
 document.getElementById('bvenue').addEventListener('click',ev=>{ev.stopPropagation();const dd=document.getElementById('venue-dd');dd.style.display=dd.style.display==='block'?'none':'block';});
-document.addEventListener('click',()=>document.getElementById('venue-dd').style.display='none');
+document.addEventListener('click',ev=>{if(!document.getElementById('bvenue').contains(ev.target)){document.getElementById('venue-dd').style.display='none';}});
 document.getElementById('vm-save-btn').onclick=()=>saveVenue();
 document.getElementById('bfence').addEventListener('click',()=>{
-  const mats=['Sand Fence','Snow Fence','Crowd Control Barrier','Wood Fence','Chain Link','Wire Rope'];
-  modal('Add Fencing','Choose a fencing material, then click to place points on the map.',
-    '<div class="mf"><label>Material</label><select id="fnc-mat">'+mats.map(m=>'<option>'+m+'</option>').join('')+'</select></div>',
-    ()=>{fenceMaterial=document.getElementById('fnc-mat').value;fenceCur=[];setTool('fence');},
+  modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',
+    mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),
+    ()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},
     'Start Drawing');
 });
 
