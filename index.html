@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -1699,8 +1699,8 @@ document.getElementById('vm-save-btn').onclick=()=>saveVenue();
 document.getElementById('bfence').addEventListener('click',()=>{
   const mats=['Sand Fence','Snow Fence','Crowd Control Barrier','Wood Fence','Chain Link','Wire Rope'];
   modal('Add Fencing','Choose a fencing material, then click to place points on the map.',
-    '<div class=''mf''><label>Material</label><select id=''fnc-mat''>'+mats.map(m=>'<option>'+m+'</option>').join('')+'</select></div>',
-    ()=>{fenceMaterial=document.getElementById('fnc-mat').value;fenceCur=[];setTool(''fence'');},
+    '<div class="mf"><label>Material</label><select id="fnc-mat">'+mats.map(m=>'<option>'+m+'</option>').join('')+'</select></div>',
+    ()=>{fenceMaterial=document.getElementById('fnc-mat').value;fenceCur=[];setTool('fence');},
     'Start Drawing');
 });
 
