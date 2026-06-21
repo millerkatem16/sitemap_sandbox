@@ -922,6 +922,10 @@ function runRules(){
     trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} within 10ft of each other (~${Math.round(clr)}ft edge to edge).`});t.hr=true;o.hr=true;}});
     const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} in restricted zone.`});t.hr=true;}
   });
+  // Cooking tent must be 20ft from other activations (non-cooking tents)
+  const cookingTents=tents.filter(t=>getTentCat(t)==='cooking');
+  const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
+  cookingTents.forEach(c=>{[...nonCookingTents,...trucks].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — cooking areas require 20ft separation from other activations (~${Math.round(clr)}ft).`});c.hr=true;o.hr=true;}});});
   gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`});});
   if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:'No ingress/egress placed.'});
   else if(ins.length===1)warns.push({type:'hard',msg:'Only 1 ingress/egress — minimum 2 required. 3 recommended.'});
@@ -2255,10 +2259,10 @@ async function exportPDF(capture){
     pdf.setLineDashPattern([],0);
     {const cx=pps.reduce((s,p)=>s+p.x,0)/pps.length,cy=pps.reduce((s,p)=>s+p.y,0)/pps.length;
     const zLbl=(z.label||(z.type==='border'?'VENUE BORDER':'RESTRICTED ZONE')).toUpperCase();
-    pdf.setFont('helvetica','bold');pdf.setFontSize(9);
+    pdf.setFont('helvetica','bold');pdf.setFontSize(12);
     const tw=pdf.getTextWidth(zLbl);
-    pdf.setFillColor(10,10,20);pdf.rect(cx-tw/2-2,cy-3.5,tw+4,5,'F');
-    pdf.setTextColor(255,255,255);pdf.text(zLbl,cx,cy+0.7,{align:'center'});}
+    pdf.setFillColor(10,10,20);pdf.rect(cx-tw/2-2,cy-4,tw+4,6,'F');
+    pdf.setTextColor(255,255,255);pdf.text(zLbl,cx,cy+0.8,{align:'center'});}
   });
 
   // ── 8. Draw ADA paths ─────────────────────────────────────────────────────
@@ -2281,10 +2285,10 @@ async function exportPDF(capture){
       const fa=fpp[Math.max(0,fmid)],fb=fpp[Math.min(fpp.length-1,fmid+1)];
       const fmx=(fa.x+fb.x)/2,fmy=(fa.y+fb.y)/2;
       const flbl=(f.material||'Fence')+' '+Math.round(f.totalFt)+' ft';
-      pdf.setFont('helvetica','bold');pdf.setFontSize(5);pdf.setTextColor(168,85,247);
+      pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(168,85,247);
       const ftw=pdf.getTextWidth(flbl);
-      pdf.setFillColor(10,12,18);pdf.rect(fmx-ftw/2-1,fmy-2.5,ftw+2,4,'F');
-      pdf.text(flbl,fmx,fmy+0.6,{align:'center'});
+      pdf.setFillColor(10,12,18);pdf.rect(fmx-ftw/2-2,fmy-3.5,ftw+4,5.5,'F');
+      pdf.text(flbl,fmx,fmy+0.8,{align:'center'});
     }
   });
 
@@ -2295,9 +2299,10 @@ async function exportPDF(capture){
     const dx=p2.x-p1.x,dy=p2.y-p1.y,lenMm=Math.sqrt(dx*dx+dy*dy);
     if(lenMm>6){
       const ft=Math.round(lenMm/ftToMm);const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
-      pdf.setFillColor(10,12,18);pdf.rect(mx-4,my-2.5,8,4,'F');
-      pdf.setFont('helvetica','bold');pdf.setFontSize(5.5);pdf.setTextColor(245,166,35);
-      pdf.text(`${ft} ft`,mx,my+0.6,{align:'center'});
+      pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(245,166,35);
+      const _dtw=pdf.getTextWidth(`${ft} ft`);
+      pdf.setFillColor(10,12,18);pdf.rect(mx-_dtw/2-2,my-3.5,_dtw+4,5.5,'F');
+      pdf.text(`${ft} ft`,mx,my+0.8,{align:'center'});
     }
   });
 
@@ -2337,7 +2342,7 @@ async function exportPDF(capture){
         pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
         pdf.circle(center.x,center.y,r,'FD');
         if(el.type==='security'){
-          const sFs=Math.max(6,Math.min(10,r*1.5));
+          const sFs=Math.max(12,Math.min(18,r*1.5));
           pdf.setFont('helvetica','bold');pdf.setFontSize(sFs);pdf.setTextColor(255,255,255);
           pdf.text('S',center.x,center.y+sFs*0.353*0.45,{align:'center'});
         }
@@ -2381,11 +2386,11 @@ async function exportPDF(capture){
   S.els.filter(e=>e.type==='label').forEach(el=>{
     const lp=ll2pdf(el.lat,el.lng);
     const ltxt=el.labelText||'';if(!ltxt)return;
-    pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(255,255,255);
+    pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(255,255,255);
     const lw=pdf.getTextWidth(ltxt)+6;
     pdf.setFillColor(20,32,33);pdf.setDrawColor(255,255,255);pdf.setLineWidth(0.2);
-    pdf.rect(lp.x-lw/2,lp.y-3,lw,4.5,'FD');
-    pdf.text(ltxt,lp.x,lp.y+0.5,{align:'center'});
+    pdf.rect(lp.x-lw/2,lp.y-4.5,lw,6,'FD');
+    pdf.text(ltxt,lp.x,lp.y+0.7,{align:'center'});
   });
 
   // ── 11. Page 1 footer ────────────────────────────────────────────────────
