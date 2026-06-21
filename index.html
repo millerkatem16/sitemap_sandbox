@@ -1375,7 +1375,9 @@ function setTool(id){
   cw.style.pointerEvents=id==='select'?'none':'auto';
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'||id==='fence'?'crosshair':'default';
   const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment',label:'Click to place a text label on the map',customtent:'Click to place your custom tent'};
+  if(id==='border'){console.log('[SITEMAP:setTool] border called. ins-txt el:',document.getElementById('ins-txt'),'msg:',msgs[id]);}
   document.getElementById('ins-txt').textContent=msgs[id]||'';
+  if(id==='border'){console.log('[SITEMAP:setTool] ins-txt after set:',document.getElementById('ins-txt').textContent);}
   if(!ZONE_TOOLS.includes(id))activePoly=null;if(id!=='dim')dimStart=null;if(id!=='fence')fenceCur=[];
 }
 
@@ -1464,7 +1466,26 @@ document.addEventListener('keydown',e=>{
 });
 
 // ── Capacity sidebar border buttons ────────────────────────────────────────
-document.getElementById('zbrd-sb').addEventListener('click',()=>{setTool('border');document.getElementById('ins-txt').textContent='Click to add points, double-click to close the boundary · You will be asked about enclosure';});
+document.getElementById('zbrd-sb').addEventListener('click',()=>{
+  console.log('[SITEMAP:zbrd-sb] CLICK fired');
+  setTool('border');
+  const _itx=document.getElementById('ins-txt');
+  console.log('[SITEMAP:zbrd-sb] ins-txt el after setTool:',_itx,'text:',_itx&&_itx.textContent);
+  if(_itx){
+    _itx.textContent='Click to add points, double-click to close the boundary · You will be asked about enclosure';
+    _itx.style.color='yellow';
+    _itx.style.fontWeight='bold';
+    _itx.style.fontSize='14px';
+    console.log('[SITEMAP:zbrd-sb] ins-txt forced text+style. text now:',_itx.textContent);
+  }
+  const _im=document.getElementById('ins-msg');
+  console.log('[SITEMAP:zbrd-sb] ins-msg el:',_im,'display:',_im&&getComputedStyle(_im).display,'visibility:',_im&&getComputedStyle(_im).visibility,'opacity:',_im&&getComputedStyle(_im).opacity);
+  const _sb=document.getElementById('statusbar');
+  console.log('[SITEMAP:zbrd-sb] statusbar el:',_sb,'display:',_sb&&getComputedStyle(_sb).display,'visibility:',_sb&&getComputedStyle(_sb).visibility,'opacity:',_sb&&getComputedStyle(_sb).opacity,'z-index:',_sb&&getComputedStyle(_sb).zIndex);
+  const _cw=document.getElementById('cw');
+  console.log('[SITEMAP:zbrd-sb] cw el:',_cw,'overflow:',_cw&&getComputedStyle(_cw).overflow,'pointer-events:',_cw&&getComputedStyle(_cw).pointerEvents);
+  requestAnimationFrame(()=>console.log('[SITEMAP:RAF] ins-txt text after rAF:',document.getElementById('ins-txt')&&document.getElementById('ins-txt').textContent));
+});
 document.getElementById('zbrd-vip').addEventListener('click',()=>{
   modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',
     mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),
