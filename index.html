@@ -256,7 +256,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .vd-exit:hover{background:rgba(244,81,64,0.18)!important;color:var(--crimson)!important}
 
 /* ── Venue dropdown ──────────────────────────────────────────────────────── */
-#venue-dd{display:none;position:absolute;top:48px;left:0;background:#1e3234;border:1px solid rgba(255,255,255,0.16);border-radius:10px;padding:4px;z-index:1000;min-width:148px;box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+#venue-dd{display:none;position:fixed;background:#1e3234;border:1px solid rgba(255,255,255,0.16);border-radius:10px;padding:4px;z-index:1000;min-width:148px;box-shadow:0 8px 32px rgba(0,0,0,0.5)}
 .venue-dd-item{display:block;width:100%;padding:8px 12px;background:none;border:none;color:rgba(255,255,255,0.85);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;text-align:left;border-radius:7px;white-space:nowrap;transition:background .1s}
 .venue-dd-item:hover{background:rgba(255,255,255,0.12)}
 
@@ -281,18 +281,15 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <button class="tb" id="bopen"><i class="ti ti-folder-open"></i>Saved Events</button>
   </div>
   <div class="tg" style="position:relative">
-    <button class="tb" id="bvenue"><i class="ti ti-building"></i>Venue<i class="ti ti-chevron-down" style="font-size:10px;margin-left:1px;margin-top:2px"></i></button>
+    <button class="tb" id="bvenue"><i class="ti ti-building"></i>Saved Venues<i class="ti ti-chevron-down" style="font-size:10px;margin-left:1px;margin-top:2px"></i></button>
     <div id="venue-dd">
       <button class="venue-dd-item" id="bcreate-venue">Create Venue</button>
       <button class="venue-dd-item" id="bbrowse-venues">Browse Venues</button>
     </div>
   </div>
   <div class="tg">
-    <button class="tb" id="bdim"><i class="ti ti-dimensions"></i>Measure</button>
-  </div>
-  <div class="tg">
     <select class="el-drop" id="el-drop">
-      <option value="" disabled selected>Add Elements to Park</option>
+      <option value="" disabled selected>Add Elements to Event Site</option>
       <option value="tent10">10×10 Tent</option>
       <option value="tent20">10×20 Tent</option>
       <option value="customtent">+ Add custom tent size…</option>
@@ -302,7 +299,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <option value="mix">Mix Platform</option>
       <option value="─────────" disabled>─────────</option>
       <option value="custom">+ Add your own element…</option>
-      <option value="label">+ Add text label…</option>
     </select>
   </div>
   <div class="tg">
@@ -316,7 +312,14 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <option value="security">Security</option>
       <option value="─────────" disabled>─────────</option>
       <option value="ingress">Ingress/Egress</option>
+      <option value="─────────" disabled>─────────</option>
+      <option value="ada">ADA Path</option>
+      <option value="fence">Fencing</option>
+      <option value="label">+ Add text label…</option>
     </select>
+  </div>
+  <div class="tg">
+    <button class="tb" id="bdim"><i class="ti ti-dimensions"></i>Measure</button>
   </div>
   <div class="tg">
     <button class="tb active" id="bsel"><i class="ti ti-map-2"></i>Adjust Map</button>
@@ -396,10 +399,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
 
       <div class="panel">
         <div class="plabel">Site Management</div>
-        <div class="vrow" style="margin-bottom:8px">
-          <button class="vbtn" id="ba" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-accessible" style="font-size:13px"></i>ADA Path</button>
-          <button class="vbtn" id="bfence" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-barrier-block" style="font-size:13px"></i>Fencing</button>
-        </div>
         <div id="sml"></div>
       </div>
 
@@ -852,7 +851,9 @@ function updateCap(){
     if(bestZone>=0)zoneStruc[bestZone]+=e.wFt*e.hFt;
   });
   const totalFtSq=netAreas.reduce((s,a)=>s+Math.max(0,a),0);
-  const totalCap=Math.max(0,Math.floor((totalFtSq-struc)/10));
+  const restrictFtSq=S.zonePolys.filter(z=>z.type==='restrict'&&!z.open&&z.pts.length>=3).reduce((s,z)=>s+polyArea(z.pts)/(S.scale*S.scale),0);
+  const usableFtSq=Math.max(0,totalFtSq-restrictFtSq);
+  const totalCap=Math.max(0,Math.floor((usableFtSq-struc)/10));
 
   const bordersEl=document.getElementById('cap-borders');
   const multi=borders.length>1;
@@ -889,7 +890,7 @@ function updateCap(){
   if(wasZid){const ni=bordersEl.querySelector(`.zone-name-inp[data-zid="${wasZid}"]`);if(ni)ni.focus();}
   document.getElementById('cn').textContent=totalCap.toLocaleString();
   document.getElementById('cn-lbl').textContent=multi?'estimated total occupants':'estimated occupants';
-  document.getElementById('cd').textContent=`${Math.round(totalFtSq).toLocaleString()} sq ft usable · ${Math.round(struc)} in structures`;
+  document.getElementById('cd').textContent=`${Math.round(usableFtSq).toLocaleString()} sq ft usable · ${Math.round(struc)} in structures`;
 }
 
 function segDSq(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;if(!L)return d2(px,py,ax,ay);const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/L));return d2(px,py,ax+t*dx,ay+t*dy);}
@@ -1212,7 +1213,7 @@ function msel(lbl,id,opts){return`<div class="mf"><label>${lbl}</label><select i
 function mr(...fs){return`<div class="mrow">${fs.join('')}</div>`;}
 
 // ── Venue mode toolbar ─────────────────────────────────────────────────────
-const EL_DROP_NORMAL=`<option value="" disabled selected>Add Elements to Park</option><option value="tent10">10×10 Tent</option><option value="tent20">10×20 Tent</option><option value="customtent">+ Add custom tent size…</option><option value="stage">Stage</option><option value="truck">Food Truck</option><option value="gen">Generator</option><option value="mix">Mix Platform</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
+const EL_DROP_NORMAL=`<option value="" disabled selected>Add Elements to Event Site</option><option value="tent10">10×10 Tent</option><option value="tent20">10×20 Tent</option><option value="customtent">+ Add custom tent size…</option><option value="stage">Stage</option><option value="truck">Food Truck</option><option value="gen">Generator</option><option value="mix">Mix Platform</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
 const EL_DROP_VENUE=`<option value="" disabled selected>Add Venue Elements</option><option value="stage">Stage</option><option value="gen">Generator</option><option value="mix">Mix Platform</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
 
 function enterVenueMode(editLabel,editId,editPin){
@@ -1337,7 +1338,7 @@ function setTool(id){
   // Select passes clicks through to map; every other tool needs canvas input
   cw.style.pointerEvents=id==='select'?'none':'auto';
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'||id==='fence'?'crosshair':'default';
-  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click corners to draw venue border · Double-click to close · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment'};
+  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment'};
   document.getElementById('ins-txt').textContent=msgs[id]||'';
   if(!ZONE_TOOLS.includes(id))activePoly=null;if(id!=='dim')dimStart=null;if(id!=='fence')fenceCur=[];
 }
@@ -1443,14 +1444,14 @@ document.getElementById('zbrd-vip').addEventListener('click',()=>{
 [['bsel','select'],['zr','restrict'],['ze','erase'],['bdim','dim']].forEach(([id,tool])=>{
   const b=document.getElementById(id);if(b)b.addEventListener('click',()=>setTool(tool));
 });
-document.getElementById('ba').addEventListener('click',()=>{
+(document.getElementById('ba')||document.createElement('span')).addEventListener('click',()=>{
   modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',
     msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+
     (S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),
     ()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');
 });
 document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
-document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
+document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='fence'){modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},'Start Drawing');return;}setTool(val);});
 
 // ── Venue helpers ──────────────────────────────────────────────────────────
 function venueDataSnapshot(){
@@ -1695,10 +1696,10 @@ async function deleteVenue(id,name,pin){
 
 document.getElementById('bcreate-venue').addEventListener('click',()=>{document.getElementById('venue-dd').style.display='none';createVenue();});
 document.getElementById('bbrowse-venues').addEventListener('click',()=>{document.getElementById('venue-dd').style.display='none';browseVenues();});
-document.getElementById('bvenue').addEventListener('click',ev=>{ev.stopPropagation();const dd=document.getElementById('venue-dd');dd.style.display=dd.style.display==='block'?'none':'block';});
+document.getElementById('bvenue').addEventListener('click',ev=>{ev.stopPropagation();const dd=document.getElementById('venue-dd');if(dd.style.display==='block'){dd.style.display='none';}else{const r=document.getElementById('bvenue').getBoundingClientRect();dd.style.top=r.bottom+'px';dd.style.left=r.left+'px';dd.style.display='block';}});
 document.addEventListener('click',ev=>{if(!document.getElementById('bvenue').contains(ev.target)){document.getElementById('venue-dd').style.display='none';}});
 document.getElementById('vm-save-btn').onclick=()=>saveVenue();
-document.getElementById('bfence').addEventListener('click',()=>{
+(document.getElementById('bfence')||document.createElement('span')).addEventListener('click',()=>{
   modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',
     mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),
     ()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},
@@ -2016,7 +2017,7 @@ function startMapCapture(){
             height:cw.offsetHeight+'px',
             overflow:'visible'
           },
-          filter:node=>node.id!=='statusbar'&&node.id!=='grid'&&node.id!=='el'&&node.id!=='dc'&&node.id!=='map-overlay'&&node.id!=='opacity-ctrl'&&!(node.classList&&node.classList.contains('rbtn'))
+          filter:node=>node.id!=='statusbar'&&node.id!=='grid'&&node.id!=='el'&&node.id!=='dc'&&node.id!=='zc'&&node.id!=='bc'&&node.id!=='map-overlay'&&node.id!=='opacity-ctrl'&&!(node.classList&&node.classList.contains('rbtn'))
         });
         await new Promise(res=>{
           const img=new Image();
