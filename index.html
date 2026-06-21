@@ -315,7 +315,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <option value="─────────" disabled>─────────</option>
       <option value="ada">ADA Path</option>
       <option value="fence">Fencing</option>
-      <option value="label">+ Add text label…</option>
+      <option value="label">+ Add Map Label…</option>
     </select>
   </div>
   <div class="tg">
@@ -385,6 +385,11 @@ canvas{position:absolute;inset:0;pointer-events:none}
         <div class="plabel">Event Name and Date</div>
         <input id="evt-name" class="evt-inp" type="text" placeholder="Event name — shown on PDF">
         <input id="evt-date" class="evt-inp" type="date" style="margin-top:6px">
+      </div>
+
+      <div class="panel" id="notes-panel">
+        <div class="plabel">Event Notes</div>
+        <textarea id="evt-notes" placeholder="Add notes, instructions, or details for your event team or venue — included in the exported PDF." style="width:100%;min-height:80px;padding:8px;background:var(--surf2);border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:12px;font-family:var(--font);resize:vertical;outline:none;box-sizing:border-box;line-height:1.5"></textarea>
       </div>
 
       <div class="panel">
@@ -476,7 +481,8 @@ const S={
   hasSoftSurface:null,undoStack:[],
   mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17,
   _pendingZoneLabel:null,hideUtils:false,
-  activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[]
+  activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[],
+  eventNotes:''
 };
 
 let gmap=null,mapsApiKey='';
@@ -502,9 +508,9 @@ const TYPES={
   water:{lbl:'Water Source',color:'#3B82F6',wFt:6,hFt:6,sqft:0,circle:true,rot:false,utility:true},
   trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:4,hFt:4,sqft:0,circle:true,rot:false,utility:true},
   security:{lbl:'Security',color:'#7c3aed',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
-  label:{lbl:'Label',color:'transparent',wFt:10,hFt:2,sqft:0,rot:false,isLabel:true}
+  label:{lbl:'Label',color:'transparent',wFt:10,hFt:2,sqft:0,rot:true,isLabel:true}
 };
-const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'E',firstaid:'FA',extinguisher:'EX',mix:'M',custom:'C',customtent:'T',electric:'EL',water:'WS',trash:'BIN',security:'SEC',label:'LBL'};
+const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'E',firstaid:'FA',extinguisher:'EX',mix:'M',custom:'X',customtent:'T',electric:'EL',water:'WS',trash:'BIN',security:'SEC',label:'LBL'};
 const VENUE_EL_TYPES=new Set(['electric','water','trash','ingress','extinguisher','security','stage','truck','gen','mix','custom','label','fence']);
 function isVenueEl(el){return VENUE_EL_TYPES.has(el.type)||(TYPES[el.type]&&TYPES[el.type].utility);}
 
@@ -897,8 +903,10 @@ function segDSq(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;if(!L)r
 function ovlp(a,b,m=0){return!(elX(a)+elW(a)+m<=elX(b)||elX(b)+elW(b)+m<=elX(a)||elY(a)+elH(a)+m<=elY(b)||elY(b)+elH(b)+m<=elY(a));}
 
 // ── Rules ──────────────────────────────────────────────────────────────────
-function getTypeNums(){const c={},r={};S.els.forEach(el=>{c[el.type]=(c[el.type]||0)+1;r[el.id]=c[el.type];});return r;}
-function elCode(el,tnMap){return`${TYPE_PRE[el.type]||'?'}${tnMap[el.id]||'?'}`;}
+function getTentCat(el){const tt=el.tentType||'vendor';if(tt==='event'||tt==='production')return'production';if(tt==='activity')return'activity';if(tt==='cooking'||tt==='food')return'cooking';return'vendor';}
+const TENT_CAT_PRE={vendor:'V',activity:'A',production:'P',cooking:'C'};
+function getTypeNums(){const c={},r={};S.els.forEach(el=>{const t=TYPES[el.type]||TYPES.custom;const key=t.tent?('tent:'+getTentCat(el)):el.type;c[key]=(c[key]||0)+1;r[el.id]=c[key];});return r;}
+function elCode(el,tnMap){const t=TYPES[el.type]||TYPES.custom;if(t.tent)return TENT_CAT_PRE[getTentCat(el)]+(tnMap[el.id]||'?');return(TYPE_PRE[el.type]||'?')+(tnMap[el.id]||'?');}
 
 function runRules(){
   const tnMap=getTypeNums();
@@ -920,10 +928,28 @@ function runRules(){
     if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is under 10ft wide — ADA minimum not met.`});i.hr=true;}
     const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`});i.hr=true;blocked.forEach(b=>b.hr=true);}
   });
-  const vis=new Set();
+  // G2.2: flag elements within 10ft of ingress arrow tips
+  ins.forEach(i=>{
+    const rad2=(i.rot||0)*Math.PI/180;const hw=elW(i)/2;const icx=ecx(i),icy=ecy(i);
+    const tips=[{x:icx+hw*Math.cos(rad2),y:icy+hw*Math.sin(rad2)},{x:icx-hw*Math.cos(rad2),y:icy-hw*Math.sin(rad2)}];
+    S.els.filter(e=>e.type!=='ingress').forEach(el=>{
+      let flagged=false;const bx1=elX(el),by1=elY(el),bx2=bx1+elW(el),by2=by1+elH(el);
+      tips.forEach(tip=>{if(flagged)return;const nx=Math.max(bx1,Math.min(tip.x,bx2)),ny=Math.max(by1,Math.min(tip.y,by2));const dist=Math.sqrt((tip.x-nx)**2+(tip.y-ny)**2)/S.scale;if(dist<10){const nEl=el.vendorName||elCode(el,getTypeNums());const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:nEl+' within 10ft of '+nIn+' gate tip — keep opening clear.'});el.hr=true;i.hr=true;flagged=true;}});
+    });
+  });
+  // G2.3: flag fencing within 12ft of any ingress center
+  S.fences.forEach(f=>{
+    if(!f.pts||f.pts.length<2)return;
+    const fPx=f.pts.map(p=>latLngToPixel(p.lat,p.lng));
+    let fFlagged=false;
+    ins.forEach(i=>{
+      if(fFlagged)return;const cx=ecx(i),cy=ecy(i);
+      for(let fi=0;fi<fPx.length-1&&!fFlagged;fi++){const dsq=segDSq(cx,cy,fPx[fi].x,fPx[fi].y,fPx[fi+1].x,fPx[fi+1].y);if(Math.sqrt(dsq)/S.scale<12){const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:'Fencing within 12ft of '+nIn+' gate — potential crowd flow conflict.'});i.hr=true;fFlagged=true;}}
+    });
+  });  const vis=new Set();
   tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft — over 900 sq ft may need a building permit.`});grp.forEach(e=>e.sr=true);}});
   stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft) — over 256 sq ft may need a building permit.`});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft — over 3ft may need a building permit.`});s.sr=true;}});
-  S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||(_t2.tent&&e.tentType==='event');if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone.`});e.hr=true;}});
+  S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||(_t2.tent&&(e.tentType==='event'||e.tentType==='production'));if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone.`});e.hr=true;}});
   // Overlap check — no two elements may occupy the same space
   for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){if(ovlp(S.els[i],S.els[j])){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping.`});S.els[i].hr=true;S.els[j].hr=true;}}}
   if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.'});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.'});}
@@ -941,10 +967,10 @@ function renderEls(){
     if(t.noRender)return;
     if(t.utility&&S.hideUtils)return;
     if(t.isLabel){
-      const xy=elXY(el),w=el.wFt*S.scale||80,h=28;
+      const xy=elXY(el),w=el.wFt*S.scale||80,h=28,lrot=el.rot||0;
       const div=document.createElement('div');
       div.className='el'+(S.selId===el.id?' selected':'');
-      div.style.cssText='left:'+xy.x+'px;top:'+xy.y+'px;width:'+w+'px;height:'+h+'px;';
+      div.style.cssText='left:'+xy.x+'px;top:'+xy.y+'px;width:'+w+'px;height:'+h+'px;transform:rotate('+lrot+'deg);';
       div.dataset.id=el.id;
       const inner=document.createElement('div');
       inner.style.cssText='position:relative;width:'+w+'px;height:'+h+'px;display:flex;align-items:center;padding:0 8px;background:rgba(20,32,33,0.78);border-radius:5px;border:1.5px solid rgba(255,255,255,0.18);box-shadow:0 1px 6px rgba(0,0,0,0.35);';
@@ -958,12 +984,25 @@ function renderEls(){
       db.innerHTML='x';
       db.addEventListener('mousedown',ev=>{ev.stopPropagation();ev.preventDefault();pushUndo();S.els=S.els.filter(x=>x.id!==el.id);if(S.selId===el.id)S.selId=null;renderEls();runRules();});
       inner.appendChild(db);
-      if(S.selId===el.id)db.style.display='flex';
-      div.addEventListener('mouseenter',()=>db.style.display='flex');
-      div.addEventListener('mouseleave',()=>{if(S.selId!==el.id)db.style.display='none';});
+      const rb=document.createElement('button');rb.className='rbtn';
+      rb.style.cssText='width:14px;height:14px;top:2px;right:2px;left:auto;font-size:8px;display:none;';
+      rb.innerHTML='↻';
+      rb.addEventListener('mousedown',ev=>{
+        ev.stopPropagation();ev.preventDefault();S.isRotating=true;
+        const ox=elXY(el).x+elW(el)/2,oy=elXY(el).y+elH(el)/2;
+        const cwR=cw.getBoundingClientRect();
+        const baseAng=Math.atan2(ev.clientY-cwR.top-oy,ev.clientX-cwR.left-ox)*(180/Math.PI),baseRot=el.rot||0;
+        const onM=mv=>{el.rot=baseRot+(Math.atan2(mv.clientY-cwR.top-oy,mv.clientX-cwR.left-ox)*(180/Math.PI)-baseAng);div.style.transform='rotate('+el.rot+'deg)';};
+        const onU=()=>{S.isRotating=false;document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);runRules();};
+        document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
+      });
+      inner.appendChild(rb);
+      if(S.selId===el.id){db.style.display='flex';rb.style.display='flex';}
+      div.addEventListener('mouseenter',()=>{db.style.display='flex';rb.style.display='flex';});
+      div.addEventListener('mouseleave',()=>{if(S.selId!==el.id){db.style.display='none';rb.style.display='none';}});
       div.appendChild(inner);
       makeDrag(div,el);
-      div.addEventListener('click',ev=>{if(ev.target===db)return;S.selId=S.selId===el.id?null:el.id;renderEls();});
+      div.addEventListener('click',ev=>{if(ev.target===db||ev.target===rb)return;S.selId=S.selId===el.id?null:el.id;renderEls();});
       elDiv.appendChild(div);
       return;
     }
@@ -1100,7 +1139,7 @@ function makeDrag(div,el){
           const sxy=elXY(el);
           div.style.left=(sxy.x)+'px';div.style.top=(sxy.y)+'px';
           document.getElementById('ins-txt').textContent='Elements cannot overlap — position reverted.';
-          setTimeout(()=>document.getElementById('ins-txt').textContent='',2200);
+          overlapWarnTimeout=setTimeout(()=>document.getElementById('ins-txt').textContent='',2200);
         }
         runRules();
       }
@@ -1138,11 +1177,10 @@ function renderSiteManagement(){
     html+=ingressEls.map(el=>`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMapSM[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.vendorName||el.label||'Gate'}</span><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove gate">×</button></div>`).join('');
   }
   if(S.fences.length){
-    const byMat={};
-    S.fences.forEach(f=>{const m=f.material||'Fence';if(!byMat[m])byMat[m]={material:m,totalFt:0,count:0};byMat[m].count++;byMat[m].totalFt+=f.totalFt||0;});
     html+='<div class="plabel-sub" style="margin-top:10px">Fencing</div>';
-    Object.values(byMat).forEach(bm=>{
-      html+='<div class="ec-row"><span class="ec-name">'+bm.material+'</span><span class="ec-val">'+Math.round(bm.totalFt)+" ft ("+bm.count+")</span></div>";
+    S.fences.forEach(f=>{
+      const flbl=(f.material||'Fence')+(f.totalFt?' — '+Math.round(f.totalFt)+' ft':'');
+      html+='<div class="vl-row" data-fid="'+f.id+'"><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+flbl+'</span><button class="vl-del fence-del-btn" data-fid="'+f.id+'" title="Delete fence run">×</button></div>';
     });
   }
   d.innerHTML=html;
@@ -1165,6 +1203,14 @@ function renderSiteManagement(){
       pushUndo();S.els=S.els.filter(x=>x.id!==id);
       if(S.selId===id)S.selId=null;
       renderEls();renderSiteManagement();runRules();
+    });
+  });
+  d.querySelectorAll('.fence-del-btn').forEach(btn=>{
+    btn.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      const fid=parseInt(ev.currentTarget.dataset.fid);
+      pushUndo();S.fences=S.fences.filter(f=>f.id!==fid);
+      drawDims();renderSiteManagement();runRules();
     });
   });
 }
@@ -1257,7 +1303,7 @@ function place(type,x,y){
   const t=TYPES[type]||TYPES.custom;
   const base=(extra={})=>({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:t.lbl,vendorName:'',rot:0,hr:false,sr:false,...extra});
   if(type==='tent10'||type==='tent20'){
-    modal(`Place ${t.lbl}`,'Label this tent and select its use type.',mf('Tent Label','tlbl','text','','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'vendor',t:'Vendor / Activity'},{v:'event',t:'Event Use'},{v:'cooking',t:'Cooking'}]),()=>{
+    modal(`Place ${t.lbl}`,'Label this tent and select its use type.',mf('Tent Label','tlbl','text','','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}]),()=>{
       pushUndo();const lbl=document.getElementById('tlbl').value.trim()||t.lbl;
       S.els.push(base({label:lbl,vendorName:lbl,tentType:document.getElementById('tent-type').value}));
       renderVendorList();renderEls();runRules();
@@ -1267,7 +1313,7 @@ function place(type,x,y){
     modal('Add Custom Tent Size','Specify dimensions and use type. Tent-to-food-truck clearance rules still apply.',
       mf('Tent Label','ctlbl','text','','e.g. 20×40 Frame Tent')+
       mr(mf('Width (ft)','ctw','number','20'),mf('Length (ft)','ctl','number','40'))+
-      msel('Tent Use','ct-type',[{v:'vendor',t:'Vendor / Activity'},{v:'event',t:'Event Use'},{v:'cooking',t:'Cooking'}]),
+      msel('Tent Use','ct-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}]),
       ()=>{
         pushUndo();
         const lbl=document.getElementById('ctlbl').value.trim()||'Custom Tent';
@@ -1324,12 +1370,13 @@ function place(type,x,y){
 }
 
 // ── Tool management ────────────────────────────────────────────────────────
-let fenceCur=[];let fenceMaterial='';
+let fenceCur=[];let fenceMaterial='';let overlapWarnTimeout=null;
 const ZONE_TOOLS=['restrict','border','erase'];
 const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','extinguisher','mix','custom','electric','water','trash','security','label'];
 const DRAWING_TOOLS=[...ZONE_TOOLS,'ada','dim','fence'];
 
 function setTool(id){
+  clearTimeout(overlapWarnTimeout);overlapWarnTimeout=null;
   S.tool=id;
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
   ['ba','bfence'].forEach(bid=>{const _b=document.getElementById(bid);if(_b)_b.classList.remove('active');});
@@ -1338,7 +1385,7 @@ function setTool(id){
   // Select passes clicks through to map; every other tool needs canvas input
   cw.style.pointerEvents=id==='select'?'none':'auto';
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'||id==='fence'?'crosshair':'default';
-  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment'};
+  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment',label:'Click to place a text label on the map',customtent:'Click to place your custom tent'};
   document.getElementById('ins-txt').textContent=msgs[id]||'';
   if(!ZONE_TOOLS.includes(id))activePoly=null;if(id!=='dim')dimStart=null;if(id!=='fence')fenceCur=[];
 }
@@ -1737,7 +1784,8 @@ function saveEvent(){
           mapCenter:S.mapCenter,mapZoom:S.mapZoom,
           fences:JSON.parse(JSON.stringify(S.fences)),
           hasSoftSurface:S.hasSoftSurface,idCtr:S.idCtr,
-          activeVenueId:S.activeVenueId||null
+          activeVenueId:S.activeVenueId||null,
+          eventNotes:S.eventNotes||''
         }
       };
       try{localStorage.setItem('esm_events_v1',JSON.stringify(savedEvents));}catch(er){}
@@ -1770,6 +1818,8 @@ function openEvents(){
       const evtNEl=document.getElementById('evt-name');const evtDEl=document.getElementById('evt-date');
       if(evtNEl&&state.evtName)evtNEl.value=state.evtName;
       if(evtDEl&&state.evtDate)evtDEl.value=state.evtDate;
+      S.eventNotes=state.eventNotes||'';
+      const evtNotesEl=document.getElementById('evt-notes');if(evtNotesEl)evtNotesEl.value=S.eventNotes;
       if(gmap&&state.mapCenter&&state.mapZoom){gmap.setCenter(state.mapCenter);gmap.setZoom(state.mapZoom);}
       S.activeVenueId=state.activeVenueId||null;
       S.loadedVenueSnapshot=null;
@@ -1805,6 +1855,7 @@ function openEvents(){
 }
 
 document.getElementById('bsave-evt').addEventListener('click',saveEvent);
+document.getElementById('evt-notes').addEventListener('input',function(){S.eventNotes=this.value;});
 document.getElementById('bopen').addEventListener('click',openEvents);
 
 // ── Clear ──────────────────────────────────────────────────────────────────
@@ -2273,6 +2324,7 @@ async function exportPDF(capture){
     const rotDeg=el.rot||0;
     const code=elCode(el,tnMap);
     if(t.noRender)return;
+    if(t.isLabel)return;
     if(t.utility&&S.hideUtils)return;
     if(t.circle){
       const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
@@ -2543,18 +2595,22 @@ async function exportPDF(capture){
   let c2y=secHdr('ACTIVATIONS',p2C2X,p2C2W,p2Y);
 
   // Group elements: tents by size+cooking, ingress, standard types, custom
-  const actAll=S.els.filter(e=>{const t=TYPES[e.type]||TYPES.custom;return!t.circle&&!t.noRender;});
-  const actTentBuckets={};
+  const actAll=S.els.filter(e=>{const t=TYPES[e.type]||TYPES.custom;return!t.circle&&!t.noRender&&!t.isLabel;});
+  const TENT_CATS_PDF=['vendor','activity','production','cooking'];
+  const TENT_CAT_NAMES_PDF={vendor:'Vendor',activity:'Activity',production:'Production',cooking:'Cooking'};
+  const tentCatMap={};
+  TENT_CATS_PDF.forEach(cat=>{tentCatMap[cat]={name:TENT_CAT_NAMES_PDF[cat],buckets:{},els:[]};});
   const actStdGroups=new Map();
   const actCustomGroups=new Map();
   const stdActOrder=['stage','truck','gen','mix','ingress'];
   actAll.forEach(el=>{
     const t=TYPES[el.type]||TYPES.custom;
     if(t.tent){
-      const cooking=el.tentType==='cooking'||el.tentType==='food';
-      const key=`${cooking?'c':'v'}|${el.wFt}|${el.hFt}`;
-      if(!actTentBuckets[key])actTentBuckets[key]={cooking,wFt:el.wFt,hFt:el.hFt,els:[]};
-      actTentBuckets[key].els.push(el);
+      const cat=getTentCat(el);
+      const key=el.wFt+'|'+el.hFt;
+      if(!tentCatMap[cat].buckets[key])tentCatMap[cat].buckets[key]={wFt:el.wFt,hFt:el.hFt,els:[]};
+      tentCatMap[cat].buckets[key].els.push(el);
+      tentCatMap[cat].els.push(el);
     }else if(el.type==='custom'){
       const ck=el.color||'#8b93a8';
       if(!actCustomGroups.has(ck))actCustomGroups.set(ck,{color:ck,name:el.vendorName||'Custom',els:[]});
@@ -2564,8 +2620,13 @@ async function exportPDF(capture){
     }
   });
   const actOrdered=[];
-  Object.values(actTentBuckets).sort((a,b)=>a.cooking-b.cooking||a.wFt-b.wFt||a.hFt-b.hFt)
-    .forEach(tb=>actOrdered.push({kind:'tent',...tb}));
+  TENT_CATS_PDF.forEach(cat=>{
+    const catData=tentCatMap[cat];
+    if(catData.els.length){
+      const sortedBuckets=Object.values(catData.buckets).sort((a,b)=>a.wFt-b.wFt||a.hFt-b.hFt);
+      actOrdered.push({kind:'tentcat',cat,name:catData.name,sizeBuckets:sortedBuckets,els:catData.els});
+    }
+  });
   stdActOrder.forEach(tp=>{if(actStdGroups.has(tp))actOrdered.push({kind:'std',...actStdGroups.get(tp)});});
   actStdGroups.forEach((g,tp)=>{if(!stdActOrder.includes(tp))actOrdered.push({kind:'std',...g});});
   actCustomGroups.forEach(cg=>actOrdered.push({kind:'custom',...cg}));
@@ -2579,14 +2640,34 @@ async function exportPDF(capture){
     const cnt=grp.els.length;
     const icoX=p2C2X+iconSz,icoY=c2y-iconSz;
     // Draw icon + consolidated label
-    if(grp.kind==='tent'){
-      const fr=grp.cooking?250:255,fg=grp.cooking?204:255,fb=grp.cooking?21:255;
-      const dr=grp.cooking?234:45,dg=grp.cooking?179:212,db=grp.cooking?8:160;
-      pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.15);
-      pdf.rect(icoX-iconSz,icoY-iconSz,iconSz*2,iconSz*2,'FD');
-      const typeLbl=`${grp.cooking?'Cooking':'Vendor/Activity'} Tent ${grp.wFt}×${grp.hFt} ft (${cnt})`;
-      pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
-      pdf.text(typeLbl,p2C2X+txtOff,c2y);
+    if(grp.kind==='tentcat'){
+      const isCk=grp.cat==='cooking';
+      pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.setTextColor(100,90,80);
+      pdf.text(grp.name.toUpperCase()+' ('+grp.els.length+')',p2C2X+txtOff,c2y);c2y+=p2LH*0.85;
+      grp.sizeBuckets.forEach(sb=>{
+        if(c2y>=p2MaxY)return;
+        const fico=p2C2X+iconSz,fiy=c2y-iconSz;
+        const fr=isCk?250:255,fg=isCk?204:255,fb=isCk?21:255;
+        const dr=isCk?234:45,dg=isCk?179:212,db=isCk?8:160;
+        pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.15);
+        pdf.rect(fico-iconSz,fiy-iconSz,iconSz*2,iconSz*2,'FD');
+        pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
+        pdf.text(sb.wFt+'x'+sb.hFt+' ft ('+sb.els.length+')',p2C2X+txtOff,c2y);c2y+=p2LH;
+        sb.els.filter(e=>e.vendorName).forEach(el=>{
+          if(c2y>=p2MaxY)return;
+          const code=elCode(el,tnMap);const nm=el.vendorName;
+          pdf.setFont('helvetica','bold');pdf.setFontSize(10.5);pdf.setTextColor(244,81,64);
+          pdf.text(code,p2C2X+txtOff,c2y);
+          pdf.setFont('helvetica','normal');pdf.setFontSize(10.5);pdf.setTextColor(28,27,46);
+          let dispNm=nm;const nmMax=p2C2W-txtOff-12;
+          while(dispNm.length>1&&pdf.getTextWidth(dispNm)>nmMax)dispNm=dispNm.slice(0,-1);
+          if(dispNm!==nm)dispNm=dispNm.slice(0,-1)+'...';
+          pdf.text(dispNm,p2C2X+txtOff+12,c2y);c2y+=p2LH*0.9;
+        });
+        c2y+=1;
+      });
+      c2y+=2;
+      return;
     }else if(grp.kind==='std'&&grp.type==='ingress'){
       pdfIcon('ingress',icoX,icoY);
       pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
@@ -2668,6 +2749,17 @@ async function exportPDF(capture){
         const msg=c.kind==='removed'?c.label+' - removed from layout':c.kind==='added'?c.label+' - added (not in original)':c.label+' - moved ~'+c.distFt+' ft';
         pdf.text(icon+'  '+msg,p2C1X,vy);vy+=p2LH;
       });
+    }
+  }
+
+  // ── Event Notes section ───────────────────────────────────────────────────
+  if(S.eventNotes&&S.eventNotes.trim()){
+    const enY=Math.max(c1y,c2y)+4;
+    if(enY<p2MaxY-12){
+      let eny=secHdr('EVENT NOTES',p2C1X,PW-2*M,enY);
+      pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(50,50,50);
+      const noteLines=pdf.splitTextToSize(S.eventNotes.trim(),PW-2*M);
+      noteLines.forEach(ln=>{if(eny>=p2MaxY)return;pdf.text(ln,p2C1X,eny);eny+=p2LH;});
     }
   }
 
