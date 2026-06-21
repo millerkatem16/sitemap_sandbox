@@ -926,13 +926,13 @@ function runRules(){
   else if(ins.length===2)warns.push({type:'soft',msg:'2 ingress/egress — a 3rd is recommended.'});
   ins.forEach(i=>{
     if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is under 10ft wide — ADA minimum not met.`});i.hr=true;}
-    const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`});i.hr=true;blocked.forEach(b=>b.hr=true);}
+    const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`});i.hr=true;blocked.forEach(b=>b.hr=true);}
   });
   // G2.2: flag elements within 10ft of ingress arrow tips
   ins.forEach(i=>{
     const rad2=(i.rot||0)*Math.PI/180;const hw=elW(i)/2;const icx=ecx(i),icy=ecy(i);
     const tips=[{x:icx+hw*Math.cos(rad2),y:icy+hw*Math.sin(rad2)},{x:icx-hw*Math.cos(rad2),y:icy-hw*Math.sin(rad2)}];
-    S.els.filter(e=>e.type!=='ingress').forEach(el=>{
+    S.els.filter(e=>e.type!=='ingress'&&e.type!=='security').forEach(el=>{
       let flagged=false;const bx1=elX(el),by1=elY(el),bx2=bx1+elW(el),by2=by1+elH(el);
       tips.forEach(tip=>{if(flagged)return;const nx=Math.max(bx1,Math.min(tip.x,bx2)),ny=Math.max(by1,Math.min(tip.y,by2));const dist=Math.sqrt((tip.x-nx)**2+(tip.y-ny)**2)/S.scale;if(dist<10){const nEl=el.vendorName||elCode(el,getTypeNums());const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:nEl+' within 10ft of '+nIn+' gate tip — keep opening clear.'});el.hr=true;i.hr=true;flagged=true;}});
     });
@@ -1084,7 +1084,7 @@ function renderEls(){
     if(!t.circle){
       const lbl=document.createElement('div');lbl.className='el-lbl';
       lbl.style.fontSize=fs+'px';
-      lbl.textContent=String(tnMap[el.id]||'?');
+      lbl.textContent=t.tent?elCode(el,tnMap):String(tnMap[el.id]||'?');
       lbl.title=`${elCode(el,tnMap)}${el.vendorName?' · '+el.vendorName:''}`;
       lbl.addEventListener('click',ev=>{
         ev.stopPropagation();
@@ -1131,18 +1131,7 @@ function makeDrag(div,el){
     };
     const onU=()=>{
       document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);
-      if(moved){
-        // Snap back if the drop position overlaps another element
-        const overlapping=S.els.some(other=>other.id!==el.id&&ovlp(el,other));
-        if(overlapping){
-          el.lat=startLat;el.lng=startLng;
-          const sxy=elXY(el);
-          div.style.left=(sxy.x)+'px';div.style.top=(sxy.y)+'px';
-          document.getElementById('ins-txt').textContent='Elements cannot overlap — position reverted.';
-          overlapWarnTimeout=setTimeout(()=>document.getElementById('ins-txt').textContent='',2200);
-        }
-        runRules();
-      }
+      if(moved){runRules();}
     };
     document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
   });
@@ -1475,7 +1464,7 @@ document.addEventListener('keydown',e=>{
 });
 
 // ── Capacity sidebar border buttons ────────────────────────────────────────
-document.getElementById('zbrd-sb').addEventListener('click',()=>setTool('border'));
+document.getElementById('zbrd-sb').addEventListener('click',()=>{setTool('border');document.getElementById('ins-txt').textContent='Click to add points, double-click to close the boundary · You will be asked about enclosure';});
 document.getElementById('zbrd-vip').addEventListener('click',()=>{
   modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',
     mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),
@@ -1498,7 +1487,7 @@ document.getElementById('zbrd-vip').addEventListener('click',()=>{
     ()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');
 });
 document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
-document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='fence'){modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},'Start Drawing');return;}setTool(val);});
+document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='fence'){modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');document.getElementById('ins-txt').textContent='Click to add fence points · Double-click to end the fence run.';},'Start Drawing');return;}setTool(val);});
 
 // ── Venue helpers ──────────────────────────────────────────────────────────
 function venueDataSnapshot(){
@@ -1749,7 +1738,7 @@ document.getElementById('vm-save-btn').onclick=()=>saveVenue();
 (document.getElementById('bfence')||document.createElement('span')).addEventListener('click',()=>{
   modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',
     mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),
-    ()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},
+    ()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');document.getElementById('ins-txt').textContent='Click to add fence points · Double-click to end the fence run.';},
     'Start Drawing');
 });
 
