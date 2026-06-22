@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -1949,7 +1949,7 @@ function startMapCapture(){
     const ctx=selCv.getContext('2d');
     let dragging=false,sx=0,sy=0,ex=0,ey=0;
     let dashOffset=0,rafId=null;
-    let capturedDataUrl=null,capX=0,capY=0,capW=0,capH=0;
+    let capturedDataUrl=null,capBgDataUrl=null,capX=0,capY=0,capW=0,capH=0;
 
     function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
 
@@ -1992,7 +1992,7 @@ function startMapCapture(){
     function showInstructions(){
       instrCard.style.display='block';
       prevWrap.style.display='none';
-      capturedDataUrl=null;
+      capturedDataUrl=null;capBgDataUrl=null;
     }
 
     async function doCapture(){
@@ -2031,6 +2031,7 @@ function startMapCapture(){
         }
       }catch(e){}
       if(!bgDone){cctx.fillStyle='#1c2b2c';cctx.fillRect(0,0,outW*CS,outH*CS);}
+      capBgDataUrl=comp.toDataURL('image/jpeg',0.93);
 
       // 2. dom-to-image-more: capture #cw (all SITEMAP overlays — zc, bc, dc, #el)
       // Transform crops to the user's selection region; filter removes non-visual chrome
@@ -2085,7 +2086,7 @@ function startMapCapture(){
     function onOk(){
       if(!capturedDataUrl)return;
       cleanup();
-      resolve({dataUrl:capturedDataUrl,x:capX,y:capY,w:capW,h:capH});
+      resolve({dataUrl:capBgDataUrl||capturedDataUrl,x:capX,y:capY,w:capW,h:capH});
     }
     function onRetry(){showInstructions();dragging=false;}
     function onEsc(){cleanup();reject('cancelled');}
@@ -2239,12 +2240,6 @@ async function exportPDF(capture){
     if(z.type==='border')pdf.setLineDashPattern([2.5,1.5],0);else pdf.setLineDashPattern([],0);
     for(let i=0;i<pps.length;i++){const a=pps[i],b2=pps[(i+1)%pps.length];pdf.line(a.x,a.y,b2.x,b2.y);}
     pdf.setLineDashPattern([],0);
-    {const cx=pps.reduce((s,p)=>s+p.x,0)/pps.length,cy=pps.reduce((s,p)=>s+p.y,0)/pps.length;
-    const zLbl=(z.label||(z.type==='border'?'VENUE BORDER':'RESTRICTED ZONE')).toUpperCase();
-    pdf.setFont('helvetica','bold');pdf.setFontSize(12);
-    const tw=pdf.getTextWidth(zLbl);
-    pdf.setFillColor(10,10,20);pdf.rect(cx-tw/2-2,cy-4,tw+4,6,'F');
-    pdf.setTextColor(255,255,255);pdf.text(zLbl,cx,cy+0.8,{align:'center'});}
   });
 
   // ── 8. Draw ADA paths ─────────────────────────────────────────────────────
@@ -2277,7 +2272,7 @@ async function exportPDF(capture){
   // ── 9. Draw dimension arrows ──────────────────────────────────────────────
   S.dims.forEach(d=>{
     const p1=ll2pdf(d.lat1,d.lng1),p2=ll2pdf(d.lat2,d.lng2);
-    pdf.setDrawColor(245,166,35);pdf.setLineWidth(0.4);pdf.line(p1.x,p1.y,p2.x,p2.y);
+    pdf.setDrawColor(245,166,35);pdf.setLineWidth(0.7);pdf.line(p1.x,p1.y,p2.x,p2.y);
     const dx=p2.x-p1.x,dy=p2.y-p1.y,lenMm=Math.sqrt(dx*dx+dy*dy);
     if(lenMm>6){
       const ft=Math.round(lenMm/ftToMm);const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
