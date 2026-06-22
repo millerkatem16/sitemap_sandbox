@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -661,24 +661,6 @@ function redrawZones(){
     if(!z.open){zcx.fillStyle=d.fill;zcx.fill();}
     zcx.strokeStyle=d.stroke;zcx.lineWidth=isBorder?3:2.5;
     zcx.setLineDash(z.open||isBorder?[9,5]:[]);zcx.stroke();zcx.setLineDash([]);
-    if(!z.open&&z.pts.length>=3){
-      const cx=px.reduce((s,p)=>s+p.x,0)/px.length,cy=px.reduce((s,p)=>s+p.y,0)/px.length;
-      const zoneLbl=(z.label||d.lbl).toUpperCase();
-      zcx.font='bold 11px "Plus Jakarta Sans",sans-serif';
-      zcx.textAlign='center';zcx.textBaseline='middle';
-      const zTw=zcx.measureText(zoneLbl).width;
-      const zPx=7,zPy=4,zRd=4;
-      const zBx=cx-zTw/2-zPx,zBy=cy-8-zPy,zBw=zTw+zPx*2,zBh=16+zPy*2;
-      zcx.fillStyle='rgba(0,0,0,0.75)';
-      zcx.beginPath();
-      zcx.moveTo(zBx+zRd,zBy);zcx.lineTo(zBx+zBw-zRd,zBy);zcx.quadraticCurveTo(zBx+zBw,zBy,zBx+zBw,zBy+zRd);
-      zcx.lineTo(zBx+zBw,zBy+zBh-zRd);zcx.quadraticCurveTo(zBx+zBw,zBy+zBh,zBx+zBw-zRd,zBy+zBh);
-      zcx.lineTo(zBx+zRd,zBy+zBh);zcx.quadraticCurveTo(zBx,zBy+zBh,zBx,zBy+zBh-zRd);
-      zcx.lineTo(zBx,zBy+zRd);zcx.quadraticCurveTo(zBx,zBy,zBx+zRd,zBy);zcx.closePath();
-      zcx.fill();
-      zcx.fillStyle='#ffffff';zcx.fillText(zoneLbl,cx,cy);
-      zcx.textAlign='start';zcx.textBaseline='alphabetic';
-    }
     zcx.restore();
   });
 }
@@ -979,7 +961,7 @@ function renderEls(){
       div.style.cssText='left:'+xy.x+'px;top:'+xy.y+'px;width:'+w+'px;height:'+h+'px;transform:rotate('+lrot+'deg);';
       div.dataset.id=el.id;
       const inner=document.createElement('div');
-      inner.style.cssText='position:relative;width:'+w+'px;height:'+h+'px;display:flex;align-items:center;padding:0 8px;background:rgba(20,32,33,0.78);border-radius:5px;border:1.5px solid rgba(255,255,255,0.18);box-shadow:0 1px 6px rgba(0,0,0,0.35);';
+      inner.style.cssText='position:relative;width:'+w+'px;height:'+h+'px;display:flex;align-items:center;padding:0 8px;background:rgba(146,39,100,0.85);border-radius:5px;border:1.5px solid rgba(255,255,255,0.18);box-shadow:0 1px 6px rgba(0,0,0,0.35);';
       const txt=document.createElement('span');
       txt.style.cssText='color:#fff;font-family:var(--font);font-size:12px;font-weight:600;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.9);user-select:none;';
       txt.textContent=el.labelText||'Label';
@@ -2064,7 +2046,7 @@ function startMapCapture(){
             height:cw.offsetHeight+'px',
             overflow:'visible'
           },
-          filter:node=>node.id!=='statusbar'&&node.id!=='grid'&&node.id!=='el'&&node.id!=='dc'&&node.id!=='zc'&&node.id!=='bc'&&node.id!=='map-overlay'&&node.id!=='opacity-ctrl'&&!(node.classList&&node.classList.contains('rbtn'))
+          filter:node=>node.id!=='statusbar'&&node.id!=='grid'&&node.id!=='map-overlay'&&node.id!=='opacity-ctrl'&&!(node.classList&&node.classList.contains('rbtn'))
         });
         await new Promise(res=>{
           const img=new Image();
@@ -2388,7 +2370,7 @@ async function exportPDF(capture){
     const ltxt=el.labelText||'';if(!ltxt)return;
     pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(255,255,255);
     const lw=pdf.getTextWidth(ltxt)+6;
-    pdf.setFillColor(20,32,33);pdf.setDrawColor(255,255,255);pdf.setLineWidth(0.2);
+    pdf.setFillColor(146,39,100);pdf.setDrawColor(255,255,255);pdf.setLineWidth(0.2);
     pdf.rect(lp.x-lw/2,lp.y-4.5,lw,6,'FD');
     pdf.text(ltxt,lp.x,lp.y+0.7,{align:'center'});
   });
