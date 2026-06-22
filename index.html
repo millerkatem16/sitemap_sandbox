@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -2272,8 +2272,16 @@ async function exportPDF(capture){
   // ── 9. Draw dimension arrows ──────────────────────────────────────────────
   S.dims.forEach(d=>{
     const p1=ll2pdf(d.lat1,d.lng1),p2=ll2pdf(d.lat2,d.lng2);
-    pdf.setDrawColor(245,166,35);pdf.setLineWidth(0.7);pdf.line(p1.x,p1.y,p2.x,p2.y);
     const dx=p2.x-p1.x,dy=p2.y-p1.y,lenMm=Math.sqrt(dx*dx+dy*dy);
+    if(lenMm<1)return;
+    const ang=Math.atan2(dy,dx),hw=1.8,ha=0.42;
+    pdf.setFillColor(245,166,35);pdf.setDrawColor(245,166,35);pdf.setLineWidth(0.6);
+    const lx1=p1.x+hw*Math.cos(ang),ly1=p1.y+hw*Math.sin(ang),lx2=p2.x-hw*Math.cos(ang),ly2=p2.y-hw*Math.sin(ang);
+    if(lenMm>3.6)pdf.line(lx1,ly1,lx2,ly2);
+    const ahx1=p2.x-hw*Math.cos(ang-ha),ahy1=p2.y-hw*Math.sin(ang-ha),ahx2=p2.x-hw*Math.cos(ang+ha),ahy2=p2.y-hw*Math.sin(ang+ha);
+    pdf.lines([[ahx1-p2.x,ahy1-p2.y],[ahx2-ahx1,ahy2-ahy1]],p2.x,p2.y,[1,1],'F',true);
+    const bhx1=p1.x+hw*Math.cos(ang-ha),bhy1=p1.y+hw*Math.sin(ang-ha),bhx2=p1.x+hw*Math.cos(ang+ha),bhy2=p1.y+hw*Math.sin(ang+ha);
+    pdf.lines([[bhx1-p1.x,bhy1-p1.y],[bhx2-bhx1,bhy2-bhy1]],p1.x,p1.y,[1,1],'F',true);
     if(lenMm>6){
       const ft=Math.round(lenMm/ftToMm);const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
       pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(245,166,35);
@@ -2282,7 +2290,6 @@ async function exportPDF(capture){
       pdf.text(`${ft} ft`,mx,my+0.8,{align:'center'});
     }
   });
-
   // ── 10. Draw elements (rotation-aware) ────────────────────────────────────
   const tnMap=getTypeNums();
   S.els.forEach(el=>{
@@ -2566,8 +2573,14 @@ async function exportPDF(capture){
   }
 
   // ── Col 2: Activations — consolidated by type with inline icons ────────────
-  let c2y=secHdr('ACTIVATIONS',p2C2X,p2C2W,p2Y);
-
+  let acX=p2C2X,acW=p2C2W,acOnP2=true,acC1=false;
+  const advanceAct=()=>{
+    const _phdr=()=>{pdf.setFillColor(42,95,100);pdf.rect(0,0,PW,12,'F');pdf.setFillColor(251,189,47);pdf.rect(0,11,PW,1.2,'F');pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.setTextColor(255,255,255);pdf.text('SITEMAP — Activations (continued)',M,8.5);if(evtName){pdf.setFontSize(7.5);pdf.setFont('helvetica','normal');pdf.setTextColor(180,220,222);pdf.text('·  '+evtName,M+60,8.5,{maxWidth:PW-M-70});}};
+    if(acOnP2){pdf.addPage();acOnP2=false;acC1=true;_phdr();acX=p2C1X;acW=p2C1W;c2y=p2Y;}
+    else if(acC1){acC1=false;acX=p2C2X;acW=p2C2W;c2y=p2Y;}
+    else{pdf.addPage();acC1=true;_phdr();acX=p2C1X;acW=p2C1W;c2y=p2Y;}
+  };
+  let c2y=secHdr('ACTIVATIONS',acX,acW,p2Y);
   // Group elements: tents by size+cooking, ingress, standard types, custom
   const actAll=S.els.filter(e=>{const t=TYPES[e.type]||TYPES.custom;return!t.circle&&!t.noRender&&!t.isLabel;});
   const TENT_CATS_PDF=['vendor','activity','production','cooking'];
@@ -2607,36 +2620,35 @@ async function exportPDF(capture){
 
   if(actOrdered.length===0){
     pdf.setFont('helvetica','normal');pdf.setFontSize(11);pdf.setTextColor(120,110,100);
-    pdf.text('None placed',p2C2X,c2y);
+    pdf.text('None placed',acX,c2y);
   }
   actOrdered.forEach(grp=>{
-    if(c2y>=p2MaxY)return;
+    if(c2y>=p2MaxY)advanceAct();
     const cnt=grp.els.length;
-    const icoX=p2C2X+iconSz,icoY=c2y-iconSz;
-    // Draw icon + consolidated label
+    const icoX=acX+iconSz,icoY=c2y-iconSz;
     if(grp.kind==='tentcat'){
       const isCk=grp.cat==='cooking';
-      pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.setTextColor(100,90,80);
-      pdf.text(grp.name.toUpperCase()+' ('+grp.els.length+')',p2C2X+txtOff,c2y);c2y+=p2LH*0.85;
+      pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(42,95,100);
+      pdf.text(grp.name.toUpperCase()+' ('+grp.els.length+')',acX+txtOff,c2y);c2y+=p2LH;
       grp.sizeBuckets.forEach(sb=>{
-        if(c2y>=p2MaxY)return;
-        const fico=p2C2X+iconSz,fiy=c2y-iconSz;
+        if(c2y>=p2MaxY)advanceAct();
+        const fico=acX+iconSz,fiy=c2y-iconSz;
         const fr=isCk?250:255,fg=isCk?204:255,fb=isCk?21:255;
         const dr=isCk?234:45,dg=isCk?179:212,db=isCk?8:160;
         pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.15);
         pdf.rect(fico-iconSz,fiy-iconSz,iconSz*2,iconSz*2,'FD');
         pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
-        pdf.text(sb.wFt+'x'+sb.hFt+' ft ('+sb.els.length+')',p2C2X+txtOff,c2y);c2y+=p2LH;
+        pdf.text(sb.wFt+'x'+sb.hFt+' ft ('+sb.els.length+')',acX+txtOff,c2y);c2y+=p2LH;
         sb.els.filter(e=>e.vendorName).forEach(el=>{
-          if(c2y>=p2MaxY)return;
+          if(c2y>=p2MaxY)advanceAct();
           const code=elCode(el,tnMap);const nm=el.vendorName;
           pdf.setFont('helvetica','bold');pdf.setFontSize(10.5);pdf.setTextColor(244,81,64);
-          pdf.text(code,p2C2X+txtOff,c2y);
+          pdf.text(code,acX+txtOff,c2y);
           pdf.setFont('helvetica','normal');pdf.setFontSize(10.5);pdf.setTextColor(28,27,46);
-          let dispNm=nm;const nmMax=p2C2W-txtOff-12;
+          let dispNm=nm;const nmMax=acW-txtOff-12;
           while(dispNm.length>1&&pdf.getTextWidth(dispNm)>nmMax)dispNm=dispNm.slice(0,-1);
           if(dispNm!==nm)dispNm=dispNm.slice(0,-1)+'...';
-          pdf.text(dispNm,p2C2X+txtOff+12,c2y);c2y+=p2LH*0.9;
+          pdf.text(dispNm,acX+txtOff+12,c2y);c2y+=p2LH*0.9;
         });
         c2y+=1;
       });
@@ -2645,41 +2657,39 @@ async function exportPDF(capture){
     }else if(grp.kind==='std'&&grp.type==='ingress'){
       pdfIcon('ingress',icoX,icoY);
       pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
-      pdf.text(`Ingress / Egress (${cnt})`,p2C2X+txtOff,c2y);
+      pdf.text(`Ingress / Egress (${cnt})`,acX+txtOff,c2y);
     }else if(grp.kind==='custom'){
       const[cr,cg,cb]=hexRgb(grp.color);
       pdfIcon('rect',icoX,icoY,{rgb:[cr,cg,cb]});
       pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
-      pdf.text(`${grp.name} (${cnt})`,p2C2X+txtOff,c2y);
+      pdf.text(`${grp.name} (${cnt})`,acX+txtOff,c2y);
     }else{
       const t=TYPES[grp.type]||TYPES.custom;
       let sr,sg,sb;
       if(grp.type==='truck'){[sr,sg,sb]=[239,68,68];}else{[sr,sg,sb]=hexRgb(t.color||'#8b93a8');}
       pdfIcon('rect',icoX,icoY,{rgb:[sr,sg,sb]});
       pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
-      pdf.text(`${t.lbl} (${cnt})`,p2C2X+txtOff,c2y);
+      pdf.text(`${t.lbl} (${cnt})`,acX+txtOff,c2y);
     }
     c2y+=p2LH;
-    // Sub-list: custom elements always; others only if they have custom vendor names
     const subEls=(grp.kind==='std'&&grp.type==='ingress')?[]:
                  grp.kind==='custom'?grp.els:
                  grp.els.filter(e=>e.vendorName);
     subEls.forEach(el=>{
-      if(c2y>=p2MaxY)return;
+      if(c2y>=p2MaxY)advanceAct();
       const code=elCode(el,tnMap);
       const nm=el.vendorName||(TYPES[el.type]||TYPES.custom).lbl;
       pdf.setFont('helvetica','bold');pdf.setFontSize(10.5);pdf.setTextColor(244,81,64);
-      pdf.text(code,p2C2X+txtOff,c2y);
+      pdf.text(code,acX+txtOff,c2y);
       pdf.setFont('helvetica','normal');pdf.setFontSize(10.5);pdf.setTextColor(28,27,46);
-      let dispNm=nm;const nmMax=p2C2W-txtOff-12;
+      let dispNm=nm;const nmMax=acW-txtOff-12;
       while(dispNm.length>1&&pdf.getTextWidth(dispNm)>nmMax)dispNm=dispNm.slice(0,-1);
       if(dispNm!==nm)dispNm=dispNm.slice(0,-1)+'…';
-      pdf.text(dispNm,p2C2X+txtOff+12,c2y);c2y+=p2LH*0.9;
+      pdf.text(dispNm,acX+txtOff+12,c2y);c2y+=p2LH*0.9;
     });
     if(subEls.length)c2y+=1;
     c2y+=2;
   });
-
   // ADA Path note if present
   if(S.adaPaths.length){
     const lgY=Math.max(c1y,c2y)+3;
