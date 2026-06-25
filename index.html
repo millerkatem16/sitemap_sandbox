@@ -2335,7 +2335,7 @@ async function exportPDF(capture){
         pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
         pdf.circle(center.x,center.y,r,'FD');
         if(el.type==='security'){
-          const sFs=Math.max(12,Math.min(18,r*1.5));
+          const sFs=Math.max(3,Math.min(18,r*1.5));
           pdf.setFont('helvetica','bold');pdf.setFontSize(sFs);pdf.setTextColor(255,255,255);
           pdf.text('S',center.x,center.y+sFs*0.353*0.45,{align:'center'});
         }
@@ -2354,7 +2354,7 @@ async function exportPDF(capture){
       const aSegs=arrowPts.slice(1).map((p,i)=>[p.x-arrowPts[i].x,p.y-arrowPts[i].y]);
       pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
       pdf.lines(aSegs,arrowPts[0].x,arrowPts[0].y,[1,1],'FD',true);
-      const fs=Math.max(12,Math.min(18,wMm*0.7));
+      const fs=Math.max(4,Math.min(18,wMm*0.7));
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
       if(wMm>4){const tw=pdf.getTextWidth(code);const fOff=fs*0.353*0.36;pdf.text(code,center.x-(tw/2)*cos2-fOff*sin2,center.y-(tw/2)*sin2+fOff*cos2,{angle:-rotDeg});}
     }else{
@@ -2367,7 +2367,7 @@ async function exportPDF(capture){
       const segLines=corners.slice(1).map((p,i)=>[p.x-corners[i].x,p.y-corners[i].y]);
       pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
       pdf.lines(segLines,corners[0].x,corners[0].y,[1,1],'FD',true);
-      const fs=Math.max(12,Math.min(18,Math.min(wMm,hMm)*0.45));
+      const fs=Math.max(4,Math.min(18,Math.min(wMm,hMm)*0.45));
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
       const dark=t.tent&&(el.tentType!=='food'&&el.tentType!=='cooking');
       pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
