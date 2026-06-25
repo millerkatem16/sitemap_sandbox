@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -484,7 +484,7 @@ const S={
   mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17,
   _pendingZoneLabel:null,hideUtils:false,
   activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[],
-  eventNotes:''
+  eventNotes:'',colorTags:{}
 };
 
 let gmap=null,mapsApiKey='';
@@ -531,6 +531,16 @@ function pixelToLatLng(x,y){
   const wx=(x-cw.clientWidth/2)/sc+cPt.x,wy=(y-cw.clientHeight/2)/sc+cPt.y;
   const ll=proj.fromPointToLatLng(new google.maps.Point(wx,wy));
   return{lat:ll.lat(),lng:ll.lng()};
+}
+function makeFrozenProjector(snap){
+  if(!snap||!snap.cPt)return null;
+  const sc=Math.pow(2,snap.zoom);
+  return function(lat,lng){
+    const wx=(lng+180)/360*256;
+    const sinLat=Math.sin(lat*Math.PI/180);
+    const wy=(0.5-Math.log((1+sinLat)/(1-sinLat))/(4*Math.PI))*256;
+    return{x:(wx-snap.cPt.x)*sc+snap.cwW/2,y:(wy-snap.cPt.y)*sc+snap.cwH/2};
+  };
 }
 function metersPerPx(){
   if(!gmap)return 1;
@@ -1763,7 +1773,7 @@ function saveEvent(){
           fences:JSON.parse(JSON.stringify(S.fences)),
           hasSoftSurface:S.hasSoftSurface,idCtr:S.idCtr,
           activeVenueId:S.activeVenueId||null,
-          eventNotes:S.eventNotes||''
+          eventNotes:S.eventNotes||'',colorTags:S.colorTags||{}
         }
       };
       try{localStorage.setItem('esm_events_v1',JSON.stringify(savedEvents));}catch(er){}
@@ -1796,7 +1806,7 @@ function openEvents(){
       const evtNEl=document.getElementById('evt-name');const evtDEl=document.getElementById('evt-date');
       if(evtNEl&&state.evtName)evtNEl.value=state.evtName;
       if(evtDEl&&state.evtDate)evtDEl.value=state.evtDate;
-      S.eventNotes=state.eventNotes||'';
+      S.eventNotes=state.eventNotes||'';S.colorTags=state.colorTags||{};
       const evtNotesEl=document.getElementById('evt-notes');if(evtNotesEl)evtNotesEl.value=S.eventNotes;
       if(gmap&&state.mapCenter&&state.mapZoom){gmap.setCenter(state.mapCenter);gmap.setZoom(state.mapZoom);}
       S.activeVenueId=state.activeVenueId||null;
@@ -1892,6 +1902,12 @@ function renderVenueChanges(){
 }
 
 // ── Color key ──────────────────────────────────────────────────────────────
+function manageColorCategories(){
+  const cols=[...new Set(S.els.filter(e=>e.type==='custom'&&e.color).map(e=>e.color))];
+  if(!cols.length){modal('Manage Categories','No custom elements placed yet.','',null,'Close',{noCancel:true});return;}
+  const body=cols.map(c=>{const cid='ctag-'+c.replace(/#/g,'');return'<div class="mrow" style="align-items:center;gap:8px"><div style="width:22px;height:22px;flex-shrink:0;border-radius:3px;background:'+c+';border:1px solid rgba(255,255,255,0.2)"></div>'+mf('',cid,'text',S.colorTags[c]||'','Category name...')+'</div>';}).join('');
+  modal('Manage Categories','Name each color group - section header in the PDF activations legend.',body,()=>{cols.forEach(c=>{const v=document.getElementById('ctag-'+c.replace(/#/g,'')).value.trim();if(v)S.colorTags[c]=v;else delete S.colorTags[c];});},'Save');
+}
 function renderColorKey(){
   const eventOnly=new Set(['Vendor/Activity Tent','Cooking Tent','Food Truck']);
   let rows=[
@@ -1923,6 +1939,7 @@ function renderColorKey(){
     else sw=`<div class="ck-zone" style="border-color:${r.color};background:${r.color}18"></div>`;
     return`<div class="ck-row">${sw}<div><span>${r.lbl}</span>${r.dim?`<div style="font-size:8px;color:var(--tx3);margin-top:1px">${r.dim}</div>`:''}</div></div>`;
   }).join('');
+  const custCols=[...new Set(S.els.filter(e=>e.type==='custom'&&e.color).map(e=>e.color))];if(custCols.length){document.getElementById('ckey').innerHTML+='<div style="margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,0.1)"><button onclick="manageColorCategories()" style="font-size:10px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px">Manage Categories</button></div>';}
 }
 
 // ── PDF Export ─────────────────────────────────────────────────────────────
@@ -1949,7 +1966,7 @@ function startMapCapture(){
     const ctx=selCv.getContext('2d');
     let dragging=false,sx=0,sy=0,ex=0,ey=0;
     let dashOffset=0,rafId=null;
-    let capturedDataUrl=null,capBgDataUrl=null,capX=0,capY=0,capW=0,capH=0;
+    let capturedDataUrl=null,capBgDataUrl=null,capX=0,capY=0,capW=0,capH=0,capSnap=null;
 
     function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
 
@@ -2011,6 +2028,10 @@ function startMapCapture(){
       const cctx=comp.getContext('2d');
 
       // 1. Satellite background — Static Maps API blob → object URL → no canvas taint
+      const _frzProj=gmap&&gmap.getProjection()?gmap.getProjection():null;
+      const _frzCtr=gmap?gmap.getCenter():null;
+      const _frzCPt=_frzProj&&_frzCtr?_frzProj.fromLatLngToPoint(_frzCtr):null;
+      const _frzZ=gmap?Math.round(gmap.getZoom()):0,_frzW=cw.clientWidth,_frzH=cw.clientHeight;
       let bgDone=false;
       try{
         const ctr=pixelToLatLng(relX+outW/2,relY+outH/2);
@@ -2063,7 +2084,7 @@ function startMapCapture(){
       }
 
       capturedDataUrl=comp.toDataURL('image/jpeg',0.93);
-      capX=relX;capY=relY;capW=outW;capH=outH;
+      capX=relX;capY=relY;capW=outW;capH=outH;capSnap=_frzCPt?{cPt:{x:_frzCPt.x,y:_frzCPt.y},zoom:_frzZ,cwW:_frzW,cwH:_frzH}:null;
       prevImg.src=capturedDataUrl;
       instrCard.style.display='none';
       prevWrap.style.display='block';
@@ -2086,7 +2107,7 @@ function startMapCapture(){
     function onOk(){
       if(!capturedDataUrl)return;
       cleanup();
-      resolve({dataUrl:capBgDataUrl||capturedDataUrl,x:capX,y:capY,w:capW,h:capH});
+      resolve({dataUrl:capBgDataUrl||capturedDataUrl,x:capX,y:capY,w:capW,h:capH,snap:capSnap});
     }
     function onRetry(){showInstructions();dragging=false;}
     function onEsc(){cleanup();reject('cancelled');}
@@ -2217,8 +2238,9 @@ async function exportPDF(capture){
   // ── 6. Coordinate helpers ─────────────────────────────────────────────────
   // ll2pdf maps lat/lng → PDF coordinates using live map pixel positions
   // (captureX,captureY) is the cv-area-relative origin of the captured region
+  const frzPx=makeFrozenProjector(capture.snap);
   function ll2pdf(lat,lng){
-    const screenPt=latLngToPixel(lat,lng); // CSS px within cv-area
+    const screenPt=frzPx?frzPx(lat,lng):latLngToPixel(lat,lng);
     const relX=screenPt.x-captureX;
     const relY=screenPt.y-captureY;
     return{x:imgX+relX*(imgW/captureW),y:imgY+relY*(imgH/captureH)};
@@ -2601,7 +2623,7 @@ async function exportPDF(capture){
       tentCatMap[cat].els.push(el);
     }else if(el.type==='custom'){
       const ck=el.color||'#8b93a8';
-      if(!actCustomGroups.has(ck))actCustomGroups.set(ck,{color:ck,name:el.vendorName||'Custom',els:[]});
+      if(!actCustomGroups.has(ck))actCustomGroups.set(ck,{color:ck,name:S.colorTags[ck]||el.vendorName||'Custom',els:[]});
       actCustomGroups.get(ck).els.push(el);
     }else if(!actStdGroups.has(el.type)){
       actStdGroups.set(el.type,{type:el.type,els:actAll.filter(x=>x.type===el.type)});
