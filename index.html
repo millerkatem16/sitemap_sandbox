@@ -2236,6 +2236,7 @@ async function exportPDF(capture){
   // captureW CSS px maps to imgW mm, so 1 ft = S.scale*(imgW/captureW) mm
   const ftToMm=S.scale*(imgW/captureW);
   function hexRgb(h){const c=(h||'#888').replace('#','');return[parseInt(c.slice(0,2),16)||128,parseInt(c.slice(2,4),16)||128,parseInt(c.slice(4,6),16)||128];}
+  function fitFontSize(text,targetWidthMm,minFs,maxFs){pdf.setFont('helvetica','bold');pdf.setFontSize(maxFs);const wAtMax=pdf.getTextWidth(text);if(wAtMax<=0)return maxFs;let fs=maxFs*(targetWidthMm/wAtMax);return Math.max(minFs,Math.min(maxFs,fs));}
 
   // ── 7. Draw zones ─────────────────────────────────────────────────────────
   const pdfClosedBorders=S.zonePolys.filter(z=>z.type==='border'&&!z.open&&z.pts.length>=3);
@@ -2335,7 +2336,7 @@ async function exportPDF(capture){
         pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
         pdf.circle(center.x,center.y,r,'FD');
         if(el.type==='security'){
-          const sFs=Math.max(3,Math.min(18,r*1.5));
+          const sFs=fitFontSize('S',r*1.3,3,16);
           pdf.setFont('helvetica','bold');pdf.setFontSize(sFs);pdf.setTextColor(255,255,255);
           pdf.text('S',center.x,center.y+sFs*0.353*0.45,{align:'center'});
         }
@@ -2354,7 +2355,7 @@ async function exportPDF(capture){
       const aSegs=arrowPts.slice(1).map((p,i)=>[p.x-arrowPts[i].x,p.y-arrowPts[i].y]);
       pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
       pdf.lines(aSegs,arrowPts[0].x,arrowPts[0].y,[1,1],'FD',true);
-      const fs=Math.max(4,Math.min(18,wMm*0.7));
+      const fs=fitFontSize(code,wMm*0.5,4,24);
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
       if(wMm>4){const tw=pdf.getTextWidth(code);const fOff=fs*0.353*0.36;pdf.text(code,center.x-(tw/2)*cos2-fOff*sin2,center.y-(tw/2)*sin2+fOff*cos2,{angle:-rotDeg});}
     }else{
@@ -2367,7 +2368,7 @@ async function exportPDF(capture){
       const segLines=corners.slice(1).map((p,i)=>[p.x-corners[i].x,p.y-corners[i].y]);
       pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
       pdf.lines(segLines,corners[0].x,corners[0].y,[1,1],'FD',true);
-      const fs=Math.max(4,Math.min(18,Math.min(wMm,hMm)*0.45));
+      const fs=fitFontSize(code,Math.min(wMm,hMm)*0.8,4,28);
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
       const dark=t.tent&&(el.tentType!=='food'&&el.tentType!=='cooking');
       pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
