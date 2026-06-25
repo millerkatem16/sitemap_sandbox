@@ -532,15 +532,12 @@ function pixelToLatLng(x,y){
   const ll=proj.fromPointToLatLng(new google.maps.Point(wx,wy));
   return{lat:ll.lat(),lng:ll.lng()};
 }
-function makeFrozenProjector(snap){
-  if(!snap||!snap.cPt)return null;
-  const sc=Math.pow(2,snap.zoom);
-  return function(lat,lng){
-    const wx=(lng+180)/360*256;
-    const sinLat=Math.sin(lat*Math.PI/180);
-    const wy=(0.5-Math.log((1+sinLat)/(1-sinLat))/(4*Math.PI))*256;
-    return{x:(wx-snap.cPt.x)*sc+snap.cwW/2,y:(wy-snap.cPt.y)*sc+snap.cwH/2};
-  };
+function latLngToPixelFrozen(lat,lng,centerLatLng,zoom){
+  if(!gmap||!gmap.getProjection())return{x:0,y:0};
+  const proj=gmap.getProjection(),sc=Math.pow(2,zoom);
+  const cPt=proj.fromLatLngToPoint(new google.maps.LatLng(centerLatLng.lat,centerLatLng.lng));
+  const pt=proj.fromLatLngToPoint(new google.maps.LatLng(lat,lng));
+  return{x:(pt.x-cPt.x)*sc+cw.clientWidth/2,y:(pt.y-cPt.y)*sc+cw.clientHeight/2};
 }
 function metersPerPx(){
   if(!gmap)return 1;
@@ -1966,7 +1963,7 @@ function startMapCapture(){
     const ctx=selCv.getContext('2d');
     let dragging=false,sx=0,sy=0,ex=0,ey=0;
     let dashOffset=0,rafId=null;
-    let capturedDataUrl=null,capBgDataUrl=null,capX=0,capY=0,capW=0,capH=0,capSnap=null;
+    let capturedDataUrl=null,capBgDataUrl=null,capX=0,capY=0,capW=0,capH=0;
 
     function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
 
@@ -2028,10 +2025,6 @@ function startMapCapture(){
       const cctx=comp.getContext('2d');
 
       // 1. Satellite background — Static Maps API blob → object URL → no canvas taint
-      const _frzProj=gmap&&gmap.getProjection()?gmap.getProjection():null;
-      const _frzCtr=gmap?gmap.getCenter():null;
-      const _frzCPt=_frzProj&&_frzCtr?_frzProj.fromLatLngToPoint(_frzCtr):null;
-      const _frzZ=gmap?Math.round(gmap.getZoom()):0,_frzW=cw.clientWidth,_frzH=cw.clientHeight;
       let bgDone=false;
       try{
         const ctr=pixelToLatLng(relX+outW/2,relY+outH/2);
@@ -2084,7 +2077,7 @@ function startMapCapture(){
       }
 
       capturedDataUrl=comp.toDataURL('image/jpeg',0.93);
-      capX=relX;capY=relY;capW=outW;capH=outH;capSnap=_frzCPt?{cPt:{x:_frzCPt.x,y:_frzCPt.y},zoom:_frzZ,cwW:_frzW,cwH:_frzH}:null;
+      capX=relX;capY=relY;capW=outW;capH=outH;
       prevImg.src=capturedDataUrl;
       instrCard.style.display='none';
       prevWrap.style.display='block';
@@ -2107,7 +2100,7 @@ function startMapCapture(){
     function onOk(){
       if(!capturedDataUrl)return;
       cleanup();
-      resolve({dataUrl:capBgDataUrl||capturedDataUrl,x:capX,y:capY,w:capW,h:capH,snap:capSnap});
+      const c=gmap.getCenter();resolve({dataUrl:capBgDataUrl||capturedDataUrl,x:capX,y:capY,w:capW,h:capH,frozenCenter:{lat:c.lat(),lng:c.lng()},frozenZoom:gmap.getZoom()});
     }
     function onRetry(){showInstructions();dragging=false;}
     function onEsc(){cleanup();reject('cancelled');}
@@ -2236,11 +2229,8 @@ async function exportPDF(capture){
   }
 
   // ── 6. Coordinate helpers ─────────────────────────────────────────────────
-  // ll2pdf maps lat/lng → PDF coordinates using live map pixel positions
-  // (captureX,captureY) is the cv-area-relative origin of the captured region
-  const frzPx=makeFrozenProjector(capture.snap);
   function ll2pdf(lat,lng){
-    const screenPt=frzPx?frzPx(lat,lng):latLngToPixel(lat,lng);
+    const screenPt=latLngToPixelFrozen(lat,lng,capture.frozenCenter,capture.frozenZoom); // CSS px within cv-area, frozen at capture time
     const relX=screenPt.x-captureX;
     const relY=screenPt.y-captureY;
     return{x:imgX+relX*(imgW/captureW),y:imgY+relY*(imgH/captureH)};
@@ -2489,7 +2479,7 @@ async function exportPDF(capture){
       S.els.forEach(e=>{
         const t=TYPES[e.type];
         if(!t||t.circle||(!(t.sqft>0)&&!p2StructTypes.has(e.type)))return;
-        const ePx=latLngToPixel(e.lat,e.lng);
+        const ePx=latLngToPixelFrozen(e.lat,e.lng,capture.frozenCenter,capture.frozenZoom);
         let bestZone=-1,bestArea=Infinity;
         p2Borders.forEach((b,i)=>{if(pip(ePx,b.pts)&&rawAreas2[i]<bestArea){bestZone=i;bestArea=rawAreas2[i];}});
         if(bestZone>=0)zoneStruc2[bestZone]+=e.wFt*e.hFt;
