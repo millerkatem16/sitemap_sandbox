@@ -2023,8 +2023,9 @@ function startMapCapture(){
         const ctr=pixelToLatLng(relX+outW/2,relY+outH/2);
         const zoom=Math.round(gmap.getZoom());
         const maxD=640,ratio=Math.min(1,Math.min(maxD/outW,maxD/outH));
-        const smW=Math.max(1,Math.round(outW*ratio)),smH=Math.max(1,Math.round(outH*ratio));
-        const smUrl=`https://maps.googleapis.com/maps/api/staticmap?center=${ctr.lat},${ctr.lng}&zoom=${zoom}&size=${smW}x${smH}&maptype=satellite&key=${mapsApiKey}`;
+        const smZoom=ratio<1?Math.max(0,Math.floor(zoom+Math.log2(ratio))):zoom;
+        const smW=Math.max(1,Math.round(outW*Math.pow(2,smZoom-zoom))),smH=Math.max(1,Math.round(outH*Math.pow(2,smZoom-zoom)));
+        const smUrl=`https://maps.googleapis.com/maps/api/staticmap?center=${ctr.lat},${ctr.lng}&zoom=${smZoom}&size=${smW}x${smH}&maptype=satellite&key=${mapsApiKey}`;
         const resp=await fetch(smUrl,{mode:'cors'});
         if(resp.ok){
           const blob=await resp.blob();
