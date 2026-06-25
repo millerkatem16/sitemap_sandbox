@@ -2372,7 +2372,8 @@ async function exportPDF(capture){
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);
       const dark=t.tent&&(el.tentType!=='food'&&el.tentType!=='cooking');
       pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
-      if(wMm>3&&hMm>3){const tw=pdf.getTextWidth(code);const fOff=fs*0.353*0.36;pdf.text(code,center.x-(tw/2)*cos2-fOff*sin2,center.y-(tw/2)*sin2+fOff*cos2,{angle:-rotDeg});}
+      const tw=pdf.getTextWidth(code);const thApprox=fs*0.353;
+      if(tw<wMm*0.95&&thApprox<hMm*0.95){const fOff=fs*0.353*0.36;pdf.text(code,center.x-(tw/2)*cos2-fOff*sin2,center.y-(tw/2)*sin2+fOff*cos2,{angle:-rotDeg});}
     }
   });
 
