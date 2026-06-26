@@ -1215,7 +1215,7 @@ function renderVendorList(){
   const active=document.activeElement,wasId=active&&active.classList&&active.classList.contains('vl-inp')?active.dataset.id:null;
   const actEls=S.els.filter(e=>{const t=TYPES[e.type]||TYPES.custom;return!t.circle&&!t.noRender&&!t.crowdMgmt&&!t.isLabel;});
   if(!actEls.length){vl.innerHTML='<div style="font-size:10px;color:var(--tx3)">No elements placed yet</div>';return;}
-  vl.innerHTML=actEls.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');const isCustom=['customtent','custom','truck'].includes(el.type);const dimBadge=isCustom?`<span style="font-size:9px;color:var(--tx3);flex-shrink:0;white-space:nowrap">${el.wFt}×${el.hFt} ft</span>`:'';const hasEdit=['tent10','tent20','custom'].includes(el.type);const editBtn=hasEdit?`<button class="vl-edt" data-id="${el.id}" title="Edit">✏</button>`:'';return`<div class="vl-row"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${(TYPES[el.type]||TYPES.custom).lbl}">${dimBadge}${editBtn}<button class="vl-del" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
+  vl.innerHTML=actEls.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');const isCustom=['customtent','custom','truck'].includes(el.type);const dimBadge=isCustom?`<span style="font-size:9px;color:var(--tx3);flex-shrink:0;white-space:nowrap">${el.wFt}×${el.hFt} ft</span>`:'';const hasEdit=['tent10','tent20','customtent','custom'].includes(el.type);const editBtn=hasEdit?`<button class="vl-edt" data-id="${el.id}" title="Edit">✏</button>`:'';return`<div class="vl-row"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${(TYPES[el.type]||TYPES.custom).lbl}">${dimBadge}${editBtn}<button class="vl-del" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
   vl.querySelectorAll('.vl-inp').forEach(inp=>{
     inp.addEventListener('input',ev=>{const id=parseInt(ev.target.dataset.id),found=S.els.find(x=>x.id===id);if(found)found.vendorName=ev.target.value;});
     inp.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const all=[...vl.querySelectorAll('.vl-inp')],idx=all.indexOf(ev.target);if(idx<all.length-1)all[idx+1].focus();else ev.target.blur();}});
@@ -1252,10 +1252,11 @@ document.getElementById('mok').addEventListener('click',()=>{closeModal();if(mCb
 function mf(lbl,id,type='text',val='',ph=''){return`<div class="mf"><label>${lbl}</label><input type="${type}" id="${id}" value="${val}" placeholder="${ph}"></div>`;}
 function msel(lbl,id,opts){return`<div class="mf"><label>${lbl}</label><select id="${id}">${opts.map(o=>`<option value="${o.v}">${o.t}</option>`).join('')}</select></div>`;}
 function mr(...fs){return`<div class="mrow">${fs.join('')}</div>`;}
-const TAG_LABELS={pink:'Pink',lpurple:'Light Purple',lblue:'Light Blue',dblue:'Dark Blue',green:'Green',gray:'Gray',orange:'Orange',teal:'Teal'};
+const COLOR_TAG_FALLBACK_LABEL={pink:'Pink',lpurple:'Light Purple',lblue:'Light Blue',dblue:'Dark Blue',green:'Bright Green',gray:'Gray',orange:'Orange',teal:'Teal'};
+function colorTagLabel(tagId){const tag=S.colorTags.find(t=>t.id===tagId);if(!tag)return'';return tag.name||COLOR_TAG_FALLBACK_LABEL[tag.id]||'Custom Color';}
 function promptNameColorTag(tagId,afterFn){const tag=S.colorTags.find(t=>t.id===tagId);if(!tag){if(afterFn)afterFn();return;}if(tag.name!==null){if(afterFn)afterFn();return;}modal('Name This Color Tag','This color hasn\'t been labeled yet. Give it a name so it\'s easy to recognize in the legend (e.g. "Historical Activity"). You can rename it later.',mf('Tag Name','tagname-input','text','','e.g. Historical Activity'),()=>{const val=document.getElementById('tagname-input').value.trim();if(val)tag.name=val;if(afterFn)afterFn();},'Save Name');}
-function colorTagPickerHtml(selectedId){const swatches=S.colorTags.map(t=>`<div class="tag-swatch${t.id===selectedId?' selected':''}" data-tagid="${t.id}" style="background:${t.hex}" title="${t.name||TAG_LABELS[t.id]||t.id}"></div>`).join('');return`<div class="mf"><label>Color Tag</label><div class="tag-picker-row">${swatches}<div class="tag-swatch tag-custom-btn" title="Pick Your Own">+</div></div><input type="color" id="tag-custom-input" style="display:none"><input type="hidden" id="tag-sel-id" value="${selectedId||''}"></div>`;}
-function wireTagPicker(){const row=document.querySelector('.tag-picker-row');if(!row)return;const hidInp=document.getElementById('tag-sel-id');const colInp=document.getElementById('tag-custom-input');row.querySelectorAll('.tag-swatch[data-tagid]').forEach(sw=>{sw.addEventListener('click',()=>{row.querySelectorAll('.tag-swatch').forEach(s=>s.classList.remove('selected'));sw.classList.add('selected');hidInp.value=sw.dataset.tagid;const tag=S.colorTags.find(t=>t.id===sw.dataset.tagid);if(tag&&tag.name===null)promptNameColorTag(tag.id);});});const cb=row.querySelector('.tag-custom-btn');if(cb)cb.addEventListener('click',()=>colInp.click());if(colInp)colInp.addEventListener('change',()=>{const hex=colInp.value;let tag=S.colorTags.find(t=>t.hex.toLowerCase()===hex.toLowerCase());if(!tag){tag={id:'custom-'+Date.now(),hex,name:null};S.colorTags.push(tag);}row.querySelectorAll('.tag-swatch').forEach(s=>s.classList.remove('selected'));hidInp.value=tag.id;if(tag.name===null)promptNameColorTag(tag.id);});}
+function colorTagPickerHtml(selectedId){const swatches=S.colorTags.map(t=>`<div class="tag-swatch${t.id===selectedId?' selected':''}" data-tagid="${t.id}" style="background:${t.hex}" title="${t.name||COLOR_TAG_FALLBACK_LABEL[t.id]||t.id}"></div>`).join('');return`<div class="mf"><label>Color Tag</label><div class="tag-picker-row">${swatches}<div class="tag-swatch tag-custom-btn" title="Pick Your Own">+</div></div><input type="color" id="tag-custom-input" style="display:none"><input type="hidden" id="tag-sel-id" value="${selectedId||''}"></div>`;}
+function wireTagPicker(){const row=document.querySelector('.tag-picker-row');if(!row)return;const hidInp=document.getElementById('tag-sel-id');const colInp=document.getElementById('tag-custom-input');row.querySelectorAll('.tag-swatch[data-tagid]').forEach(sw=>{sw.addEventListener('click',()=>{row.querySelectorAll('.tag-swatch').forEach(s=>s.classList.remove('selected'));sw.classList.add('selected');hidInp.value=sw.dataset.tagid;});});const cb=row.querySelector('.tag-custom-btn');if(cb)cb.addEventListener('click',()=>colInp.click());if(colInp)colInp.addEventListener('change',()=>{const hex=colInp.value;let tag=S.colorTags.find(t=>t.hex.toLowerCase()===hex.toLowerCase());if(!tag){tag={id:'custom-'+Date.now(),hex,name:null};S.colorTags.push(tag);}row.querySelectorAll('.tag-swatch').forEach(s=>s.classList.remove('selected'));hidInp.value=tag.id;if(tag.name===null)promptNameColorTag(tag.id);});}
 
 // ── Venue mode toolbar ─────────────────────────────────────────────────────
 const EL_DROP_NORMAL=`<option value="" disabled selected>Add Elements to Event Site</option><option value="tent10">10×10 Tent</option><option value="tent20">10×20 Tent</option><option value="customtent">+ Add custom tent size…</option><option value="stage">Stage</option><option value="truck">Food Truck</option><option value="gen">Generator</option><option value="mix">Mix Platform</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
@@ -1315,16 +1316,20 @@ function place(type,x,y){
     modal('Add Custom Tent Size','Specify dimensions and use type. Tent-to-food-truck clearance rules still apply.',
       mf('Tent Label','ctlbl','text','','e.g. 20×40 Frame Tent')+
       mr(mf('Width (ft)','ctw','number','20'),mf('Length (ft)','ctl','number','40'))+
-      msel('Tent Use','ct-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}]),
+      msel('Tent Use','ct-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(''),
       ()=>{
         pushUndo();
         const lbl=document.getElementById('ctlbl').value.trim()||'Custom Tent';
         const wFt=Math.max(1,parseFloat(document.getElementById('ctw').value)||20);
         const hFt=Math.max(1,parseFloat(document.getElementById('ctl').value)||40);
         const tentType=document.getElementById('ct-type').value;
-        S.els.push({id:S.idCtr++,type:'customtent',lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,tentType,rot:0,hr:false,sr:false});
+        const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
+        S.els.push({id:S.idCtr++,type:'customtent',lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,tentType,...(colorTag?{colorTag}:{}),rot:0,hr:false,sr:false});
         renderVendorList();renderEls();runRules();
-      });return;
+      });
+    wireTagPicker();
+    document.getElementById('ct-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
+    return;
   }
   if(type==='truck'){
     modal('Place Food Truck','Enter vendor name and dimensions.',mf('Vendor Name','tklbl','text','','e.g. Tacos El Rey')+mr(mf('Length (ft)','tkl','number','20'),mf('Width (ft)','tkw','number','8')),()=>{
@@ -1363,7 +1368,7 @@ function place(type,x,y){
   }
   if(type==='custom'){
     modal('Add Custom Element','Name it, choose a shape, set dimensions, and pick a color tag.',mf('Name','cust-lbl','text','','e.g. Bounce House')+msel('Shape','cust-shape',[{v:'square',t:'Square'},{v:'circle',t:'Circle'}])+'<div id="cust-dims-sq">'+mr(mf('Width (ft)','cust-w','number','10'),mf('Depth (ft)','cust-d','number','10'))+'</div><div id="cust-dims-ci" style="display:none">'+mf('Size (ft)','cust-sz','number','10')+'</div>'+colorTagPickerHtml(''),()=>{
-      pushUndo();const lbl=document.getElementById('cust-lbl').value.trim()||'Custom';const shape=document.getElementById('cust-shape').value||'square';const isCircle=shape==='circle';const sz=Math.max(1,parseFloat(document.getElementById('cust-sz').value)||10);const wFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-w').value)||10);const hFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-d').value)||10);const colorTag=document.getElementById('tag-sel-id').value||null;
+      pushUndo();const lbl=document.getElementById('cust-lbl').value.trim()||'Custom';const shape=document.getElementById('cust-shape').value||'square';const isCircle=shape==='circle';const sz=Math.max(1,parseFloat(document.getElementById('cust-sz').value)||10);const wFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-w').value)||10);const hFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-d').value)||10);const colorTag=document.getElementById('tag-sel-id').value||(S.colorTags[0]&&S.colorTags[0].id)||null;
       S.els.push({id:S.idCtr++,type:'custom',lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,shape,colorTag,rot:0,hr:false,sr:false});
       renderVendorList();renderEls();runRules();
     });
@@ -1387,13 +1392,22 @@ function editEl(el){
   }else if(el.type==='custom'){
     const isCirc=el.shape==='circle';
     modal('Edit Custom Element','Update this element\'s details.',mf('Name','cust-lbl','text',el.vendorName||el.label||'Custom','e.g. Bounce House')+msel('Shape','cust-shape',[{v:'square',t:'Square'},{v:'circle',t:'Circle'}])+'<div id="cust-dims-sq"'+(isCirc?' style="display:none"':'')+'>'+(mr(mf('Width (ft)','cust-w','number',String(el.wFt||10)),mf('Depth (ft)','cust-d','number',String(el.hFt||10))))+'</div><div id="cust-dims-ci"'+(isCirc?'':' style="display:none"')+'>'+(mf('Size (ft)','cust-sz','number',String(el.wFt||10)))+'</div>'+colorTagPickerHtml(el.colorTag||''),()=>{
-      pushUndo();const lbl=document.getElementById('cust-lbl').value.trim()||'Custom';const shape=document.getElementById('cust-shape').value||'square';const isCircle=shape==='circle';const sz=Math.max(1,parseFloat(document.getElementById('cust-sz').value)||10);const wFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-w').value)||10);const hFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-d').value)||10);const colorTag=document.getElementById('tag-sel-id').value||null;
+      pushUndo();const lbl=document.getElementById('cust-lbl').value.trim()||'Custom';const shape=document.getElementById('cust-shape').value||'square';const isCircle=shape==='circle';const sz=Math.max(1,parseFloat(document.getElementById('cust-sz').value)||10);const wFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-w').value)||10);const hFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-d').value)||10);const colorTag=document.getElementById('tag-sel-id').value||(S.colorTags[0]&&S.colorTags[0].id)||null;
       el.label=lbl;el.vendorName=lbl;el.shape=shape;el.wFt=wFt;el.hFt=hFt;el.colorTag=colorTag;
       renderVendorList();renderEls();runRules();
     },'Save');
     document.getElementById('cust-shape').value=el.shape||'square';
     document.getElementById('cust-shape').addEventListener('change',function(){const c=this.value==='circle';document.getElementById('cust-dims-sq').style.display=c?'none':'';document.getElementById('cust-dims-ci').style.display=c?'':'none';});
     wireTagPicker();
+  }else if(el.type==='customtent'){
+    modal('Edit Custom Tent','Update this tent\'s details.',mf('Tent Label','ctlbl','text',el.vendorName||el.label||'Custom Tent','e.g. 20×40 Frame Tent')+mr(mf('Width (ft)','ctw','number',String(el.wFt||20)),mf('Length (ft)','ctl','number',String(el.hFt||40)))+msel('Tent Use','ct-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(el.colorTag||''),()=>{
+      pushUndo();const lbl=document.getElementById('ctlbl').value.trim()||'Custom Tent';const wFt=Math.max(1,parseFloat(document.getElementById('ctw').value)||20);const hFt=Math.max(1,parseFloat(document.getElementById('ctl').value)||40);const tentType=document.getElementById('ct-type').value;const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
+      el.label=lbl;el.vendorName=lbl;el.wFt=wFt;el.hFt=hFt;el.tentType=tentType;el.colorTag=colorTag;
+      renderVendorList();renderEls();runRules();
+    },'Save');
+    document.getElementById('ct-type').value=el.tentType||'vendor';
+    wireTagPicker();
+    document.getElementById('ct-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
   }
 }
 
@@ -1954,7 +1968,7 @@ function renderColorKey(){
     {type:'swatch',bg:'#f0525225',bord:'#f05252',lbl:'First Aid / Fire Ext.',dim:'Variable'},
     {type:'swatch',bg:'#fbbf2425',bord:'#fbbf24',lbl:'Generator',dim:'6×6 ft'},
     {type:'swatch',bg:'#c084fc25',bord:'#c084fc',lbl:'Mix Platform',dim:'10×8 ft'},
-    ...([...new Set(S.els.filter(e=>e.colorTag).map(e=>e.colorTag))].map(tid=>{const tag=S.colorTags.find(t=>t.id===tid)||{hex:'#8b93a8',name:null,id:tid};const lbl=tag.name||(TAG_LABELS[tid]||tid);return{type:'swatch',bg:tag.hex+'40',bord:tag.hex,lbl,dim:'Custom Element / Tent'};})),
+    ...([...new Set(S.els.filter(e=>e.colorTag).map(e=>e.colorTag))].map(tid=>{const tag=S.colorTags.find(t=>t.id===tid)||{hex:'#8b93a8',name:null,id:tid};const lbl=colorTagLabel(tid);return{type:'swatch',bg:tag.hex+'40',bord:tag.hex,lbl,dim:'Custom Element / Tent'};})),
     {type:'svg',svg:`<svg viewBox="0 0 24 24" width="14" height="14"><path d="M14.5 3 5 13.5h7.5L10 21l9.5-11H12z" fill="#FBBD2F" stroke="#d4a012" stroke-width="0.5"/></svg>`,lbl:'Electric Source',dim:'Utility marker'},
     {type:'svg',svg:`<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2C10 6 4 12 4 16a8 8 0 0016 0C20 12 14 6 12 2z" fill="#3B82F6" stroke="#2563eb" stroke-width="0.8"/></svg>`,lbl:'Water Source',dim:'Utility marker'},
     {type:'circle',color:'#8b93a8',lbl:'Trash Bin',dim:'Utility marker'},
@@ -2667,7 +2681,7 @@ async function exportPDF(capture){
       pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.15);
       pdf.rect(acX+iconSz-iconSz,c2y-iconSz-iconSz,iconSz*2,iconSz*2,'FD');
       pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
-      pdf.text(sb.wFt+'x'+sb.hFt+' ft ('+sb.els.length+')',acX+txtOff,c2y);c2y+=p2LH;
+      pdf.text(sb.wFt+'×'+sb.hFt+' Tent ('+sb.els.length+')',acX+txtOff,c2y);c2y+=p2LH;
       renderActSubList(sb.els);c2y+=1;
     });
   };
@@ -2687,17 +2701,21 @@ async function exportPDF(capture){
     if(c2y>=p2MaxY)advanceAct();
     const[tagR,tagG,tagB]=hexRgb(tagGrp.ti.hex);
     pdfIcon('rect',acX+iconSz,c2y-iconSz,{rgb:[tagR,tagG,tagB]});
-    const tagLbl=(tagGrp.ti.name||(TAG_LABELS[tid]||tid)).toUpperCase();
+    const tagLbl=colorTagLabel(tid);
     const tagCount=[...tagGrp.tentBuckets.values()].reduce((s,b)=>s+b.els.length,0)+[...tagGrp.customNames.values()].reduce((s,b)=>s+b.els.length,0);
     pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(42,95,100);
     pdf.text(tagLbl+' ('+tagCount+')',acX+txtOff,c2y);c2y+=p2LH;
     renderTentBuckets(tagGrp.tentBuckets,tagR,tagG,tagB,Math.max(0,tagR-50),Math.max(0,tagG-50),Math.max(0,tagB-50));
     tagGrp.customNames.forEach(cgrp=>{
       if(c2y>=p2MaxY)advanceAct();
-      pdfIcon('rect',acX+iconSz,c2y-iconSz,{rgb:[tagR,tagG,tagB]});
-      pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
-      pdf.text('Custom: '+cgrp.name+' ('+cgrp.els.length+')',acX+txtOff,c2y);c2y+=p2LH;
-      renderActSubList(cgrp.els);c2y+=1;
+      if(cgrp.els.length===1){
+        renderActSubList(cgrp.els);c2y+=1;
+      }else{
+        pdfIcon('rect',acX+iconSz,c2y-iconSz,{rgb:[tagR,tagG,tagB]});
+        pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
+        pdf.text('Custom: '+cgrp.name+' ('+cgrp.els.length+')',acX+txtOff,c2y);c2y+=p2LH;
+        renderActSubList(cgrp.els);c2y+=1;
+      }
     });
     c2y+=2;
   });
@@ -2706,14 +2724,14 @@ async function exportPDF(capture){
   if(cookTents.length){
     if(c2y>=p2MaxY)advanceAct();
     pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(42,95,100);
-    pdf.text('COOKING ('+cookTents.length+')',acX+txtOff,c2y);c2y+=p2LH;
+    pdf.text('Cooking Tents ('+cookTents.length+')',acX+txtOff,c2y);c2y+=p2LH;
     const cookBuckets=new Map();
     cookTents.forEach(el=>{const key=el.wFt+'|'+el.hFt;if(!cookBuckets.has(key))cookBuckets.set(key,{wFt:el.wFt,hFt:el.hFt,els:[]});cookBuckets.get(key).els.push(el);});
     renderTentBuckets(cookBuckets,250,204,21,234,179,8);
     c2y+=2;
   }
   // ── 3. Untagged non-cooking tents by tentType ─────────────────────────────
-  const tentTypeNames={vendor:'Vendor',activity:'Activity',production:'Production'};
+  const tentTypeNames={vendor:'Vendor / Activity',activity:'Activity',production:'Production',event:'Event Use'};
   const untaggedTentMap=new Map();
   actAll.forEach(el=>{
     const t=TYPES[el.type]||TYPES.custom;
