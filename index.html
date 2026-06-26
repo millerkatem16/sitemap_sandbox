@@ -2381,7 +2381,7 @@ async function exportPDF(capture){
     if(t.noRender)return;
     if(t.isLabel)return;
     if(t.utility&&S.hideUtils)return;
-    if(t.circle){
+    if(t.circle||(el.type==='custom'&&el.shape==='circle')){
       const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
       if(el.type==='electric'){
         const hw=wMm,hh=hMm;
@@ -2445,7 +2445,7 @@ async function exportPDF(capture){
   S.els.filter(e=>e.type==='label').forEach(el=>{
     const lp=ll2pdf(el.lat,el.lng);
     const ltxt=el.labelText||'';if(!ltxt)return;
-    pdf.setFont('helvetica','bold');pdf.setFontSize(12);
+    pdf.setFont('helvetica','bold');pdf.setFontSize(10);
     const lw=pdf.getTextWidth(ltxt)+6;
     const rotDeg=el.rot||0;
     const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
@@ -2454,8 +2454,8 @@ async function exportPDF(capture){
     const segLines=corners.slice(1).map((p,i)=>[p.x-corners[i].x,p.y-corners[i].y]);
     pdf.setFillColor(146,39,100);pdf.setDrawColor(255,255,255);pdf.setLineWidth(0.2);
     pdf.lines(segLines,corners[0].x,corners[0].y,[1,1],'FD',true);
-    pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(255,255,255);
-    const tw=pdf.getTextWidth(ltxt);const fOff=12*0.353*0.36;
+    pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.setTextColor(255,255,255);
+    const tw=pdf.getTextWidth(ltxt);const fOff=10*0.353*0.36;
     pdf.text(ltxt,lp.x-(tw/2)*cos2-fOff*sin2,lp.y-(tw/2)*sin2+fOff*cos2,{angle:-rotDeg});
   });
 
