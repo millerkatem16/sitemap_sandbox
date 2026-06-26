@@ -760,11 +760,21 @@ function drawFenceSeg(ctx,x1,y1,x2,y2,preview,material){
   ctx.restore();
 }
 function drawDims(){
+  S.dims.forEach(d=>{if(d.id==null)d.id=S.idCtr++;});
   dcx.clearRect(0,0,dc.width,dc.height);
   S.dims.forEach(d=>{
     const p1=latLngToPixel(d.lat1,d.lng1),p2=latLngToPixel(d.lat2,d.lng2);
     drawDimArrow(dcx,p1.x,p1.y,p2.x,p2.y,false);
   });
+  const _hoveredId=window._dimGetHovered?window._dimGetHovered():null;
+  if(_hoveredId!=null){
+    const hd=S.dims.find(d=>d.id===_hoveredId);
+    if(hd){
+      const hp1=latLngToPixel(hd.lat1,hd.lng1),hp2=latLngToPixel(hd.lat2,hd.lng2);
+      dcx.save();dcx.strokeStyle='rgba(224,53,53,0.85)';dcx.lineWidth=4;dcx.lineCap='round';
+      dcx.beginPath();dcx.moveTo(hp1.x,hp1.y);dcx.lineTo(hp2.x,hp2.y);dcx.stroke();dcx.restore();
+    }
+  }
   S.fences.forEach(f=>{
     if(!f.pts||f.pts.length<2)return;
     let totalPx=0;
@@ -797,6 +807,53 @@ function drawDims(){
     for(let i=0;i<curPx.length-1;i++)drawFenceSeg(dcx,curPx[i].x,curPx[i].y,curPx[i+1].x,curPx[i+1].y,false,null);
   }
 }
+
+// ── Dimension hit-testing and click-to-delete ─────────────────────────────
+(()=>{
+  let hoveredDimId=null;
+  function dimHitTest(x,y){
+    for(let i=S.dims.length-1;i>=0;i--){
+      const d=S.dims[i];
+      const p1=latLngToPixel(d.lat1,d.lng1),p2=latLngToPixel(d.lat2,d.lng2);
+      if(Math.sqrt(segDSq(x,y,p1.x,p1.y,p2.x,p2.y))<8)return d.id;
+    }
+    return null;
+  }
+  document.addEventListener('mousemove',ev=>{
+    if(S.isRotating)return;
+    if(S.tool==='dim'&&dimStart)return;
+    const r=cw.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top;
+    if(x<0||y<0||x>r.width||y>r.height){
+      if(hoveredDimId!=null){hoveredDimId=null;if(S.tool==='select')cw.style.pointerEvents='none';drawDims();}
+      return;
+    }
+    const hitId=dimHitTest(x,y);
+    if(hitId!==hoveredDimId){hoveredDimId=hitId;drawDims();}
+    if(hitId!=null){
+      cw.style.cursor='pointer';
+      if(S.tool==='select')cw.style.pointerEvents='auto';
+    }else{
+      const toolCursor=(ZONE_TOOLS.includes(S.tool)&&S.tool!=='erase')||PLACEABLE.includes(S.tool)||S.tool==='dim'||S.tool==='fence'?'crosshair':'default';
+      cw.style.cursor=S.tool==='select'?'':toolCursor;
+      if(S.tool==='select')cw.style.pointerEvents='none';
+    }
+  });
+  cw.addEventListener('mousedown',ev=>{
+    if(S.isRotating)return;
+    if(hoveredDimId==null)return;
+    const dimToDelete=hoveredDimId;
+    ev.stopPropagation();ev.preventDefault();
+    modal('Delete Measurement?','Remove this measurement from the map?','',
+      ()=>{
+        pushUndo();
+        S.dims=S.dims.filter(d=>d.id!==dimToDelete);
+        hoveredDimId=null;
+        if(S.tool==='select')cw.style.pointerEvents='none';
+        drawDims();
+      },'Delete');
+  },true);
+  window._dimGetHovered=()=>hoveredDimId;
+})();
 
 // ── Capacity ───────────────────────────────────────────────────────────────
 function polyArea(pts){
@@ -1498,7 +1555,7 @@ cw.addEventListener('mouseup',e=>{
     if(Math.sqrt(dx*dx+dy*dy)>10){
       pushUndo();
       const p1=pixelToLatLng(dimStart.x,dimStart.y),p2=pixelToLatLng(x,y);
-      S.dims.push({lat1:p1.lat,lng1:p1.lng,lat2:p2.lat,lng2:p2.lng});
+      S.dims.push({id:S.idCtr++,lat1:p1.lat,lng1:p1.lng,lat2:p2.lat,lng2:p2.lng});
       drawDims();
     }
     dimStart=null;
