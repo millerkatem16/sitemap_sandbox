@@ -1963,7 +1963,7 @@ async function saveEvent(){
       },'Save');
   }else{
     try{
-      const r=await fetch(`/api/events/${S.currentEventId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser,data:stateData})});
+      const r=await fetch(`/api/events/${S.currentEventId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(S.isAdmin?{adminEmail:S.adminEmail,data:stateData}:{email:S.currentUser,data:stateData})});
       const d=await r.json();
       if(!r.ok){showToast(d.error||'Save failed.',true);return;}
       showToast('Event saved.');
@@ -2006,7 +2006,7 @@ async function openEvents(){
         closeModal();
         showToast(`Loading "${name}"…`);
         try{
-          const r=await fetch(`/api/events/${id}?email=${encodeURIComponent(S.currentUser)}`);
+          const r=await fetch(`/api/events/${id}?${S.isAdmin?'adminEmail='+encodeURIComponent(S.adminEmail):'email='+encodeURIComponent(S.currentUser)}`);
           const ev=await r.json();
           if(!r.ok){showToast(ev.error||'Failed to load event.',true);return;}
           const state=ev.data;
@@ -2044,7 +2044,7 @@ async function openEvents(){
         modal('Delete This Event?','This cannot be undone. The event and all its data will be permanently removed.','',
           async()=>{
             try{
-              const r=await fetch(`/api/events/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser})});
+              const r=await fetch(`/api/events/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(S.isAdmin?{adminEmail:S.adminEmail}:{email:S.currentUser})});
               if(!r.ok){const d=await r.json();showToast(d.error||'Failed to delete.',true);openEvents();return;}
               if(S.currentEventId===id){S.currentEventId=null;S.currentEventMeta=null;updateSettingsPanelVisibility();}
               showToast('Event deleted.');
@@ -2132,9 +2132,9 @@ function renderSettingsPanel(){
     btn.addEventListener('click',async()=>{
       btn.disabled=true;
       try{
-        const r=await fetch(`/api/events/${S.currentEventId}/access`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,revokedByEmail:S.currentUser})});
+        const r=await fetch(`/api/events/${S.currentEventId}/access`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(S.isAdmin?{email,adminEmail:S.adminEmail}:{email,revokedByEmail:S.currentUser})});
         if(!r.ok){const d=await r.json();showToast(d.error||'Failed to revoke.',true);btn.disabled=false;return;}
-        const r2=await fetch(`/api/events/${S.currentEventId}?email=${encodeURIComponent(S.currentUser)}`);
+        const r2=await fetch(`/api/events/${S.currentEventId}?${S.isAdmin?'adminEmail='+encodeURIComponent(S.adminEmail):'email='+encodeURIComponent(S.currentUser)}`);
         const ev=await r2.json();
         S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
         renderSettingsPanel();
@@ -2149,10 +2149,10 @@ function renderSettingsPanel(){
       if(!email){showToast('Email is required.',true);return;}
       grantBtn.disabled=true;
       try{
-        const r=await fetch(`/api/events/${S.currentEventId}/access`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,grantedByEmail:S.currentUser})});
+        const r=await fetch(`/api/events/${S.currentEventId}/access`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(S.isAdmin?{email,adminEmail:S.adminEmail}:{email,grantedByEmail:S.currentUser})});
         if(!r.ok){const d=await r.json();showToast(d.error||'Failed to grant.',true);grantBtn.disabled=false;return;}
         emailInput.value='';
-        const r2=await fetch(`/api/events/${S.currentEventId}?email=${encodeURIComponent(S.currentUser)}`);
+        const r2=await fetch(`/api/events/${S.currentEventId}?${S.isAdmin?'adminEmail='+encodeURIComponent(S.adminEmail):'email='+encodeURIComponent(S.currentUser)}`);
         const ev=await r2.json();
         S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
         renderSettingsPanel();
@@ -2166,7 +2166,7 @@ function renderSettingsPanel(){
       modal('Delete This Event?','This cannot be undone. The event and all its data will be permanently removed.','',
         async()=>{
           try{
-            const r=await fetch(`/api/events/${S.currentEventId}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser})});
+            const r=await fetch(`/api/events/${S.currentEventId}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(S.isAdmin?{adminEmail:S.adminEmail}:{email:S.currentUser})});
             if(!r.ok){const d=await r.json();showToast(d.error||'Failed to delete.',true);return;}
             S.currentEventId=null;S.currentEventMeta=null;
             updateSettingsPanelVisibility();
