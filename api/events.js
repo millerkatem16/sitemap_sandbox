@@ -60,6 +60,11 @@ module.exports = async (req, res) => {
     if (!data) { res.status(400).json({ error: 'data is required.' }); return; }
     const normalizedEmail = String(email).trim().toLowerCase();
     try {
+      // Ensure owner exists in users (no-op for real users; creates placeholder for admin emails)
+      const { rows: userRows } = await sql`SELECT 1 FROM users WHERE email = ${normalizedEmail} LIMIT 1`;
+      if (!userRows.length) {
+        await sql`INSERT INTO users (email, pin_hash) VALUES (${normalizedEmail}, NULL)`;
+      }
       const now = new Date().toISOString();
       const initialLog = JSON.stringify([{ email: normalizedEmail, timestamp: now }]);
       const { rows } = await sql`
