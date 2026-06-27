@@ -49,7 +49,12 @@ module.exports = async (req, res) => {
         FROM events WHERE id = ${eventId}
       `;
       if (!rows.length) { res.status(404).json({ error: 'Event not found.' }); return; }
-      res.json(rows[0]);
+      const { rows: accessRows } = await sql`
+        SELECT user_email, granted_at, granted_by
+        FROM event_access WHERE event_id = ${eventId}
+        ORDER BY granted_at ASC
+      `;
+      res.json({ ...rows[0], access: accessRows });
     } catch (err) {
       console.error('[GET /api/events/:id]', err);
       res.status(500).json({ error: err.message, code: err.code || null });
