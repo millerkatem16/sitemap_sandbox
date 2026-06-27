@@ -286,7 +286,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <input id="map-search" type="text" placeholder="Search venue or address…" autocomplete="off" spellcheck="false">
   </div>
   <div class="tg">
-    <button class="tb" id="bopen"><i class="ti ti-folder-open"></i>Saved Events</button>
+    <button class="tb" id="bopen"><i class="ti ti-folder-open"></i>My Saved Events</button>
   </div>
   <div class="tg" style="position:relative">
     <button class="tb" id="bvenue"><i class="ti ti-building"></i>Saved Venues<i class="ti ti-chevron-down" style="font-size:10px;margin-left:1px;margin-top:2px"></i></button>
@@ -492,7 +492,8 @@ const S={
   _pendingZoneLabel:null,hideUtils:false,
   activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[],
   eventNotes:'',
-  colorTags:[{id:'pink',hex:'#f9a8d4',name:null},{id:'lpurple',hex:'#c4b5fd',name:null},{id:'lblue',hex:'#93c5fd',name:null},{id:'dblue',hex:'#1e40af',name:null},{id:'green',hex:'#4ade80',name:null},{id:'gray',hex:'#9ca3af',name:null},{id:'orange',hex:'#fb923c',name:null},{id:'teal',hex:'#0d9488',name:null}]
+  colorTags:[{id:'pink',hex:'#f9a8d4',name:null},{id:'lpurple',hex:'#c4b5fd',name:null},{id:'lblue',hex:'#93c5fd',name:null},{id:'dblue',hex:'#1e40af',name:null},{id:'green',hex:'#4ade80',name:null},{id:'gray',hex:'#9ca3af',name:null},{id:'orange',hex:'#fb923c',name:null},{id:'teal',hex:'#0d9488',name:null}],
+  currentUser:null,currentEventId:null
 };
 
 let gmap=null,mapsApiKey='';
@@ -1311,6 +1312,74 @@ document.getElementById('mok').addEventListener('click',()=>{closeModal();if(mCb
 function mf(lbl,id,type='text',val='',ph=''){return`<div class="mf"><label>${lbl}</label><input type="${type}" id="${id}" value="${val}" placeholder="${ph}"></div>`;}
 function msel(lbl,id,opts){return`<div class="mf"><label>${lbl}</label><select id="${id}">${opts.map(o=>`<option value="${o.v}">${o.t}</option>`).join('')}</select></div>`;}
 function mr(...fs){return`<div class="mrow">${fs.join('')}</div>`;}
+
+// ── Auth / Login Flow ──────────────────────────────────────────────────────
+async function requireLogin(afterLoginFn){
+  if(S.currentUser){afterLoginFn();return;}
+  modal('Log In or Sign Up','Enter your email to save or open events.',
+    mf('Email','login-email','email','',''),
+    async()=>{
+      const email=document.getElementById('login-email').value.trim().toLowerCase();
+      if(!email){document.getElementById('ins-txt').textContent='Email is required.';return;}
+      let exists=false;
+      try{
+        const r=await fetch('/api/auth/check-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+        const d=await r.json();exists=d.exists;
+      }catch(e){document.getElementById('ins-txt').textContent='Network error checking email.';return;}
+      showPinStep(email,exists,afterLoginFn);
+    },'Continue');
+}
+function showPinStep(email,exists,afterLoginFn){
+  modal(exists?'Enter Your PIN':'Set a PIN',
+    exists?'Enter your 4-digit PIN to continue.':'This email is new — set a 4-digit PIN to protect your events.',
+    mf('4-Digit PIN','login-pin','password','',''),
+    async()=>{
+      const pin=document.getElementById('login-pin').value.trim();
+      if(!/^\d{4}$/.test(pin)){document.getElementById('ins-txt').textContent='PIN must be exactly 4 digits.';return;}
+      const endpoint=exists?'/api/auth/login':'/api/auth/signup';
+      try{
+        const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,pin})});
+        const d=await r.json();
+        if(!r.ok){document.getElementById('ins-txt').textContent=d.error||'Login failed.';return;}
+        S.currentUser=email;
+        document.getElementById('ins-txt').textContent=`Logged in as ${email}.`;
+        await maybeOfferImport();
+        afterLoginFn();
+      }catch(e){document.getElementById('ins-txt').textContent='Network error logging in.';}
+    },exists?'Log In':'Set PIN & Continue');
+}
+async function maybeOfferImport(){
+  if(localStorage.getItem('esm_import_declined')==='true')return;
+  let savedEvents={};
+  try{const _se=localStorage.getItem('esm_events_v1');if(_se)savedEvents=JSON.parse(_se);}catch(e){return;}
+  const names=Object.keys(savedEvents);
+  if(!names.length)return;
+  return new Promise(resolve=>{
+    // Named so it can be explicitly removed if OK is clicked first,
+    // preventing it from firing on a later unrelated modal's Cancel.
+    const handleCancel=()=>{localStorage.setItem('esm_import_declined','true');resolve();};
+    modal('Import Existing Events?',
+      `We found ${names.length} saved event(s) on this device from before login existed. Import them to your account (${S.currentUser})? This is a one-time offer.`,
+      '',
+      async()=>{
+        // Remove the cancel listener before doing work so it cannot
+        // fire on a future modal if the user clicked OK here.
+        document.getElementById('mcan').removeEventListener('click',handleCancel);
+        for(const name of names){
+          const ev=savedEvents[name];
+          try{
+            await fetch('/api/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser,name,data:ev.state})});
+          }catch(e){}
+        }
+        localStorage.removeItem('esm_events_v1');
+        document.getElementById('ins-txt').textContent=`Imported ${names.length} event(s).`;
+        resolve();
+      },'Import All');
+    // {once:true} auto-removes this listener after first fire (Cancel clicked).
+    document.getElementById('mcan').addEventListener('click',handleCancel,{once:true});
+  });
+}
+
 const COLOR_TAG_FALLBACK_LABEL={pink:'Pink',lpurple:'Light Purple',lblue:'Light Blue',dblue:'Dark Blue',green:'Bright Green',gray:'Gray',orange:'Orange',teal:'Teal'};
 function colorTagLabel(tagId){const tag=S.colorTags.find(t=>t.id===tagId);if(!tag)return'';return tag.name||COLOR_TAG_FALLBACK_LABEL[tag.id]||'Custom Color';}
 function renameColorTag(tagId){const tag=S.colorTags.find(t=>t.id===tagId);if(!tag)return;modal('Rename Color Tag','Update the name for this color tag. This updates everywhere this tag is used.',mf('Tag Name','rename-tag-input','text',tag.name||COLOR_TAG_FALLBACK_LABEL[tag.id]||'',''),()=>{const val=document.getElementById('rename-tag-input').value.trim();if(val){tag.name=val;renderColorKey();}},'Save Name');}
@@ -1959,9 +2028,9 @@ function openEvents(){
   }
 }
 
-document.getElementById('bsave-evt').addEventListener('click',saveEvent);
+document.getElementById('bsave-evt').addEventListener('click',()=>requireLogin(saveEvent));
 document.getElementById('evt-notes').addEventListener('input',function(){S.eventNotes=this.value;});
-document.getElementById('bopen').addEventListener('click',openEvents);
+document.getElementById('bopen').addEventListener('click',()=>requireLogin(openEvents));
 
 // ── Clear ──────────────────────────────────────────────────────────────────
 document.getElementById('bclr').addEventListener('click',()=>{
