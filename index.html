@@ -71,13 +71,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .tb.util-hidden{background:rgba(244,81,64,0.22)!important;color:#F45140!important;border-color:rgba(244,81,64,0.48)!important}
 .tb.util-hidden:hover{background:rgba(244,81,64,0.32)!important;border-color:rgba(244,81,64,0.65)!important}
 
-/* ── Status bar ──────────────────────────────────────────────────────────── */
-#statusbar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(20,32,33,0.96);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;padding:0 16px;gap:16px;z-index:8;font-size:12px;color:rgba(255,255,255,0.44)}
-#ins-msg{flex:1;display:flex;align-items:center;gap:7px;color:rgba(255,255,255,0.86)}
-#ins-msg i{color:#FBBD2F;font-size:14px}
-#scale-disp{font-family:var(--mono);font-size:12px;display:flex;align-items:center;gap:6px}
-.scale-tick{width:26px;height:2px;background:rgba(255,255,255,0.3);border-radius:1px}
-
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
 #sb{width:260px;background:var(--surf);border-left:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;box-shadow:-4px 0 28px rgba(0,0,0,0.1);position:relative}
 .sb-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:none}
@@ -276,6 +269,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #bfence:hover,#bfence.active{background:rgba(168,85,247,0.22);color:#d8b4fe;border-color:rgba(168,85,247,0.48)}
 #ba.active{background:rgba(79,126,248,0.15)!important;border-color:rgba(79,126,248,0.45)!important;color:rgba(79,126,248,0.9)!important}
 #tool-tip{position:fixed;top:62px;left:50%;transform:translateX(-50%);background:rgba(20,32,33,0.92);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.92);font-size:12px;font-family:var(--font);font-weight:500;padding:7px 16px;pointer-events:none;display:none;z-index:999;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.35)}
+#toast-container{position:fixed;bottom:20px;left:20px;z-index:9500;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:rgba(20,32,33,0.96);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:10px 16px;color:rgba(255,255,255,0.92);font-size:12.5px;font-family:var(--font);font-weight:500;box-shadow:0 8px 28px rgba(0,0,0,0.4);max-width:340px;animation:toast-in .2s ease-out;pointer-events:auto}
+.toast.error{border-color:rgba(224,53,53,0.4);color:#ffb4b4}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toast-out{from{opacity:1}to{opacity:0}}
+.toast.leaving{animation:toast-out .2s ease-in forwards}
 </style>
 </head>
 <body>
@@ -345,6 +344,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 </div>
 
 <div id="tool-tip"></div>
+<div id="toast-container"></div>
 <div id="venue-mode-bar" style="display:none"></div>
 
 <div id="main">
@@ -360,10 +360,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div id="grid"></div>
       <canvas id="zc"></canvas><canvas id="bc"></canvas><canvas id="dc"></canvas>
       <div id="el"></div>
-      <div id="statusbar">
-        <div id="ins-msg"><i class="ti ti-info-circle"></i><span id="ins-txt">Search for a venue above to begin</span></div>
-        <div id="scale-disp"><div class="scale-tick"></div><span id="slbl">Loading map…</span></div>
-      </div>
     </div>
   </div>
 
@@ -560,8 +556,6 @@ function metersPerPx(){
 function updateScale(){
   if(!gmap)return;
   S.scale=1/(metersPerPx()*3.28084);
-  const gridFt=Math.round(40/S.scale);
-  document.getElementById('slbl').textContent=`~${gridFt} ft/grid sq`;
 }
 
 // ── Element sizing & position ───────────────────────────────────────────────
@@ -1312,6 +1306,7 @@ function modal(title,desc,body,cb,okLabel='Place',opts={}){
   setTimeout(()=>{const f=document.querySelector('#mb input,#mb select');if(f)f.focus();},80);
 }
 function closeModal(){document.getElementById('mo').style.display='none';document.getElementById('md').style.maxWidth='360px';document.getElementById('mcan').style.display='';}
+function showToast(msg,isError=false){const c=document.getElementById('toast-container');if(!c)return;const t=document.createElement('div');t.className='toast'+(isError?' error':'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.classList.add('leaving');setTimeout(()=>t.remove(),200);},3500);}
 document.getElementById('mcan').addEventListener('click',closeModal);
 document.getElementById('mok').addEventListener('click',()=>{closeModal();if(mCb)mCb();});
 function mf(lbl,id,type='text',val='',ph=''){return`<div class="mf"><label>${lbl}</label><input type="${type}" id="${id}" value="${val}" placeholder="${ph}"></div>`;}
@@ -1325,12 +1320,12 @@ async function requireLogin(afterLoginFn){
     mf('Email','login-email','email','',''),
     async()=>{
       const email=document.getElementById('login-email').value.trim().toLowerCase();
-      if(!email){document.getElementById('ins-txt').textContent='Email is required.';return;}
+      if(!email){showToast('Email is required.',true);return;}
       let exists=false;
       try{
         const r=await fetch('/api/auth/check-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
         const d=await r.json();exists=d.exists;
-      }catch(e){document.getElementById('ins-txt').textContent='Network error checking email.';return;}
+      }catch(e){showToast('Network error checking email.',true);return;}
       showPinStep(email,exists,afterLoginFn);
     },'Continue');
 }
@@ -1340,17 +1335,17 @@ function showPinStep(email,exists,afterLoginFn){
     mf('4-Digit PIN','login-pin','password','',''),
     async()=>{
       const pin=document.getElementById('login-pin').value.trim();
-      if(!/^\d{4}$/.test(pin)){document.getElementById('ins-txt').textContent='PIN must be exactly 4 digits.';return;}
+      if(!/^\d{4}$/.test(pin)){showToast('PIN must be exactly 4 digits.',true);return;}
       const endpoint=exists?'/api/auth/login':'/api/auth/signup';
       try{
         const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,pin})});
         const d=await r.json();
-        if(!r.ok){document.getElementById('ins-txt').textContent=d.error||'Login failed.';return;}
+        if(!r.ok){showToast(d.error||'Login failed.',true);return;}
         S.currentUser=email;
-        document.getElementById('ins-txt').textContent=`Logged in as ${email}.`;
+        showToast(`Logged in as ${email}.`);
         await maybeOfferImport();
         afterLoginFn();
-      }catch(e){document.getElementById('ins-txt').textContent='Network error logging in.';}
+      }catch(e){showToast('Network error logging in.',true);}
     },exists?'Log In':'Set PIN & Continue');
 }
 async function maybeOfferImport(){
@@ -1377,7 +1372,7 @@ async function maybeOfferImport(){
           }catch(e){}
         }
         localStorage.removeItem('esm_events_v1');
-        document.getElementById('ins-txt').textContent=`Imported ${names.length} event(s).`;
+        showToast(`Imported ${names.length} event(s).`);
         resolve();
       },'Import All');
     // {once:true} auto-removes this listener after first fire (Cancel clicked).
@@ -1561,8 +1556,6 @@ function setTool(id){
   // Select passes clicks through to map; every other tool needs canvas input
   cw.style.pointerEvents=id==='select'?'none':'auto';
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'||id==='fence'?'crosshair':'default';
-  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment',label:'Click to place a text label on the map',customtent:'Click to place your custom tent'};
-  document.getElementById('ins-txt').textContent=msgs[id]||'';
   const _tt=document.getElementById('tool-tip');if(_tt){const tts={border:'Click to add points · Double-click to close the boundary',fence:'Click to add fence points · Double-click to end the fence run'};if(tts[id]){_tt.textContent=tts[id];_tt.style.display='block';}else{_tt.textContent='';_tt.style.display='none';}}
   if(!ZONE_TOOLS.includes(id))activePoly=null;if(id!=='dim')dimStart=null;if(id!=='fence')fenceCur=[];
 }
@@ -1660,7 +1653,6 @@ document.getElementById('zbrd-vip').addEventListener('click',()=>{
       const name=document.getElementById('vip-name').value.trim()||'Sub-zone';
       S._pendingZoneLabel=name;
       setTool('border');
-      document.getElementById('ins-txt').textContent=`Drawing "${name}" — click corners to place, double-click to close`;
     },'Start Drawing');
 });
 
@@ -1675,7 +1667,7 @@ document.getElementById('zbrd-vip').addEventListener('click',()=>{
     ()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');
 });
 document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
-document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='fence'){modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');document.getElementById('ins-txt').textContent='Click to add fence points · Double-click to end the fence run.';},'Start Drawing');return;}setTool(val);});
+document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='fence'){modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},'Start Drawing');return;}setTool(val);});
 
 // ── Venue helpers ──────────────────────────────────────────────────────────
 function venueDataSnapshot(){
@@ -1705,13 +1697,13 @@ async function saveVenue(editId,editPin){
     async()=>{
       const name=document.getElementById('sv-name').value.trim();
       const city=document.getElementById('sv-city').value.trim();
-      if(!name){document.getElementById('ins-txt').textContent='Venue name is required.';return;}
+      if(!name){showToast('Venue name is required.',true);return;}
       let pin=editPin||'';
       if(!isEdit){
         pin=document.getElementById('sv-pin').value.trim();
         const pin2=document.getElementById('sv-pin2').value.trim();
-        if(!/^\d{4}$/.test(pin)){document.getElementById('ins-txt').textContent='PIN must be exactly 4 digits.';return;}
-        if(pin!==pin2){document.getElementById('ins-txt').textContent='PINs do not match — venue not saved.';return;}
+        if(!/^\d{4}$/.test(pin)){showToast('PIN must be exactly 4 digits.',true);return;}
+        if(pin!==pin2){showToast('PINs do not match — venue not saved.',true);return;}
       }
       const data=venueDataSnapshot();
       let preview_image=capturedImage||null;
@@ -1721,17 +1713,17 @@ async function saveVenue(editId,editPin){
       }
       const payload={name,city:city||undefined,venue_data:data,pin,preview_image:preview_image||undefined};
       try{
-        document.getElementById('ins-txt').textContent=isEdit?'Updating venue…':'Saving venue…';
+        showToast(isEdit?'Updating venue…':'Saving venue…');
         const resp=await fetch(isEdit?`/api/venues/${editId}`:'/api/venues',{
           method:isEdit?'PUT':'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify(payload)
         });
         const result=await resp.json();
-        if(!resp.ok){document.getElementById('ins-txt').textContent=result.error||'Save failed.';return;}
-        document.getElementById('ins-txt').textContent=isEdit?`"${result.name}" updated.`:`"${result.name}" saved as a venue.`;
+        if(!resp.ok){showToast(result.error||'Save failed.',true);return;}
+        showToast(isEdit?`"${result.name}" updated.`:`"${result.name}" saved as a venue.`);
         if(!isEdit)exitVenueMode();
-      }catch(err){document.getElementById('ins-txt').textContent='Network error — venue not saved.';}
+      }catch(err){showToast('Network error — venue not saved.',true);}
     },
     isEdit?'Update Venue':'Save Venue'
   );
@@ -1753,7 +1745,7 @@ async function saveVenue(editId,editPin){
           const thumb=document.getElementById('sv-img-thumb');
           if(prev&&thumb){thumb.src=capturedImage;prev.style.display='';}
         },100);
-      }catch(e){if(e!=='cancelled')document.getElementById('ins-txt').textContent='Capture cancelled.';}
+      }catch(e){if(e!=='cancelled')showToast('Capture cancelled.');}
     });
     // Show preview if already captured
     if(capturedImage){
@@ -1772,18 +1764,16 @@ function createVenue(){
       S.activeVenueId=null;S.loadedVenueSnapshot=null;
       renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
       enterVenueMode();
-      document.getElementById('ins-txt').textContent='Venue Mode — draw borders, place permanent site elements, then click Save Venue above.';
     },'Start Venue');
 }
 
 async function browseVenues(){
-  document.getElementById('ins-txt').textContent='Loading venues…';
+  showToast('Loading venues…');
   let venues;
   try{
     const resp=await fetch('/api/venues');
     venues=await resp.json();
-  }catch(e){document.getElementById('ins-txt').textContent='Could not load venues.';return;}
-  document.getElementById('ins-txt').textContent='';
+  }catch(e){showToast('Could not load venues.',true);return;}
 
   if(!venues.length){
     modal('Browse Venues','No venues have been saved yet. Use "Create Venue" to build and save a permanent site layout.',
@@ -1827,13 +1817,13 @@ async function browseVenues(){
 }
 
 async function useVenue(id){
-  document.getElementById('ins-txt').textContent='Loading venue…';
+  showToast('Loading venue…');
   let data;
   try{
     const resp=await fetch(`/api/venues/${id}`);
     data=await resp.json();
-    if(!resp.ok){document.getElementById('ins-txt').textContent=data.error||'Failed to load venue.';return;}
-  }catch(e){document.getElementById('ins-txt').textContent='Network error loading venue.';return;}
+    if(!resp.ok){showToast(data.error||'Failed to load venue.',true);return;}
+  }catch(e){showToast('Network error loading venue.',true);return;}
 
   pushUndo();
   const vd=data.venue_data||{};
@@ -1846,7 +1836,7 @@ async function useVenue(id){
   if(S.idCtr<2)S.idCtr=2;
   redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
   renderVenueChanges();
-  document.getElementById('ins-txt').textContent=`"${data.name}" loaded.`;
+  showToast(`"${data.name}" loaded.`);
 
   const flyDelay=vd.mapCenter&&vd.mapZoom?700:0;
   if(vd.mapCenter&&vd.mapZoom&&gmap){
@@ -1870,16 +1860,16 @@ function editVenuePinPrompt(id,name){
     mf('4-Digit PIN','ev-pin','password','','Enter venue PIN'),
     async()=>{
       const pin=document.getElementById('ev-pin').value.trim();
-      if(!/^\d{4}$/.test(pin)){document.getElementById('ins-txt').textContent='PIN must be exactly 4 digits.';return;}
-      document.getElementById('ins-txt').textContent='Verifying PIN…';
+      if(!/^\d{4}$/.test(pin)){showToast('PIN must be exactly 4 digits.',true);return;}
+      showToast('Verifying PIN…');
       // Verify by attempting a no-op PUT with current data then aborting — instead, load venue first, then verify on save.
       // We load the venue data, enter edit mode, and the PIN is only verified server-side on the final PUT.
       let data;
       try{
         const resp=await fetch(`/api/venues/${id}`);
         data=await resp.json();
-        if(!resp.ok){document.getElementById('ins-txt').textContent=data.error||'Failed to load venue.';return;}
-      }catch(e){document.getElementById('ins-txt').textContent='Network error.';return;}
+        if(!resp.ok){showToast(data.error||'Failed to load venue.',true);return;}
+      }catch(e){showToast('Network error.',true);return;}
       pushUndo();
       const vd=data.venue_data||{};
       S.els=(vd.els||[]).map(e=>({...e}));
@@ -1889,7 +1879,7 @@ function editVenuePinPrompt(id,name){
       S.activeVenueId=null;S.loadedVenueSnapshot=null;
       redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
       enterVenueMode(`EDITING VENUE: ${data.name}`,id,pin);
-      document.getElementById('ins-txt').textContent=`Editing "${data.name}" — make changes, then click Save Venue.`;
+      showToast(`Editing "${data.name}" — make changes, then click Save Venue.`);
       document.getElementById('vm-save-btn').onclick=()=>saveVenue(id,pin);
     },'Load for Editing');
 }
@@ -1900,21 +1890,21 @@ async function deleteVenue(id,name,pin){
     '',
     async()=>{
       try{
-        document.getElementById('ins-txt').textContent='Deleting venue…';
+        showToast('Deleting venue…');
         const resp=await fetch(`/api/venues/${id}`,{
           method:'DELETE',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({pin})
         });
         const result=await resp.json();
-        if(!resp.ok){document.getElementById('ins-txt').textContent=result.error||'Delete failed.';return;}
+        if(!resp.ok){showToast(result.error||'Delete failed.',true);return;}
         exitVenueMode();
         pushUndo();
         S.els=[];S.zonePolys=[];S.adaPaths=[];S.dims=[];S.firstAids=[];S.selId=null;
         S.activeVenueId=null;S.loadedVenueSnapshot=null;
         renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
-        document.getElementById('ins-txt').textContent=`"${result.name||name}" deleted.`;
-      }catch(err){document.getElementById('ins-txt').textContent='Network error — venue not deleted.';}
+        showToast(`"${result.name||name}" deleted.`);
+      }catch(err){showToast('Network error — venue not deleted.',true);}
     },'Delete Venue');
 }
 
@@ -1926,7 +1916,7 @@ document.getElementById('vm-save-btn').onclick=()=>saveVenue();
 (document.getElementById('bfence')||document.createElement('span')).addEventListener('click',()=>{
   modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',
     mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),
-    ()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');document.getElementById('ins-txt').textContent='Click to add fence points · Double-click to end the fence run.';},
+    ()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},
     'Start Drawing');
 });
 
@@ -1957,37 +1947,36 @@ async function saveEvent(){
       mf('Event Name','se-name','text',currentName,'e.g. Summer Festival 2026'),
       async()=>{
         const name=document.getElementById('se-name').value.trim();
-        if(!name){document.getElementById('ins-txt').textContent='Event name is required.';return;}
+        if(!name){showToast('Event name is required.',true);return;}
         stateData.evtName=name;
         try{
           const r=await fetch('/api/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser,name,data:stateData})});
           const d=await r.json();
-          if(!r.ok){document.getElementById('ins-txt').textContent=d.error||'Save failed.';return;}
+          if(!r.ok){showToast(d.error||'Save failed.',true);return;}
           S.currentEventId=d.id;
           S.currentEventMeta={edit_log:[{email:S.currentUser,timestamp:new Date().toISOString()}],access:[],owner_email:S.currentUser};
           updateSettingsPanelVisibility();
-          document.getElementById('ins-txt').textContent=`"${name}" saved.`;
-        }catch(e){document.getElementById('ins-txt').textContent='Network error saving event.';}
+          showToast(`"${name}" saved.`);
+        }catch(e){showToast('Network error saving event.',true);}
       },'Save');
   }else{
     try{
       const r=await fetch(`/api/events/${S.currentEventId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser,data:stateData})});
       const d=await r.json();
-      if(!r.ok){document.getElementById('ins-txt').textContent=d.error||'Save failed.';return;}
-      document.getElementById('ins-txt').textContent='Event saved.';
-    }catch(e){document.getElementById('ins-txt').textContent='Network error saving event.';}
+      if(!r.ok){showToast(d.error||'Save failed.',true);return;}
+      showToast('Event saved.');
+    }catch(e){showToast('Network error saving event.',true);}
   }
 }
 
 async function openEvents(){
-  document.getElementById('ins-txt').textContent='Loading events…';
+  showToast('Loading events…');
   let events;
   try{
     const r=await fetch(S.isAdmin?`/api/events?adminEmail=${encodeURIComponent(S.adminEmail)}`:`/api/events?email=${encodeURIComponent(S.currentUser)}`);
     events=await r.json();
-    if(!r.ok){document.getElementById('ins-txt').textContent=events.error||'Failed to load events.';return;}
-  }catch(e){document.getElementById('ins-txt').textContent='Network error loading events.';return;}
-  document.getElementById('ins-txt').textContent='';
+    if(!r.ok){showToast(events.error||'Failed to load events.',true);return;}
+  }catch(e){showToast('Network error loading events.',true);return;}
   if(!events.length){
     modal('My Saved Events','No saved events found yet.',
       '<div style="font-size:11px;color:var(--tx3);text-align:center;padding:8px 0">No events have been saved yet. Click Save Event to preserve your work.</div>',
@@ -2013,11 +2002,11 @@ async function openEvents(){
         const id=parseInt(btn.dataset.id,10);
         const name=btn.dataset.name;
         closeModal();
-        document.getElementById('ins-txt').textContent=`Loading "${name}"…`;
+        showToast(`Loading "${name}"…`);
         try{
           const r=await fetch(`/api/events/${id}?email=${encodeURIComponent(S.currentUser)}`);
           const ev=await r.json();
-          if(!r.ok){document.getElementById('ins-txt').textContent=ev.error||'Failed to load event.';return;}
+          if(!r.ok){showToast(ev.error||'Failed to load event.',true);return;}
           const state=ev.data;
           pushUndo();
           S.els=state.els||[];S.zonePolys=state.zonePolys||[];S.adaPaths=state.adaPaths||[];
@@ -2037,13 +2026,13 @@ async function openEvents(){
           S.currentEventId=ev.id;
           S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
           updateSettingsPanelVisibility();
-          document.getElementById('ins-txt').textContent=`"${name}" loaded.`;
+          showToast(`"${name}" loaded.`);
           if(S.activeVenueId){
             fetch(`/api/venues/${S.activeVenueId}`).then(r2=>r2.json()).then(d=>{
               if(d&&d.venue_data){S.loadedVenueSnapshot=JSON.parse(JSON.stringify(d.venue_data));renderVenueChanges();}
             }).catch(()=>{});
           }
-        }catch(e){document.getElementById('ins-txt').textContent='Network error loading event.';}
+        }catch(e){showToast('Network error loading event.',true);}
       });
     });
     document.querySelectorAll('.del-event-btn').forEach(btn=>{
@@ -2054,11 +2043,11 @@ async function openEvents(){
           async()=>{
             try{
               const r=await fetch(`/api/events/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser})});
-              if(!r.ok){const d=await r.json();document.getElementById('ins-txt').textContent=d.error||'Failed to delete.';openEvents();return;}
+              if(!r.ok){const d=await r.json();showToast(d.error||'Failed to delete.',true);openEvents();return;}
               if(S.currentEventId===id){S.currentEventId=null;S.currentEventMeta=null;updateSettingsPanelVisibility();}
-              document.getElementById('ins-txt').textContent='Event deleted.';
+              showToast('Event deleted.');
               openEvents();
-            }catch(e){document.getElementById('ins-txt').textContent='Network error.';openEvents();}
+            }catch(e){showToast('Network error.',true);openEvents();}
           },'Delete Event');
       });
     });
@@ -2075,14 +2064,14 @@ document.getElementById('brand-logo').addEventListener('click',()=>{
     async()=>{
       const email=document.getElementById('admin-login-email').value.trim().toLowerCase();
       const pw=document.getElementById('admin-login-pw').value;
-      if(!email||!pw){document.getElementById('ins-txt').textContent='Email and password required.';return;}
+      if(!email||!pw){showToast('Email and password required.',true);return;}
       try{
         const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
         const d=await r.json();
-        if(!r.ok){document.getElementById('ins-txt').textContent=d.error||'Admin login failed.';return;}
+        if(!r.ok){showToast(d.error||'Admin login failed.',true);return;}
         S.currentUser=email;S.isAdmin=true;S.adminEmail=email;
-        document.getElementById('ins-txt').textContent=`Logged in as admin (${email}).`;
-      }catch(e){document.getElementById('ins-txt').textContent='Network error during admin login.';}
+        showToast(`Logged in as admin (${email}).`);
+      }catch(e){showToast('Network error during admin login.',true);}
     },'Log In');
 });
 
@@ -2142,12 +2131,12 @@ function renderSettingsPanel(){
       btn.disabled=true;
       try{
         const r=await fetch(`/api/events/${S.currentEventId}/access`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,revokedByEmail:S.currentUser})});
-        if(!r.ok){const d=await r.json();document.getElementById('ins-txt').textContent=d.error||'Failed to revoke.';btn.disabled=false;return;}
+        if(!r.ok){const d=await r.json();showToast(d.error||'Failed to revoke.',true);btn.disabled=false;return;}
         const r2=await fetch(`/api/events/${S.currentEventId}?email=${encodeURIComponent(S.currentUser)}`);
         const ev=await r2.json();
         S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
         renderSettingsPanel();
-      }catch(e){document.getElementById('ins-txt').textContent='Network error.';btn.disabled=false;}
+      }catch(e){showToast('Network error.',true);btn.disabled=false;}
     });
   });
   const grantBtn=document.getElementById('sp-grant-btn');
@@ -2155,18 +2144,18 @@ function renderSettingsPanel(){
     grantBtn.addEventListener('click',async()=>{
       const emailInput=document.getElementById('sp-grant-email');
       const email=emailInput.value.trim().toLowerCase();
-      if(!email){document.getElementById('ins-txt').textContent='Email is required.';return;}
+      if(!email){showToast('Email is required.',true);return;}
       grantBtn.disabled=true;
       try{
         const r=await fetch(`/api/events/${S.currentEventId}/access`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,grantedByEmail:S.currentUser})});
-        if(!r.ok){const d=await r.json();document.getElementById('ins-txt').textContent=d.error||'Failed to grant.';grantBtn.disabled=false;return;}
+        if(!r.ok){const d=await r.json();showToast(d.error||'Failed to grant.',true);grantBtn.disabled=false;return;}
         emailInput.value='';
         const r2=await fetch(`/api/events/${S.currentEventId}?email=${encodeURIComponent(S.currentUser)}`);
         const ev=await r2.json();
         S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
         renderSettingsPanel();
-        document.getElementById('ins-txt').textContent='Access granted.';
-      }catch(e){document.getElementById('ins-txt').textContent='Network error.';grantBtn.disabled=false;}
+        showToast('Access granted.');
+      }catch(e){showToast('Network error.',true);grantBtn.disabled=false;}
     });
   }
   const delBtn=document.getElementById('sp-del-btn');
@@ -2176,12 +2165,12 @@ function renderSettingsPanel(){
         async()=>{
           try{
             const r=await fetch(`/api/events/${S.currentEventId}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser})});
-            if(!r.ok){const d=await r.json();document.getElementById('ins-txt').textContent=d.error||'Failed to delete.';return;}
+            if(!r.ok){const d=await r.json();showToast(d.error||'Failed to delete.',true);return;}
             S.currentEventId=null;S.currentEventMeta=null;
             updateSettingsPanelVisibility();
             resetCanvas();
-            document.getElementById('ins-txt').textContent='Event deleted.';
-          }catch(e){document.getElementById('ins-txt').textContent='Network error.';}
+            showToast('Event deleted.');
+          }catch(e){showToast('Network error.',true);}
         },'Delete Event');
     });
   }
@@ -2401,7 +2390,7 @@ function startMapCapture(){
             height:cw.offsetHeight+'px',
             overflow:'visible'
           },
-          filter:node=>node.id!=='statusbar'&&node.id!=='grid'&&node.id!=='map-overlay'&&node.id!=='opacity-ctrl'&&!(node.classList&&node.classList.contains('rbtn'))
+          filter:node=>node.id!=='grid'&&node.id!=='map-overlay'&&node.id!=='opacity-ctrl'&&!(node.classList&&node.classList.contains('rbtn'))
         });
         await new Promise(res=>{
           const img=new Image();
@@ -2501,11 +2490,11 @@ document.getElementById('bpdf').addEventListener('click',async()=>{
     const capture=await startMapCapture();
     btn.innerHTML='<i class="ti ti-loader-2"></i>Building…';btn.disabled=true;
     await exportPDF(capture);
-    document.getElementById('ins-txt').textContent='PDF saved.';
+    showToast('PDF saved.');
   }catch(err){
     if(err!=='cancelled'){
       console.error('PDF EXPORT ERROR:',err);
-      document.getElementById('ins-txt').textContent='PDF export failed — check internet connection.';
+      showToast('PDF export failed — check internet connection.',true);
     }
   }finally{btn.innerHTML=orig;btn.disabled=false;}
 });
@@ -3206,7 +3195,6 @@ window.initMap=function(){
     }
   });
 
-  document.getElementById('ins-txt').textContent='Search for a venue above or zoom to your location · Use tools to start planning';
 };
 
 async function init(){
@@ -3214,13 +3202,13 @@ async function init(){
     const res=await fetch('/api/config');
     const cfg=await res.json();
     mapsApiKey=cfg.mapsKey||'';
-    if(!mapsApiKey){document.getElementById('ins-txt').textContent='Map API key not configured — set VITE_GOOGLE_MAPS_API_KEY in Vercel.';return;}
+    if(!mapsApiKey){showToast('Map API key not configured — set VITE_GOOGLE_MAPS_API_KEY in Vercel.',true);return;}
     const s=document.createElement('script');
     s.src=`https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places&callback=initMap&loading=async`;
     s.async=true;s.defer=true;
     document.head.appendChild(s);
   }catch(e){
-    document.getElementById('ins-txt').textContent='Failed to load map configuration.';
+    showToast('Failed to load map configuration.',true);
     console.error(e);
   }
 }
