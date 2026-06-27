@@ -447,6 +447,11 @@ canvas{position:absolute;inset:0;pointer-events:none}
         <div id="ckey"></div>
       </div>
 
+      <div class="panel" id="settings-panel" style="display:none">
+        <div class="plabel">Event Settings</div>
+        <div id="settings-body"></div>
+      </div>
+
       <div class="panel" style="display:none">
         <div id="fal"></div>
       </div>
@@ -493,7 +498,7 @@ const S={
   activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[],
   eventNotes:'',
   colorTags:[{id:'pink',hex:'#f9a8d4',name:null},{id:'lpurple',hex:'#c4b5fd',name:null},{id:'lblue',hex:'#93c5fd',name:null},{id:'dblue',hex:'#1e40af',name:null},{id:'green',hex:'#4ade80',name:null},{id:'gray',hex:'#9ca3af',name:null},{id:'orange',hex:'#fb923c',name:null},{id:'teal',hex:'#0d9488',name:null}],
-  currentUser:null,currentEventId:null
+  currentUser:null,currentEventId:null,currentEventMeta:null
 };
 
 let gmap=null,mapsApiKey='';
@@ -1929,119 +1934,236 @@ document.getElementById('vm-save-btn').onclick=()=>saveVenue();
 let savedEvents={};
 try{const _se=localStorage.getItem('esm_events_v1');if(_se)savedEvents=JSON.parse(_se);}catch(er){}
 
-function saveEvent(){
-  const currentName=document.getElementById('evt-name').value.trim();
-  modal('Save Event','Enter a name and 4-digit PIN to protect your event.',
-    mf('Event Name','se-name','text',currentName,'e.g. Summer Festival 2026')+
-    mr(mf('4-Digit PIN','se-pin','text','','e.g. 1234'),mf('Confirm PIN','se-pin2','text','','Repeat PIN')),
-    ()=>{
-      const name=document.getElementById('se-name').value.trim();
-      const pin=document.getElementById('se-pin').value.trim();
-      const pin2=document.getElementById('se-pin2').value.trim();
-      if(!name){document.getElementById('ins-txt').textContent='Event name is required.';return;}
-      if(!/^\d{4}$/.test(pin)){document.getElementById('ins-txt').textContent='PIN must be exactly 4 digits.';return;}
-      if(pin!==pin2){document.getElementById('ins-txt').textContent='PINs do not match — event not saved.';return;}
-      const evtDateEl=document.getElementById('evt-date');
-      savedEvents[name]={
-        pin,
-        savedAt:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-        state:{
-          els:JSON.parse(JSON.stringify(S.els)),
-          zonePolys:JSON.parse(JSON.stringify(S.zonePolys)),
-          adaPaths:JSON.parse(JSON.stringify(S.adaPaths)),
-          dims:JSON.parse(JSON.stringify(S.dims)),
-          firstAids:JSON.parse(JSON.stringify(S.firstAids)),
-          evtName:document.getElementById('evt-name').value.trim(),
-          evtDate:evtDateEl?evtDateEl.value:'',
-          mapCenter:S.mapCenter,mapZoom:S.mapZoom,
-          fences:JSON.parse(JSON.stringify(S.fences)),
-          hasSoftSurface:S.hasSoftSurface,idCtr:S.idCtr,
-          activeVenueId:S.activeVenueId||null,
-          eventNotes:S.eventNotes||'',
-          colorTags:JSON.parse(JSON.stringify(S.colorTags))
-        }
-      };
-      try{localStorage.setItem('esm_events_v1',JSON.stringify(savedEvents));}catch(er){}
-      document.getElementById('ins-txt').textContent=`"${name}" saved — use Open to resume later.`;
-    },'Save');
+async function saveEvent(){
+  const evtDateEl=document.getElementById('evt-date');
+  const stateData={
+    els:JSON.parse(JSON.stringify(S.els)),
+    zonePolys:JSON.parse(JSON.stringify(S.zonePolys)),
+    adaPaths:JSON.parse(JSON.stringify(S.adaPaths)),
+    dims:JSON.parse(JSON.stringify(S.dims)),
+    firstAids:JSON.parse(JSON.stringify(S.firstAids)),
+    evtName:document.getElementById('evt-name').value.trim(),
+    evtDate:evtDateEl?evtDateEl.value:'',
+    mapCenter:S.mapCenter,mapZoom:S.mapZoom,
+    fences:JSON.parse(JSON.stringify(S.fences)),
+    hasSoftSurface:S.hasSoftSurface,idCtr:S.idCtr,
+    activeVenueId:S.activeVenueId||null,
+    eventNotes:S.eventNotes||'',
+    colorTags:JSON.parse(JSON.stringify(S.colorTags))
+  };
+  if(!S.currentEventId){
+    const currentName=document.getElementById('evt-name').value.trim();
+    modal('Save Event','Name this event to save it to your account.',
+      mf('Event Name','se-name','text',currentName,'e.g. Summer Festival 2026'),
+      async()=>{
+        const name=document.getElementById('se-name').value.trim();
+        if(!name){document.getElementById('ins-txt').textContent='Event name is required.';return;}
+        stateData.evtName=name;
+        try{
+          const r=await fetch('/api/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser,name,data:stateData})});
+          const d=await r.json();
+          if(!r.ok){document.getElementById('ins-txt').textContent=d.error||'Save failed.';return;}
+          S.currentEventId=d.id;
+          S.currentEventMeta={edit_log:[{email:S.currentUser,timestamp:new Date().toISOString()}],access:[],owner_email:S.currentUser};
+          updateSettingsPanelVisibility();
+          document.getElementById('ins-txt').textContent=`"${name}" saved.`;
+        }catch(e){document.getElementById('ins-txt').textContent='Network error saving event.';}
+      },'Save');
+  }else{
+    try{
+      const r=await fetch(`/api/events/${S.currentEventId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser,data:stateData})});
+      const d=await r.json();
+      if(!r.ok){document.getElementById('ins-txt').textContent=d.error||'Save failed.';return;}
+      document.getElementById('ins-txt').textContent='Event saved.';
+    }catch(e){document.getElementById('ins-txt').textContent='Network error saving event.';}
+  }
 }
 
-function openEvents(){
-  const names=Object.keys(savedEvents);
-  if(!names.length){
-    modal('Open Event','No saved events found.',
+async function openEvents(){
+  document.getElementById('ins-txt').textContent='Loading events…';
+  let events;
+  try{
+    const r=await fetch(`/api/events?email=${encodeURIComponent(S.currentUser)}`);
+    events=await r.json();
+    if(!r.ok){document.getElementById('ins-txt').textContent=events.error||'Failed to load events.';return;}
+  }catch(e){document.getElementById('ins-txt').textContent='Network error loading events.';return;}
+  document.getElementById('ins-txt').textContent='';
+  if(!events.length){
+    modal('My Saved Events','No saved events found yet.',
       '<div style="font-size:11px;color:var(--tx3);text-align:center;padding:8px 0">No events have been saved yet. Click Save Event to preserve your work.</div>',
-      null,'Close');
+      null,'Close',{noCancel:true});
     return;
   }
-  modal('Open Saved Event','Select an event and enter its PIN to resume.',
-    msel('Event','oe-sel',names.map(n=>({v:n,t:`${n} — ${savedEvents[n].savedAt}`})))+
-    mf('4-Digit PIN','oe-pin','password','','Enter your PIN'),
-    ()=>{
-      const name=document.getElementById('oe-sel').value;
-      const pin=document.getElementById('oe-pin').value.trim();
-      if(!savedEvents[name])return;
-      if(savedEvents[name].pin!==pin){document.getElementById('ins-txt').textContent='Incorrect PIN — event not loaded.';return;}
-      const state=savedEvents[name].state;
-      pushUndo();
-      S.els=state.els||[];S.zonePolys=state.zonePolys||[];S.adaPaths=state.adaPaths||[];
-      S.dims=state.dims||[];S.fences=state.fences||[];S.firstAids=state.firstAids||[];
-      S.hasSoftSurface=state.hasSoftSurface!==undefined?state.hasSoftSurface:null;
-      S.colorTags=state.colorTags||S.colorTags;
-      if(state.idCtr)S.idCtr=state.idCtr;
-      const evtNEl=document.getElementById('evt-name');const evtDEl=document.getElementById('evt-date');
-      if(evtNEl&&state.evtName)evtNEl.value=state.evtName;
-      if(evtDEl&&state.evtDate)evtDEl.value=state.evtDate;
-      S.eventNotes=state.eventNotes||'';
-      const evtNotesEl=document.getElementById('evt-notes');if(evtNotesEl)evtNotesEl.value=S.eventNotes;
-      if(gmap&&state.mapCenter&&state.mapZoom){gmap.setCenter(state.mapCenter);gmap.setZoom(state.mapZoom);}
-      S.activeVenueId=state.activeVenueId||null;
-      S.loadedVenueSnapshot=null;
-      redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
-      document.getElementById('ins-txt').textContent=`"${name}" loaded.`;
-      if(S.activeVenueId){
-        fetch(`/api/venues/${S.activeVenueId}`).then(r=>r.json()).then(d=>{
-          if(d&&d.venue_data){S.loadedVenueSnapshot=JSON.parse(JSON.stringify(d.venue_data));renderVenueChanges();}
-        }).catch(()=>{});
-      }
-    },'Open');
-  // Inject Delete button into modal footer
-  document.querySelectorAll('#mo .oe-del-btn').forEach(b=>b.remove());
-  const _mbtns=document.querySelector('#mo .mbtns');
-  if(_mbtns){
-    const _del=document.createElement('button');
-    _del.className='mbtn oe-del-btn';_del.innerHTML='<i class="ti ti-trash"></i> Delete';
-    _mbtns.insertBefore(_del,_mbtns.firstChild);
-    _del.addEventListener('click',()=>{
-      const name=document.getElementById('oe-sel').value;
-      if(!name||!savedEvents[name])return;
-      closeModal();
-      modal(`Delete "${name}"?`,
-        'This cannot be undone. The event and all its data will be permanently removed.',
-        '',
-        ()=>{
-          delete savedEvents[name];
-          try{localStorage.setItem('esm_events_v1',JSON.stringify(savedEvents));}catch(er){}
-          document.getElementById('ins-txt').textContent=`"${name}" deleted.`;
-        },'Delete Event');
+  const fmt=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const listHtml=`<div class="vcards">`+events.map(ev=>`
+    <div class="vcard">
+      <div class="vcard-info">
+        <div class="vcard-name">${ev.name.replace(/</g,'&lt;')}</div>
+        <div class="vcard-date">${fmt(ev.created_at)} · <span style="opacity:.7">${ev.is_owner?'Owner':'Shared'}</span></div>
+      </div>
+      <div class="vcard-btns">
+        <button class="vbtn acc open-event-btn" data-id="${ev.id}" data-name="${ev.name.replace(/"/g,'&quot;')}">Open</button>
+      </div>
+    </div>`).join('')+`</div>`;
+  modal('My Saved Events','Select an event to open.',listHtml,null,'Close',{wide:480,noCancel:true});
+  setTimeout(()=>{
+    document.querySelectorAll('.open-event-btn').forEach(btn=>{
+      btn.addEventListener('click',async()=>{
+        const id=parseInt(btn.dataset.id,10);
+        const name=btn.dataset.name;
+        closeModal();
+        document.getElementById('ins-txt').textContent=`Loading "${name}"…`;
+        try{
+          const r=await fetch(`/api/events/${id}?email=${encodeURIComponent(S.currentUser)}`);
+          const ev=await r.json();
+          if(!r.ok){document.getElementById('ins-txt').textContent=ev.error||'Failed to load event.';return;}
+          const state=ev.data;
+          pushUndo();
+          S.els=state.els||[];S.zonePolys=state.zonePolys||[];S.adaPaths=state.adaPaths||[];
+          S.dims=state.dims||[];S.fences=state.fences||[];S.firstAids=state.firstAids||[];
+          S.hasSoftSurface=state.hasSoftSurface!==undefined?state.hasSoftSurface:null;
+          S.colorTags=state.colorTags||S.colorTags;
+          if(state.idCtr)S.idCtr=state.idCtr;
+          const evtNEl=document.getElementById('evt-name');const evtDEl=document.getElementById('evt-date');
+          if(evtNEl&&state.evtName)evtNEl.value=state.evtName;
+          if(evtDEl&&state.evtDate)evtDEl.value=state.evtDate;
+          S.eventNotes=state.eventNotes||'';
+          const evtNotesEl=document.getElementById('evt-notes');if(evtNotesEl)evtNotesEl.value=S.eventNotes;
+          if(gmap&&state.mapCenter&&state.mapZoom){gmap.setCenter(state.mapCenter);gmap.setZoom(state.mapZoom);}
+          S.activeVenueId=state.activeVenueId||null;
+          S.loadedVenueSnapshot=null;
+          redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+          S.currentEventId=ev.id;
+          S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
+          updateSettingsPanelVisibility();
+          document.getElementById('ins-txt').textContent=`"${name}" loaded.`;
+          if(S.activeVenueId){
+            fetch(`/api/venues/${S.activeVenueId}`).then(r2=>r2.json()).then(d=>{
+              if(d&&d.venue_data){S.loadedVenueSnapshot=JSON.parse(JSON.stringify(d.venue_data));renderVenueChanges();}
+            }).catch(()=>{});
+          }
+        }catch(e){document.getElementById('ins-txt').textContent='Network error loading event.';}
+      });
     });
-  }
+  },80);
 }
 
 document.getElementById('bsave-evt').addEventListener('click',()=>requireLogin(saveEvent));
 document.getElementById('evt-notes').addEventListener('input',function(){S.eventNotes=this.value;});
 document.getElementById('bopen').addEventListener('click',()=>requireLogin(openEvents));
 
+function resetCanvas(){
+  pushUndo();
+  S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderSiteManagement();renderVendorList();
+  S.dims=[];drawDims();
+  S.zonePolys=[];redrawZones();
+  S.adaPaths=[];S.curAda=[];S.hasSoftSurface=null;S.undoStack=[];
+  drawAda();runRules();
+}
+
+function updateSettingsPanelVisibility(){
+  const panel=document.getElementById('settings-panel');
+  if(!panel)return;
+  if(S.currentEventId){panel.style.display='';renderSettingsPanel();}
+  else panel.style.display='none';
+}
+
+function renderSettingsPanel(){
+  const body=document.getElementById('settings-body');
+  if(!body)return;
+  const meta=S.currentEventMeta||{};
+  const editLog=(meta.edit_log||[]).slice().reverse();
+  const accessList=meta.access||[];
+  const ownerEmail=meta.owner_email||'';
+  const fmt=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const histHtml=editLog.length
+    ?editLog.map(e=>`<div style="font-size:11px;padding:2px 0;color:var(--tx2)">${e.email.replace(/</g,'&lt;')} · ${fmt(e.timestamp)}</div>`).join('')
+    :'<div style="font-size:11px;color:var(--tx3)">No edits recorded.</div>';
+  const accessRowsHtml=accessList.map(a=>`
+    <div data-email="${a.user_email.replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:6px;padding:2px 0">
+      <span style="flex:1;font-size:11px;color:var(--tx2)">${a.user_email.replace(/</g,'&lt;')}</span>
+      <button class="sp-revoke" style="background:none;border:none;cursor:pointer;color:var(--crimson);font-size:15px;line-height:1;padding:0 4px" title="Remove access">×</button>
+    </div>`).join('');
+  body.innerHTML=`
+    <div style="margin-bottom:8px">
+      <div class="plabel" style="font-size:10px;margin-bottom:4px">Edit History</div>
+      ${histHtml}
+    </div>
+    <div style="margin-bottom:8px">
+      <div class="plabel" style="font-size:10px;margin-bottom:4px">Access</div>
+      <div style="font-size:11px;padding:2px 0;color:var(--tx2)">Owner: ${ownerEmail.replace(/</g,'&lt;')}</div>
+      ${accessRowsHtml}
+      <div style="margin-top:6px;display:flex;gap:4px">
+        <input id="sp-grant-email" type="email" placeholder="Email to grant access" style="flex:1;font-size:11px;padding:3px 5px;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx)">
+        <button id="sp-grant-btn" class="vbtn acc" style="font-size:11px;padding:3px 8px">Grant</button>
+      </div>
+    </div>
+    <div>
+      <button id="sp-del-btn" class="vbtn del" style="width:100%;justify-content:center"><i class="ti ti-trash"></i> Delete Event</button>
+    </div>`;
+  body.querySelectorAll('.sp-revoke').forEach(btn=>{
+    const row=btn.closest('[data-email]');
+    const email=row.dataset.email;
+    btn.addEventListener('click',async()=>{
+      btn.disabled=true;
+      try{
+        const r=await fetch(`/api/events/${S.currentEventId}/access`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,revokedByEmail:S.currentUser})});
+        if(!r.ok){const d=await r.json();document.getElementById('ins-txt').textContent=d.error||'Failed to revoke.';btn.disabled=false;return;}
+        const r2=await fetch(`/api/events/${S.currentEventId}?email=${encodeURIComponent(S.currentUser)}`);
+        const ev=await r2.json();
+        S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
+        renderSettingsPanel();
+      }catch(e){document.getElementById('ins-txt').textContent='Network error.';btn.disabled=false;}
+    });
+  });
+  const grantBtn=document.getElementById('sp-grant-btn');
+  if(grantBtn){
+    grantBtn.addEventListener('click',async()=>{
+      const emailInput=document.getElementById('sp-grant-email');
+      const email=emailInput.value.trim().toLowerCase();
+      if(!email){document.getElementById('ins-txt').textContent='Email is required.';return;}
+      grantBtn.disabled=true;
+      try{
+        const r=await fetch(`/api/events/${S.currentEventId}/access`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,grantedByEmail:S.currentUser})});
+        if(!r.ok){const d=await r.json();document.getElementById('ins-txt').textContent=d.error||'Failed to grant.';grantBtn.disabled=false;return;}
+        emailInput.value='';
+        const r2=await fetch(`/api/events/${S.currentEventId}?email=${encodeURIComponent(S.currentUser)}`);
+        const ev=await r2.json();
+        S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
+        renderSettingsPanel();
+        document.getElementById('ins-txt').textContent='Access granted.';
+      }catch(e){document.getElementById('ins-txt').textContent='Network error.';grantBtn.disabled=false;}
+    });
+  }
+  const delBtn=document.getElementById('sp-del-btn');
+  if(delBtn){
+    delBtn.addEventListener('click',()=>{
+      modal('Delete This Event?','This cannot be undone. The event and all its data will be permanently removed.','',
+        async()=>{
+          try{
+            const r=await fetch(`/api/events/${S.currentEventId}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser})});
+            if(!r.ok){const d=await r.json();document.getElementById('ins-txt').textContent=d.error||'Failed to delete.';return;}
+            S.currentEventId=null;S.currentEventMeta=null;
+            updateSettingsPanelVisibility();
+            resetCanvas();
+            document.getElementById('ins-txt').textContent='Event deleted.';
+          }catch(e){document.getElementById('ins-txt').textContent='Network error.';}
+        },'Delete Event');
+    });
+  }
+}
+
 // ── Clear ──────────────────────────────────────────────────────────────────
 document.getElementById('bclr').addEventListener('click',()=>{
   modal('Clear Layout','Choose what to clear from the canvas.',
     `<div class="mf"><label>Clear</label><select id="clr-opt"><option value="els">Elements &amp; measurements</option><option value="zones">Zones &amp; borders only</option><option value="dims">Measurements only</option><option value="all">Everything — full reset</option></select></div>`,
     ()=>{
-      pushUndo();const v=document.getElementById('clr-opt').value;
-      if(v==='els'||v==='all'){S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderSiteManagement();renderVendorList();}
-      if(v==='els'||v==='dims'||v==='all'){S.dims=[];drawDims();}
-      if(v==='zones'||v==='all'){S.zonePolys=[];redrawZones();}
-      if(v==='all'){S.adaPaths=[];S.curAda=[];S.hasSoftSurface=null;S.undoStack=[];}
+      const v=document.getElementById('clr-opt').value;
+      if(v==='all'){resetCanvas();S.currentEventId=null;S.currentEventMeta=null;updateSettingsPanelVisibility();return;}
+      pushUndo();
+      if(v==='els'){S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderSiteManagement();renderVendorList();}
+      if(v==='els'||v==='dims'){S.dims=[];drawDims();}
+      if(v==='zones'){S.zonePolys=[];redrawZones();}
       drawAda();runRules();
     },'Clear');
 });
