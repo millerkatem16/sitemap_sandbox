@@ -13,7 +13,20 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
   if (req.method === 'GET') {
-    const { email } = req.query;
+    const { email, adminEmail } = req.query;
+    if (adminEmail) {
+      const normalizedAdmin = String(adminEmail).trim().toLowerCase();
+      try {
+        const { rows: adminCheck } = await sql`SELECT 1 FROM admins WHERE email = ${normalizedAdmin} LIMIT 1`;
+        if (!adminCheck.length) { res.status(403).json({ error: 'Not an admin account.' }); return; }
+        const { rows } = await sql`SELECT id, name, owner_email, created_at FROM events ORDER BY created_at DESC`;
+        res.json(rows);
+      } catch (err) {
+        console.error('[GET /api/events admin]', err);
+        res.status(500).json({ error: err.message, code: err.code || null });
+      }
+      return;
+    }
     if (!email || !String(email).trim()) { res.status(400).json({ error: 'email query parameter is required.' }); return; }
     const normalizedEmail = String(email).trim().toLowerCase();
     try {
