@@ -286,7 +286,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <input id="map-search" type="text" placeholder="Search venue or address…" autocomplete="off" spellcheck="false">
   </div>
   <div class="tg">
-    <button class="tb" id="bopen"><i class="ti ti-folder-open"></i>My Saved Events</button>
+    <button class="tb" id="bopen"><i class="ti ti-folder-open"></i>My Events</button>
   </div>
   <div class="tg" style="position:relative">
     <button class="tb" id="bvenue"><i class="ti ti-building"></i>Saved Venues<i class="ti ti-chevron-down" style="font-size:10px;margin-left:1px;margin-top:2px"></i></button>
@@ -2003,6 +2003,7 @@ async function openEvents(){
       </div>
       <div class="vcard-btns">
         <button class="vbtn acc open-event-btn" data-id="${ev.id}" data-name="${ev.name.replace(/"/g,'&quot;')}">Open</button>
+        <button class="vl-del del-event-btn" data-id="${ev.id}" title="Delete event">×</button>
       </div>
     </div>`).join('')+`</div>`;
   modal('My Saved Events','Select an event to open.',listHtml,null,'Close',{wide:480,noCancel:true});
@@ -2043,6 +2044,22 @@ async function openEvents(){
             }).catch(()=>{});
           }
         }catch(e){document.getElementById('ins-txt').textContent='Network error loading event.';}
+      });
+    });
+    document.querySelectorAll('.del-event-btn').forEach(btn=>{
+      btn.addEventListener('click',e=>{
+        e.stopPropagation();e.preventDefault();
+        const id=parseInt(btn.dataset.id,10);
+        modal('Delete This Event?','This cannot be undone. The event and all its data will be permanently removed.','',
+          async()=>{
+            try{
+              const r=await fetch(`/api/events/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:S.currentUser})});
+              if(!r.ok){const d=await r.json();document.getElementById('ins-txt').textContent=d.error||'Failed to delete.';openEvents();return;}
+              if(S.currentEventId===id){S.currentEventId=null;S.currentEventMeta=null;updateSettingsPanelVisibility();}
+              document.getElementById('ins-txt').textContent='Event deleted.';
+              openEvents();
+            }catch(e){document.getElementById('ins-txt').textContent='Network error.';openEvents();}
+          },'Delete Event');
       });
     });
   },80);
