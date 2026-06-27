@@ -281,7 +281,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 <body>
 <div id="app">
 <div id="topbar">
-  <div class="brand">SITE<em>MAP</em></div>
+  <div class="brand" id="brand-logo" style="cursor:pointer">SITE<em>MAP</em></div>
   <div id="map-search-wrap">
     <input id="map-search" type="text" placeholder="Search venue or address…" autocomplete="off" spellcheck="false">
   </div>
@@ -498,7 +498,7 @@ const S={
   activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[],
   eventNotes:'',
   colorTags:[{id:'pink',hex:'#f9a8d4',name:null},{id:'lpurple',hex:'#c4b5fd',name:null},{id:'lblue',hex:'#93c5fd',name:null},{id:'dblue',hex:'#1e40af',name:null},{id:'green',hex:'#4ade80',name:null},{id:'gray',hex:'#9ca3af',name:null},{id:'orange',hex:'#fb923c',name:null},{id:'teal',hex:'#0d9488',name:null}],
-  currentUser:null,currentEventId:null,currentEventMeta:null
+  currentUser:null,currentEventId:null,currentEventMeta:null,isAdmin:false,adminEmail:null
 };
 
 let gmap=null,mapsApiKey='';
@@ -1321,7 +1321,7 @@ function mr(...fs){return`<div class="mrow">${fs.join('')}</div>`;}
 // ── Auth / Login Flow ──────────────────────────────────────────────────────
 async function requireLogin(afterLoginFn){
   if(S.currentUser){afterLoginFn();return;}
-  modal('Log In or Sign Up','Enter your email to save or open events.',
+  modal('Enter User Email','Enter your email to save or open events.',
     mf('Email','login-email','email','',''),
     async()=>{
       const email=document.getElementById('login-email').value.trim().toLowerCase();
@@ -1983,7 +1983,7 @@ async function openEvents(){
   document.getElementById('ins-txt').textContent='Loading events…';
   let events;
   try{
-    const r=await fetch(`/api/events?email=${encodeURIComponent(S.currentUser)}`);
+    const r=await fetch(S.isAdmin?`/api/events?adminEmail=${encodeURIComponent(S.adminEmail)}`:`/api/events?email=${encodeURIComponent(S.currentUser)}`);
     events=await r.json();
     if(!r.ok){document.getElementById('ins-txt').textContent=events.error||'Failed to load events.';return;}
   }catch(e){document.getElementById('ins-txt').textContent='Network error loading events.';return;}
@@ -1999,7 +1999,7 @@ async function openEvents(){
     <div class="vcard">
       <div class="vcard-info">
         <div class="vcard-name">${ev.name.replace(/</g,'&lt;')}</div>
-        <div class="vcard-date">${fmt(ev.created_at)} · <span style="opacity:.7">${ev.is_owner?'Owner':'Shared'}</span></div>
+        <div class="vcard-date">${fmt(ev.created_at)} · <span style="opacity:.7">${S.isAdmin?ev.owner_email.replace(/</g,'&lt;'):(ev.is_owner?'Owner':'Shared')}</span></div>
       </div>
       <div class="vcard-btns">
         <button class="vbtn acc open-event-btn" data-id="${ev.id}" data-name="${ev.name.replace(/"/g,'&quot;')}">Open</button>
@@ -2051,6 +2051,23 @@ async function openEvents(){
 document.getElementById('bsave-evt').addEventListener('click',()=>requireLogin(saveEvent));
 document.getElementById('evt-notes').addEventListener('input',function(){S.eventNotes=this.value;});
 document.getElementById('bopen').addEventListener('click',()=>requireLogin(openEvents));
+
+document.getElementById('brand-logo').addEventListener('click',()=>{
+  modal('Admin Login','Enter your admin credentials.',
+    mf('Email','admin-login-email','email','',' ')+mf('Password','admin-login-pw','password','',' '),
+    async()=>{
+      const email=document.getElementById('admin-login-email').value.trim().toLowerCase();
+      const pw=document.getElementById('admin-login-pw').value;
+      if(!email||!pw){document.getElementById('ins-txt').textContent='Email and password required.';return;}
+      try{
+        const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+        const d=await r.json();
+        if(!r.ok){document.getElementById('ins-txt').textContent=d.error||'Admin login failed.';return;}
+        S.currentUser=email;S.isAdmin=true;S.adminEmail=email;
+        document.getElementById('ins-txt').textContent=`Logged in as admin (${email}).`;
+      }catch(e){document.getElementById('ins-txt').textContent='Network error during admin login.';}
+    },'Log In');
+});
 
 function resetCanvas(){
   pushUndo();
