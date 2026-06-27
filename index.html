@@ -601,7 +601,7 @@ function undo(){
   S.els=snap.els;S.zonePolys=snap.zonePolys;
   S.adaPaths=snap.adaPaths;S.dims=snap.dims;S.fences=snap.fences||[];S.firstAids=snap.firstAids;
   if(snap.colorTags)S.colorTags=snap.colorTags;
-  renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+  renderEls();renderColorKey();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
 }
 document.getElementById('bundo').addEventListener('click',undo);
 
@@ -1836,7 +1836,7 @@ async function useVenue(id){
   S.activeVenueId=id;
   S.loadedVenueSnapshot=JSON.parse(JSON.stringify(vd));
   if(S.idCtr<2)S.idCtr=2;
-  redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+  redrawZones();renderEls();renderColorKey();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
   renderVenueChanges();
   showToast(`"${data.name}" loaded.`);
 
@@ -2024,7 +2024,7 @@ async function openEvents(){
           if(gmap&&state.mapCenter&&state.mapZoom){gmap.setCenter(state.mapCenter);gmap.setZoom(state.mapZoom);}
           S.activeVenueId=state.activeVenueId||null;
           S.loadedVenueSnapshot=null;
-          redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+          redrawZones();renderEls();renderColorKey();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
           S.currentEventId=ev.id;
           S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
           updateSettingsPanelVisibility();
@@ -2079,7 +2079,7 @@ document.getElementById('brand-logo').addEventListener('click',()=>{
 
 function resetCanvas(){
   pushUndo();
-  S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderSiteManagement();renderVendorList();
+  S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderColorKey();renderSiteManagement();renderVendorList();
   S.dims=[];drawDims();
   S.zonePolys=[];redrawZones();
   S.adaPaths=[];S.curAda=[];S.hasSoftSurface=null;S.undoStack=[];
@@ -2186,7 +2186,7 @@ document.getElementById('bclr').addEventListener('click',()=>{
       const v=document.getElementById('clr-opt').value;
       if(v==='all'){resetCanvas();S.currentEventId=null;S.currentEventMeta=null;updateSettingsPanelVisibility();return;}
       pushUndo();
-      if(v==='els'){S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderSiteManagement();renderVendorList();}
+      if(v==='els'){S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderColorKey();renderSiteManagement();renderVendorList();}
       if(v==='els'||v==='dims'){S.dims=[];drawDims();}
       if(v==='zones'){S.zonePolys=[];redrawZones();}
       drawAda();runRules();
