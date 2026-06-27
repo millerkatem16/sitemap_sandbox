@@ -32,6 +32,8 @@ module.exports = async (req, res) => {
     if (!email && !adminEmail) { res.status(400).json({ error: 'email query parameter is required.' }); return; }
     const normalizedEmail = email ? String(email).trim().toLowerCase() : null;
     try {
+      const { rows: existCheck } = await sql`SELECT 1 FROM events WHERE id = ${eventId} LIMIT 1`;
+      if (!existCheck.length) { res.status(404).json({ error: 'Event not found.' }); return; }
       const admin = await checkAdmin(adminEmail);
       if (!admin) {
         const { rows: access } = await sql`
@@ -61,6 +63,8 @@ module.exports = async (req, res) => {
     if (!data) { res.status(400).json({ error: 'data is required.' }); return; }
     const normalizedEmail = email ? String(email).trim().toLowerCase() : null;
     try {
+      const { rows: existCheck } = await sql`SELECT 1 FROM events WHERE id = ${eventId} LIMIT 1`;
+      if (!existCheck.length) { res.status(404).json({ error: 'Event not found.' }); return; }
       const admin = await checkAdmin(adminEmail);
       if (!admin) {
         const { rows: access } = await sql`
@@ -95,6 +99,8 @@ module.exports = async (req, res) => {
     if (!email && !adminEmail) { res.status(400).json({ error: 'email is required.' }); return; }
     const normalizedEmail = email ? String(email).trim().toLowerCase() : null;
     try {
+      const { rows: existCheck } = await sql`SELECT 1 FROM events WHERE id = ${eventId} LIMIT 1`;
+      if (!existCheck.length) { res.status(404).json({ error: 'Event not found.' }); return; }
       const admin = await checkAdmin(adminEmail);
       if (!admin) {
         const { rows: ownerCheck } = await sql`

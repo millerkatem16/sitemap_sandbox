@@ -33,6 +33,8 @@ module.exports = async (req, res) => {
     const targetEmail = String(email).trim().toLowerCase();
     const grantor = grantedByEmail ? String(grantedByEmail).trim().toLowerCase() : null;
     try {
+      const { rows: existCheck } = await sql`SELECT 1 FROM events WHERE id = ${eventId} LIMIT 1`;
+      if (!existCheck.length) { res.status(404).json({ error: 'Event not found.' }); return; }
       const admin = await checkAdmin(adminEmail);
       if (!admin) {
         // Anyone with existing access (owner or event_access row) can grant further access
