@@ -73,9 +73,9 @@ canvas{position:absolute;inset:0;pointer-events:none}
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
 #sb{width:260px;background:var(--surf);border-left:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;box-shadow:-4px 0 28px rgba(0,0,0,0.1);position:relative}
-.sb-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:none}
-.sb-scroll::-webkit-scrollbar{display:none}
-.sb-scroll::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px}
+.sb-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:thin}
+.sb-scroll::-webkit-scrollbar{width:6px}
+.sb-scroll::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
 .panel{padding:16px;border-bottom:1px solid var(--brd)}
 .plabel{font-size:12px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--slate);margin-bottom:12px}
 .plabel-sub{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--acc);margin-bottom:8px;margin-top:12px}
