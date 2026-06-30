@@ -37,7 +37,7 @@ html,body{height:100vh;background:var(--bg);color:var(--tx);font-family:var(--fo
 .pac-item-query{color:#fff;font-weight:600;font-family:var(--font)}
 .pac-matched{font-weight:700;color:var(--gold)}
 .pac-icon{display:none}
-.tg{display:flex;gap:1px;padding:0 8px;border-right:1px solid rgba(255,255,255,0.13);flex-shrink:0;align-items:center}
+.tg{display:flex;gap:1px;padding:0 4px;border-right:1px solid rgba(255,255,255,0.13);flex-shrink:0;align-items:center}
 .tg:last-child{border:none}
 .tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 9px;border-radius:9px;background:transparent;cursor:pointer;font-size:10px;font-family:var(--font);font-weight:600;color:rgba(255,255,255,0.62);border:1px solid transparent;min-width:44px;user-select:none;transition:background .12s,color .12s,border-color .12s;letter-spacing:.02em;white-space:nowrap}
 .tb i{font-size:17px;line-height:1}
@@ -48,7 +48,7 @@ html,body{height:100vh;background:var(--bg);color:var(--tx);font-family:var(--fo
 .tb.exp{color:rgba(255,255,255,0.42)}
 .tb.exp:hover{background:rgba(45,212,160,0.2);color:#2dd4a0;border-color:rgba(45,212,160,0.42)}
 .spacer{flex:1}
-.el-drop{padding:6px 11px;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.22);border-radius:9px;color:#fff;font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;outline:none;height:36px;min-width:172px;transition:background .12s,border-color .12s}
+.el-drop{padding:6px 11px;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.22);border-radius:9px;color:#fff;font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;outline:none;height:36px;min-width:148px;transition:background .12s,border-color .12s}
 .el-drop:hover,.el-drop:focus{background:rgba(255,255,255,0.22);border-color:rgba(255,255,255,0.38)}
 .el-drop option{background:#2A5F64;color:#fff}
 
@@ -201,7 +201,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 /* ── PDF Capture Overlay ─────────────────────────────────────────────────── */
 #pdf-sel-ov{position:fixed;inset:0;z-index:10000;cursor:crosshair;user-select:none;display:none}
 #pdf-sel-cv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-#pdf-instr-card{position:absolute;top:28px;left:50%;transform:translateX(-50%);background:var(--surf);border-radius:16px;padding:20px 32px;box-shadow:0 16px 64px rgba(0,0,0,0.5),0 4px 16px rgba(0,0,0,0.2);text-align:center;z-index:2;pointer-events:none;min-width:320px;border:1px solid rgba(255,255,255,0.08)}
+#pdf-instr-card{position:absolute;top:28px;left:50%;transform:translateX(-50%);background:var(--surf);border-radius:16px;padding:20px 32px;box-shadow:0 16px 64px rgba(0,0,0,0.5),0 4px 16px rgba(0,0,0,0.2);text-align:center;z-index:2;min-width:320px;border:1px solid rgba(255,255,255,0.08)}
 #pdf-instr-card h3{font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px;letter-spacing:-.02em}
 #pdf-instr-card p{font-size:12px;color:var(--tx2);margin-bottom:16px;line-height:1.6;max-width:260px}
 #pdf-esc-btn{pointer-events:auto;padding:7px 18px;background:rgba(244,81,64,0.08);border:1px solid rgba(244,81,64,0.25);border-radius:9px;color:var(--acc);font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;transition:all .12s}
@@ -301,7 +301,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="tg">
     <select class="el-drop" id="define-drop">
-      <option value="" disabled selected>Define Event Site</option>
+      <option value="" disabled selected>Define Site</option>
       <option value="border">Draw Venue Border</option>
       <option value="subzone">Draw Sub Zone</option>
       <option value="restrict">Restrict Areas</option>
@@ -311,7 +311,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="tg">
     <select class="el-drop" id="el-drop">
-      <option value="" disabled selected>Add Elements to Event Site</option>
+      <option value="" disabled selected>Add Elements</option>
       <option value="tent10">10×10 Tent</option>
       <option value="tent20">10×20 Tent</option>
       <option value="customtent">+ Add custom tent size…</option>
@@ -323,7 +323,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="tg">
     <select class="el-drop" id="vi-drop">
-      <option value="" disabled selected>Venue Infrastructure</option>
+      <option value="" disabled selected>Infrastructure</option>
       <option value="dim">Measure Distance</option>
       <option value="electric">Electric Source</option>
       <option value="water">Water Source</option>
@@ -335,7 +335,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="tg">
     <select class="el-drop" id="sc-drop">
-      <option value="" disabled selected>Safety &amp; Compliance</option>
+      <option value="" disabled selected>Safety</option>
       <option value="ingress">Ingress/Egress</option>
       <option value="firstaid">First Aid Contact</option>
       <option value="security">Security Post</option>
@@ -612,7 +612,6 @@ function pushUndo(){
     dims:JSON.parse(JSON.stringify(S.dims)),
     fences:JSON.parse(JSON.stringify(S.fences)),
     firstAids:JSON.parse(JSON.stringify(S.firstAids)),
-    enclosed:S.enclosed,
     colorTags:JSON.parse(JSON.stringify(S.colorTags))
   });
   if(S.undoStack.length>40)S.undoStack.shift();
@@ -647,6 +646,7 @@ document.getElementById('bundo').addEventListener('click',undo);
     lbl.textContent=S.hideUtils?'Safety Map Active':'Safety Review Ready Map';
     renderEls();
   }
+  window.applyHideUtils=applyHideUtils;
   btn.addEventListener('click',()=>{S.hideUtils=!S.hideUtils;applyHideUtils();});
   document.addEventListener('keydown',ev=>{
     if(ev.key==='Escape'&&S.hideUtils){S.hideUtils=false;applyHideUtils();}
@@ -1005,9 +1005,7 @@ function runRules(){
   const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
   cookingTents.forEach(c=>{[...nonCookingTents,...trucks].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — cooking areas require 20ft separation from other activations (~${Math.round(clr)}ft).`});c.hr=true;o.hr=true;}});});
   gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`});});
-  if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:'No ingress/egress placed.'});
-  else if(ins.length===1)warns.push({type:'hard',msg:'Only 1 ingress/egress — minimum 2 required. 3 recommended.'});
-  else if(ins.length===2)warns.push({type:'soft',msg:'2 ingress/egress — a 3rd is recommended.'});
+  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:'No ingress/egress placed.'});else if(ins.length===1)warns.push({type:'hard',msg:'Only 1 ingress/egress — minimum 2 required. 3 recommended.'});else if(ins.length===2)warns.push({type:'soft',msg:'2 ingress/egress — a 3rd is recommended.'});}}
   ins.forEach(i=>{
     if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is under 10ft wide — ADA minimum not met.`});i.hr=true;}
     const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`});i.hr=true;blocked.forEach(b=>b.hr=true);}
@@ -1429,7 +1427,7 @@ function colorTagPickerHtml(selectedId){const swatches=S.colorTags.map(t=>`<div 
 function wireTagPicker(){const row=document.querySelector('.tag-picker-row');if(!row)return;const hidInp=document.getElementById('tag-sel-id');const colInp=document.getElementById('tag-custom-input');row.querySelectorAll('.tag-swatch[data-tagid]').forEach(sw=>{sw.addEventListener('click',()=>{row.querySelectorAll('.tag-swatch').forEach(s=>s.classList.remove('selected'));sw.classList.add('selected');hidInp.value=sw.dataset.tagid;});});const cb=row.querySelector('.tag-custom-btn');if(cb)cb.addEventListener('click',()=>colInp.click());if(colInp)colInp.addEventListener('change',()=>{const hex=colInp.value;let tag=S.colorTags.find(t=>t.hex.toLowerCase()===hex.toLowerCase());if(!tag){tag={id:'custom-'+Date.now(),hex,name:null};S.colorTags.push(tag);}row.querySelectorAll('.tag-swatch').forEach(s=>s.classList.remove('selected'));hidInp.value=tag.id;if(tag.name===null)promptNameColorTag(tag.id);});}
 
 // ── Venue mode toolbar ─────────────────────────────────────────────────────
-const EL_DROP_NORMAL=`<option value="" disabled selected>Add Elements to Event Site</option><option value="tent10">10×10 Tent</option><option value="tent20">10×20 Tent</option><option value="customtent">+ Add custom tent size…</option><option value="truck">Food Truck</option><option value="stage">Stage</option><option value="custom">+ Add your own element…</option><option value="label">+ Add Map Label…</option>`;
+const EL_DROP_NORMAL=`<option value="" disabled selected>Add Elements</option><option value="tent10">10×10 Tent</option><option value="tent20">10×20 Tent</option><option value="customtent">+ Add custom tent size…</option><option value="truck">Food Truck</option><option value="stage">Stage</option><option value="custom">+ Add your own element…</option><option value="label">+ Add Map Label…</option>`;
 const EL_DROP_VENUE=`<option value="" disabled selected>Add Venue Elements</option><option value="stage">Stage</option><option value="gen">Generator</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
 
 function enterVenueMode(editLabel,editId,editPin){
@@ -1476,7 +1474,7 @@ function place(type,x,y){
     modal(`Place ${t.lbl}`,'Label this tent and select its use type.',mf('Tent Label','tlbl','text','','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(''),()=>{
       pushUndo();const lbl=document.getElementById('tlbl').value.trim()||t.lbl;const tentType=document.getElementById('tent-type').value;const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
       S.els.push(base({label:lbl,vendorName:lbl,tentType,colorTag}));
-      renderVendorList();renderEls();runRules();
+      renderVendorList();renderEls();renderColorKey();runRules();
     });
     wireTagPicker();
     document.getElementById('tent-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
@@ -1495,7 +1493,7 @@ function place(type,x,y){
         const tentType=document.getElementById('ct-type').value;
         const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
         S.els.push({id:S.idCtr++,type:'customtent',lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,tentType,...(colorTag?{colorTag}:{}),rot:0,hr:false,sr:false});
-        renderVendorList();renderEls();runRules();
+        renderVendorList();renderEls();renderColorKey();runRules();
       });
     wireTagPicker();
     document.getElementById('ct-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
@@ -1505,14 +1503,14 @@ function place(type,x,y){
     modal('Place Food Truck','Enter vendor name and dimensions.',mf('Vendor Name','tklbl','text','','e.g. Tacos El Rey')+mr(mf('Length (ft)','tkl','number','20'),mf('Width (ft)','tkw','number','8')),()=>{
       pushUndo();const lbl=document.getElementById('tklbl').value.trim()||'Food Truck',wFt=parseFloat(document.getElementById('tkl').value)||20,hFt=parseFloat(document.getElementById('tkw').value)||8;
       S.els.push({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,rot:0,hr:false,sr:false});
-      renderVendorList();renderEls();runRules();
+      renderVendorList();renderEls();renderColorKey();runRules();
     });return;
   }
   if(type==='stage'){
     modal('Place Stage','Stages over 256 sq ft or 3ft tall may require a building permit.',mf('Stage Name','stlbl','text','','e.g. Main Stage')+mr(mf('Width (ft)','stw','number','20'),mf('Depth (ft)','std','number','16'),mf('Height (ft)','sth','number','2')),()=>{
       pushUndo();const lbl=document.getElementById('stlbl').value.trim()||'Stage',wFt=parseFloat(document.getElementById('stw').value)||20,hFt=parseFloat(document.getElementById('std').value)||16,heightFt=parseFloat(document.getElementById('sth').value)||2;
       S.els.push({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,heightFt,rot:0,hr:false,sr:false});
-      renderVendorList();renderEls();runRules();
+      renderVendorList();renderEls();renderColorKey();runRules();
     });return;
   }
   if(type==='ingress'){
@@ -1540,12 +1538,12 @@ function place(type,x,y){
     modal('Add Custom Element','Name it, choose a shape, set dimensions, and pick a color tag.',mf('Name','cust-lbl','text','','e.g. Bounce House')+msel('Shape','cust-shape',[{v:'square',t:'Square'},{v:'circle',t:'Circle'}])+'<div id="cust-dims-sq">'+mr(mf('Width (ft)','cust-w','number','10'),mf('Depth (ft)','cust-d','number','10'))+'</div><div id="cust-dims-ci" style="display:none">'+mf('Size (ft)','cust-sz','number','10')+'</div>'+colorTagPickerHtml(''),()=>{
       pushUndo();const lbl=document.getElementById('cust-lbl').value.trim()||'Custom';const shape=document.getElementById('cust-shape').value||'square';const isCircle=shape==='circle';const sz=Math.max(1,parseFloat(document.getElementById('cust-sz').value)||10);const wFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-w').value)||10);const hFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-d').value)||10);const colorTag=document.getElementById('tag-sel-id').value||(S.colorTags[0]&&S.colorTags[0].id)||null;
       S.els.push({id:S.idCtr++,type:'custom',lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,shape,colorTag,rot:0,hr:false,sr:false});
-      renderVendorList();renderEls();runRules();
+      renderVendorList();renderEls();renderColorKey();runRules();
     });
     document.getElementById('cust-shape').addEventListener('change',function(){const c=this.value==='circle';document.getElementById('cust-dims-sq').style.display=c?'none':'';document.getElementById('cust-dims-ci').style.display=c?'':'none';});
     wireTagPicker();return;
   }
-  pushUndo();S.els.push(base());renderVendorList();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
+  pushUndo();S.els.push(base());renderVendorList();renderEls();renderColorKey();renderVenueInfra();renderSafetyCompliance();runRules();
 }
 
 function editEl(el){
@@ -1554,7 +1552,7 @@ function editEl(el){
     modal(`Edit ${t.lbl}`,'Update this tent\'s label, use type, or color tag.',mf('Tent Label','tlbl','text',el.vendorName||el.label||'','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(el.colorTag||''),()=>{
       pushUndo();const lbl=document.getElementById('tlbl').value.trim()||(el.vendorName||el.label||t.lbl);const tentType=document.getElementById('tent-type').value;const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
       el.label=lbl;el.vendorName=lbl;el.tentType=tentType;el.colorTag=colorTag;
-      renderVendorList();renderEls();runRules();
+      renderVendorList();renderEls();renderColorKey();runRules();
     },'Save');
     document.getElementById('tent-type').value=el.tentType||'vendor';
     wireTagPicker();
@@ -1584,7 +1582,7 @@ function editEl(el){
 // ── Tool management ────────────────────────────────────────────────────────
 let fenceCur=[];let fenceMaterial='';let overlapWarnTimeout=null;
 const ZONE_TOOLS=['restrict','border','erase'];
-const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','extinguisher','mix','custom','electric','water','trash','security','label'];
+const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','extinguisher','mix','custom','electric','water','trash','security','label','firstaid'];
 const DRAWING_TOOLS=[...ZONE_TOOLS,'ada','dim','fence'];
 
 function setTool(id){
@@ -1627,9 +1625,9 @@ cw.addEventListener('mousedown',e=>{
         const closedZone=activePoly;activePoly=null;
         redrawZones();runRules();
         if(closedZone.type==='border'){
-          modal('Zone Enclosure','Will this area be enclosed or fenced?',
-            msel('Enclosure','zone-enc',[{v:'yes',t:'Yes — enclosed or fenced'},{v:'no',t:'No — open outdoor area'}]),
-            ()=>{closedZone.enclosed=document.getElementById('zone-enc').value==='yes';},'Save');
+          modal('Entrances & Exits','Does this area have designated entrances and exits?',
+            msel('Do you have designated entrances and exits for this area?','zone-ingress',[{v:'yes',t:'Yes — specific gates/entrances'},{v:'no',t:'No — open access, no designated points'}]),
+            ()=>{closedZone.hasDesignatedIngress=document.getElementById('zone-ingress').value==='yes';runRules();},'Save');
         }
       }
       const _btt=document.getElementById('tool-tip');if(_btt)_btt.style.display='none';return;
@@ -1716,7 +1714,7 @@ document.getElementById('el-drop').addEventListener('change',e=>{const val=e.tar
 document.getElementById('define-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
 document.getElementById('vi-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},'Start Drawing');return;}setTool(val);});
 document.getElementById('sc-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}setTool(val);});
-document.getElementById('export-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='safety'){document.getElementById('bhideutil').click();return;}if(val==='full'){document.getElementById('bpdf').click();}});
+document.getElementById('export-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='safety'){S.hideUtils=true;applyHideUtils();startExportFlow();return;}if(val==='full'){S.hideUtils=false;applyHideUtils();startExportFlow();}});
 
 // ── Venue helpers ──────────────────────────────────────────────────────────
 function venueDataSnapshot(){
@@ -2109,7 +2107,7 @@ document.getElementById('event-details-toggle').addEventListener('click',()=>{
   const body=document.getElementById('event-details-body');
   const chev=document.getElementById('event-details-chevron');
   const open=body.style.display==='none';
-  body.style.display=open?'':'none';
+  body.style.display=open?'block':'none';
   chev.style.transform=open?'rotate(180deg)':'rotate(0deg)';
 });
 document.getElementById('bopen').addEventListener('click',()=>requireLogin(openEvents));
@@ -2512,6 +2510,7 @@ function startMapCapture(){
 
     function onDown(e){
       if(prevWrap.style.display!=='none')return;// in preview mode
+      if(instrCard.contains(e.target))return;// don't start drag on instruction card
       dragging=true;sx=e.clientX;sy=e.clientY;ex=e.clientX;ey=e.clientY;
     }
     function onMove(e){
@@ -2540,19 +2539,13 @@ function startMapCapture(){
   });
 }
 
-document.getElementById('bpdf').addEventListener('click',async()=>{
-  console.log('EXPORT TRIGGERED');
+async function startExportFlow(){
   const btn=document.getElementById('bpdf'),orig=btn.innerHTML;
   try{
     btn.innerHTML='<i class="ti ti-loader-2"></i>Loading…';btn.disabled=true;
-    if(!window.domtoimage){
-      console.log('Loading dom-to-image-more…');
-      await loadScript('https://unpkg.com/dom-to-image-more/dist/dom-to-image-more.min.js');
-      console.log('dom-to-image-more loaded, window.domtoimage=',typeof window.domtoimage);
-    }
+    if(!window.domtoimage)await loadScript('https://unpkg.com/dom-to-image-more/dist/dom-to-image-more.min.js');
     if(!window.jspdf)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
     btn.innerHTML=orig;btn.disabled=false;
-    // Let user position map before capture overlay appears
     await new Promise((res,rej)=>{
       const card=document.createElement('div');
       card.id='pdf-ready-card';
@@ -2566,12 +2559,11 @@ document.getElementById('bpdf').addEventListener('click',async()=>{
     await exportPDF(capture);
     showToast('PDF saved.');
   }catch(err){
-    if(err!=='cancelled'){
-      console.error('PDF EXPORT ERROR:',err);
-      showToast('PDF export failed — check internet connection.',true);
-    }
+    if(err==='cancelled'){S.hideUtils=false;applyHideUtils();}
+    else{console.error('PDF EXPORT ERROR:',err);showToast('PDF export failed — check internet connection.',true);}
   }finally{btn.innerHTML=orig;btn.disabled=false;}
-});
+}
+document.getElementById('bpdf').addEventListener('click',startExportFlow);
 
 async function exportPDF(capture){
   if(!gmap)return;
