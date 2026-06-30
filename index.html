@@ -70,7 +70,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #opacity-slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.35)}
 #opacity-slider::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,0.35)}
 #canvas-tool-ctrl{position:absolute;bottom:78px;left:50%;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:14px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
-#canvas-action-ctrl{position:absolute;top:64px;right:16px;z-index:9;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:14px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
+#canvas-action-ctrl{position:absolute;top:8px;right:16px;z-index:9;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:14px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
 .ctc-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:transparent;border:1px solid transparent;color:rgba(255,255,255,0.62);font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
 .ctc-btn i{font-size:15px;line-height:1}
 .ctc-btn:hover{background:rgba(255,255,255,0.16);color:#fff;border-color:rgba(255,255,255,0.2)}
@@ -155,6 +155,8 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .ck-row{display:flex;align-items:flex-start;gap:9px;padding:4px 0;font-size:12px;color:var(--tx2);font-weight:500}
 .ck-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0;border:1.5px solid;margin-top:2px}
 .ck-row[data-tagid] .ck-swatch:hover{outline:1.5px solid var(--slate);outline-offset:1px}
+.ck-row[data-tagid] .ck-tag-label{display:inline-block;padding:2px 8px;border-radius:6px;background:var(--surf2);border:1px solid var(--brd2);transition:background .12s,border-color .12s}
+.ck-row[data-tagid] .ck-tag-label:hover{background:var(--surf3);border-color:var(--slate)}
 .ck-line{width:22px;height:3px;border-radius:2px;flex-shrink:0;margin-top:6px}
 .ck-zone{width:14px;height:14px;border-radius:3px;border:2px dashed;flex-shrink:0;margin-top:2px}
 .tag-picker-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
@@ -461,7 +463,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
           <button class="vbtn gold-ol" id="zbrd-vip"></button>
         </div>
         <div style="margin-top:8px">
-          <div id="cap-na" class="cap-na">No borders drawn yet</div>
+          <div id="cap-na" class="cap-na">No borders drawn yet — use Draw Venue Border from the Define Site menu above</div>
           <div id="cap-live" style="display:none">
             <div id="cap-borders"></div>
             <div class="cap-center" id="cap-total-wrap">
@@ -907,7 +909,7 @@ function updateCap(){
   const borders=getClosedBorders();
   if(!borders.length){
     na.style.display='';live.style.display='none';
-    na.textContent='No borders drawn yet — use Draw Venue Border above';return;
+    na.textContent='No borders drawn yet — use Draw Venue Border from the Define Site menu above';return;
   }
   na.style.display='none';live.style.display='';
 
@@ -1282,13 +1284,11 @@ function renderSafetyCompliance(){
   scTypes.forEach(type=>{const c=S.els.filter(e=>e.type===type).length;if(c)counts[type]=c;});
   const ingressEls=S.els.filter(e=>e.type==='ingress');
   const tnMap=getTypeNums();
-  let html='<div class="plabel-sub" style="margin-top:0">First Aid</div>';
+  let html='';
   if(S.firstAids.length){
+    html+='<div class="plabel-sub" style="margin-top:0">First Aid</div>';
     html+=S.firstAids.map(c=>`<div class="fa-item"><strong>${c.name}</strong><span>${c.cert}</span></div>`).join('');
-  }else{
-    html+='<div style="font-size:10px;color:var(--tx3)">None added</div>';
   }
-  html+=`<div style="margin-top:6px"><button class="vbtn" id="add-fa-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-plus" style="font-size:11px"></i>Add First Aid Contact</button></div>`;
   const countKeys=Object.keys(counts);
   if(countKeys.length){
     html+='<div class="plabel-sub" style="margin-top:10px">Placed</div>';
@@ -1302,10 +1302,6 @@ function renderSafetyCompliance(){
     html+=ingressEls.map(el=>`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMap[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.vendorName||el.label||'Gate'}</span><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove gate">×</button></div>`).join('');
   }
   d.innerHTML=html;
-  const addBtn=d.querySelector('#add-fa-btn');
-  if(addBtn){
-    addBtn.addEventListener('click',addFirstAidContact);
-  }
   d.querySelectorAll('.sm-ingress-del').forEach(btn=>{
     btn.addEventListener('click',ev=>{
       ev.stopPropagation();
@@ -2357,7 +2353,7 @@ function renderColorKey(){
     else if(r.type==='circle')sw=`<div class="ck-swatch" style="background:${r.color};border-color:${r.color};border-radius:50%"></div>`;
     else if(r.type==='line')sw=`<div class="ck-line" style="background:${r.color}"></div>`;
     else sw=`<div class="ck-zone" style="border-color:${r.color};background:${r.color}18"></div>`;
-    return`<div class="ck-row"${r.tid?` data-tagid="${r.tid}" style="cursor:pointer"`:''}>` +sw+`<div><span>${r.lbl}</span>${r.dim?`<div style="font-size:8px;color:var(--tx3);margin-top:1px">${r.dim}</div>`:''}</div></div>`;
+    return`<div class="ck-row"${r.tid?` data-tagid="${r.tid}" style="cursor:pointer"`:''}>` +sw+`<div><span${r.tid?' class="ck-tag-label"':''}>${r.lbl}</span>${r.dim?`<div style="font-size:8px;color:var(--tx3);margin-top:1px">${r.dim}</div>`:''}</div></div>`;
   }).join('');
   document.getElementById('ckey').querySelectorAll('[data-tagid]').forEach(el=>{el.addEventListener('click',()=>renameColorTag(el.dataset.tagid));});
 }
