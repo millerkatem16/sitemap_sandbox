@@ -74,6 +74,11 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #opacity-slider::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,0.35)}
 #canvas-tool-ctrl{position:absolute;bottom:78px;left:50%;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:14px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
 #canvas-action-ctrl{position:absolute;top:8px;right:16px;z-index:9;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:14px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
+@keyframes onboard-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+#onboard-card{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 36px;background:rgba(20,32,33,0.78);backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(255,255,255,0.12);pointer-events:none;text-align:center}
+#onboard-card .ob-icon{font-size:36px;animation:onboard-bounce 2s ease-in-out infinite}
+#onboard-card .ob-title{color:#fff;font-size:15px;font-weight:700;font-family:var(--font)}
+#onboard-card .ob-sub{color:rgba(255,255,255,0.55);font-size:12px;font-family:var(--font);max-width:220px;line-height:1.5}
 .ctc-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:transparent;border:1px solid transparent;color:rgba(255,255,255,0.62);font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
 .ctc-btn i{font-size:15px;line-height:1}
 .ctc-btn:hover{background:rgba(255,255,255,0.16);color:#fff;border-color:rgba(255,255,255,0.2)}
@@ -88,6 +93,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .sb-scroll::-webkit-scrollbar{width:6px}
 .sb-scroll::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
 .panel{padding:16px;border-bottom:1px solid var(--brd)}
+.panel.has-content{border-left:2.5px solid var(--slate);padding-left:13.5px}
 .plabel{font-size:12px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--slate);margin-bottom:12px}
 .plabel-sub{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--acc);margin-bottom:8px;margin-top:12px}
 
@@ -343,7 +349,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="tg">
     <select class="el-drop" id="vi-drop">
-      <option value="" disabled selected>Add Infrastructure</option>
+      <option value="" disabled selected>Add Site Utilities</option>
       <option value="dim">Measure Distance</option>
       <option value="electric">Electric Source</option>
       <option value="water">Water Source</option>
@@ -382,6 +388,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div id="cv-area">
     <div id="map"></div>
     <div id="map-overlay"></div>
+    <div id="onboard-card"><div class="ob-icon">🗺️</div><div class="ob-title">Your canvas is empty</div><div class="ob-sub">Select an element from the toolbar above and click the map to place it</div></div>
     <div id="canvas-tool-ctrl">
       <button class="ctc-btn" id="ctc-measure" title="Measure distance"><i class="ti ti-ruler-2"></i><span>Measure</span></button>
       <button class="ctc-btn active" id="ctc-select" title="Pan and adjust the map"><i class="ti ti-map-2"></i><span>Adjust Map</span></button>
@@ -425,12 +432,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
         <div id="vcr-list"></div>
       </div>
 
-      <div class="panel" id="event-details-panel">
+      <div class="panel has-content" id="event-details-panel">
         <div class="panel-toggle" id="event-details-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
           <span class="plabel" style="margin-bottom:0">Event Details</span>
-          <i class="ti ti-chevron-down" id="event-details-chevron" style="color:var(--slate);font-size:16px;transition:transform .2s;flex-shrink:0"></i>
+          <i class="ti ti-chevron-down" id="event-details-chevron" style="color:var(--slate);font-size:16px;transition:transform .2s;flex-shrink:0;transform:rotate(180deg)"></i>
         </div>
-        <div id="event-details-body" style="display:none;margin-top:12px">
+        <div id="event-details-body" style="display:block;margin-top:12px">
           <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:0">Event Name</div>
           <input id="evt-name" class="evt-inp" type="text" placeholder="Event name — shown on PDF">
           <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:10px">Event Date</div>
@@ -444,8 +451,8 @@ canvas{position:absolute;inset:0;pointer-events:none}
         </div>
       </div>
 
-      <div class="panel">
-        <div class="plabel">Safety &amp; Compliance Pre-Check</div>
+      <div class="panel" id="precheck-panel">
+        <div class="plabel">Flags &amp; Alerts</div>
         <div id="wl"><div class="w info"><i class="ti ti-info-circle"></i><span>Place elements to run checks.</span></div></div>
       </div>
 
@@ -455,7 +462,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       </div>
 
       <div class="panel" id="vi-panel">
-        <div class="plabel">Venue Infrastructure</div>
+        <div class="plabel">Site Utilities</div>
         <div id="vil"></div>
       </div>
 
@@ -464,7 +471,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
         <div id="sml"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="cap-panel">
         <div class="plabel">Capacity</div>
         <div style="display:none">
           <button class="vbtn gold" id="zbrd-sb"></button>
@@ -483,7 +490,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="ckey-panel">
         <div class="plabel">Color Key</div>
         <div id="ckey"></div>
       </div>
@@ -539,6 +546,7 @@ const S={
 
 let gmap=null,mapsApiKey='';
 let ADMIN_EMAIL='';
+let eventDetailsPinnedOpen=true;
 function displayEmail(email){
   if(!email)return'';
   const adminEm=S.adminEmail||(typeof ADMIN_EMAIL!=='undefined'?ADMIN_EMAIL:'');
@@ -557,7 +565,7 @@ const TYPES={
   stage:{lbl:'Stage',color:'#a78bfa',wFt:20,hFt:16,icon:'🎪',sqft:null,rot:true},
   truck:{lbl:'Food Truck',color:'#ef4444',wFt:20,hFt:8,sqft:0,rot:true},
   gen:{lbl:'Generator',color:'#fbbf24',wFt:6,hFt:6,icon:'⚡',sqft:0,rot:true},
-  ingress:{lbl:'Ingress/Egress',color:'#22c55e',wFt:12,hFt:8,sqft:0,rot:true,crowdMgmt:true},
+  ingress:{lbl:'Ingress/Egress',color:'#22c55e',wFt:16,hFt:10,sqft:0,rot:true,crowdMgmt:true},
   firstaid:{lbl:'First Aid',color:'#f05252',wFt:10,hFt:10,sqft:0,noRender:true},
   extinguisher:{lbl:'Fire Ext.',color:'#f05252',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
   mix:{lbl:'Mix Platform',color:'#c084fc',wFt:10,hFt:8,icon:'🎛',sqft:0,rot:true},
@@ -924,7 +932,8 @@ function updateCap(){
   const borders=getClosedBorders();
   if(!borders.length){
     na.style.display='';live.style.display='none';
-    na.textContent='No borders drawn yet — use Draw Venue Border from the Define Site menu above';return;
+    na.textContent='No borders drawn yet — use Draw Venue Border from the Define Site menu above';
+    const _cp=document.getElementById('cap-panel');if(_cp)_cp.classList.remove('has-content');return;
   }
   na.style.display='none';live.style.display='';
 
@@ -1002,6 +1011,7 @@ function updateCap(){
   document.getElementById('cn').textContent=totalCap.toLocaleString();
   document.getElementById('cn-lbl').textContent=multi?'estimated total occupants':'estimated occupants';
   document.getElementById('cd').textContent=`${Math.round(usableFtSq).toLocaleString()} sq ft usable · ${Math.round(struc)} in structures`;
+  const capPanel=document.getElementById('cap-panel');if(capPanel)capPanel.classList.toggle('has-content',borders.length>0);
 }
 
 function segDSq(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;if(!L)return d2(px,py,ax,ay);const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/L));return d2(px,py,ax+t*dx,ay+t*dy);}
@@ -1062,6 +1072,7 @@ function runRules(){
   if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.'});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.'});}
   if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.'});
   document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
+  const precheckPanel=document.getElementById('precheck-panel');if(precheckPanel)precheckPanel.classList.toggle('has-content',S.els.length>0||S.zonePolys.length>0);
   renderEls();updateCap();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();
 }
 
@@ -1152,7 +1163,7 @@ function renderEls(){
       icon.style.cssText=`width:${w}px;height:${h}px;background:#ef4444;border-color:#b91c1c;border-width:2px;`;
     }else if(el.type==='ingress'){
       const ah=Math.min(Math.floor(h*0.8),Math.floor(w*0.22)),sw=Math.floor(h*0.38);
-      icon.style.cssText=`width:${w}px;height:${h}px;background:transparent;border:2px solid rgba(34,197,94,0.25);overflow:hidden;`;
+      icon.style.cssText=`width:${w}px;height:${h}px;background:transparent;border:2.5px solid rgba(34,197,94,0.55);overflow:hidden;box-shadow:0 0 10px rgba(34,197,94,0.18);`;
       icon.innerHTML=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="display:block" preserveAspectRatio="none"><polygon points="0,${h/2} ${ah},${h*0.04} ${ah},${h*0.96}" fill="#22c55e"/><rect x="${ah}" y="${(h-sw)/2}" width="${Math.max(0,w-2*ah)}" height="${sw}" fill="#22c55e"/><polygon points="${w},${h/2} ${w-ah},${h*0.04} ${w-ah},${h*0.96}" fill="#22c55e"/></svg>`;
     }else{
       const color=el.colorTag?(S.colorTags.find(ct=>ct.id===el.colorTag)||{hex:'#8b93a8'}).hex:(el.color||t.color);const fs2=Math.min(w,h)*.38;
@@ -1244,6 +1255,7 @@ function makeDrag(div,el){
     };
     document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
   });
+  updateOnboardCard();
 }
 
 // ── Venue Infrastructure sidebar ───────────────────────────────────────────
@@ -1270,6 +1282,7 @@ function renderVenueInfra(){
     });
   }
   d.innerHTML=html;
+  const viPanel=document.getElementById('vi-panel');if(viPanel)viPanel.classList.toggle('has-content',!!html);
   d.querySelectorAll('.fence-del-btn').forEach(btn=>{
     btn.addEventListener('click',ev=>{
       ev.stopPropagation();
@@ -1317,6 +1330,7 @@ function renderSafetyCompliance(){
     html+=ingressEls.map(el=>`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMap[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.vendorName||el.label||'Gate'}</span><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove gate">×</button></div>`).join('');
   }
   d.innerHTML=html;
+  const scPanel=document.getElementById('sc-panel');if(scPanel)scPanel.classList.toggle('has-content',!!html);
   d.querySelectorAll('.sm-ingress-del').forEach(btn=>{
     btn.addEventListener('click',ev=>{
       ev.stopPropagation();
@@ -1348,8 +1362,10 @@ function renderVendorList(){
   if(truckEls.length)html+=`<div class="vl-group-row" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--brd)"><span style="font-size:12px;color:var(--tx2);font-weight:600">Food Trucks (${truckEls.length})</span><button class="vbtn manage-btn" data-bucket-key="truck" style="font-size:11px;padding:4px 10px">Manage</button></div>`;
   if(stageEls.length)html+=`<div class="vl-group-row" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--brd)"><span style="font-size:12px;color:var(--tx2);font-weight:600">Stages (${stageEls.length})</span><button class="vbtn manage-btn" data-bucket-key="stage" style="font-size:11px;padding:4px 10px">Manage</button></div>`;
   if(customEls.length)html+=`<div class="vl-group-row" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--brd)"><span style="font-size:12px;color:var(--tx2);font-weight:600">Custom Elements (${customEls.length})</span><button class="vbtn manage-btn" data-bucket-key="custom" style="font-size:11px;padding:4px 10px">Manage</button></div>`;
-  if(!html){vl.innerHTML='<div style="font-size:10px;color:var(--tx3)">No elements placed yet</div>';return;}
+  const vndPanel=document.getElementById('vnd-panel');
+  if(!html){vl.innerHTML='<div style="font-size:10px;color:var(--tx3)">No elements placed yet</div>';if(vndPanel)vndPanel.classList.remove('has-content');return;}
   vl.innerHTML=html;
+  if(vndPanel)vndPanel.classList.add('has-content');
   vl.querySelectorAll('.manage-btn').forEach(btn=>{btn.addEventListener('click',ev=>{ev.stopPropagation();openManageModal(ev.currentTarget.dataset.bucketKey);});});
 }
 
@@ -2173,6 +2189,12 @@ document.getElementById('brand-logo').addEventListener('click',()=>{
     },'Log In');
 });
 
+function updateOnboardCard(){
+  const card=document.getElementById('onboard-card');if(!card)return;
+  const hasContent=S.els.length>0||S.zonePolys.length>0||S.fences.length>0||S.dims.length>0||S.adaPaths.length>0;
+  card.style.display=hasContent?'none':'flex';
+}
+
 function resetCanvas(){
   pushUndo();
   S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderColorKey();renderVenueInfra();renderSafetyCompliance();renderVendorList();
@@ -2180,6 +2202,10 @@ function resetCanvas(){
   S.zonePolys=[];redrawZones();
   S.adaPaths=[];S.curAda=[];S.hasSoftSurface=null;S.undoStack=[];
   drawAda();runRules();
+  eventDetailsPinnedOpen=true;
+  const _rb=document.getElementById('event-details-body'),_rc=document.getElementById('event-details-chevron');
+  if(_rb)_rb.style.display='block';if(_rc)_rc.style.transform='rotate(180deg)';
+  updateOnboardCard();
 }
 
 function updateSettingsPanelVisibility(autoExpand=false){
@@ -2191,7 +2217,10 @@ function updateSettingsPanelVisibility(autoExpand=false){
     if(autoExpand){
       const _b=document.getElementById('event-details-body');
       const _c=document.getElementById('event-details-chevron');
-      if(_b&&_b.style.display==='none'){_b.style.display='block';if(_c)_c.style.transform='rotate(180deg)';}
+      if(eventDetailsPinnedOpen){
+        if(_b)_b.style.display='none';if(_c)_c.style.transform='';
+        eventDetailsPinnedOpen=false;
+      }else if(_b&&_b.style.display==='none'){_b.style.display='block';if(_c)_c.style.transform='rotate(180deg)';}
     }
   }else panel.style.display='none';
 }
@@ -2390,6 +2419,7 @@ function renderColorKey(){
     return`<div class="ck-row"${r.tid?` data-tagid="${r.tid}" style="cursor:pointer"`:''}>` +sw+`<div><span${r.tid?' class="ck-tag-label"':''}>${r.lbl}</span>${r.dim?`<div style="font-size:8px;color:var(--tx3);margin-top:1px">${r.dim}</div>`:''}</div></div>`;
   }).join('');
   document.getElementById('ckey').querySelectorAll('[data-tagid]').forEach(el=>{el.addEventListener('click',()=>renameColorTag(el.dataset.tagid));});
+  const ckeyPanel=document.getElementById('ckey-panel');if(ckeyPanel)ckeyPanel.classList.toggle('has-content',rows.length>0);
 }
 
 // ── PDF Export ─────────────────────────────────────────────────────────────
