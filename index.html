@@ -67,6 +67,11 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #opacity-slider{-webkit-appearance:none;appearance:none;width:108px;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;outline:none;cursor:pointer;vertical-align:middle}
 #opacity-slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.35)}
 #opacity-slider::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,0.35)}
+#canvas-tool-ctrl{position:absolute;bottom:78px;left:50%;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:14px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
+.ctc-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:transparent;border:1px solid transparent;color:rgba(255,255,255,0.62);font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.ctc-btn i{font-size:15px;line-height:1}
+.ctc-btn:hover{background:rgba(255,255,255,0.16);color:#fff;border-color:rgba(255,255,255,0.2)}
+.ctc-btn.active{background:rgba(255,255,255,0.22);color:#fff;border-color:rgba(255,255,255,0.38);box-shadow:0 1px 6px rgba(0,0,0,0.15) inset}
 .util-sub{font-size:10px;font-weight:400;letter-spacing:0;line-height:1.1;opacity:0.65;margin-top:-1px;display:block;text-align:center}
 .tb.util-hidden{background:rgba(244,81,64,0.22)!important;color:#F45140!important;border-color:rgba(244,81,64,0.48)!important}
 .tb.util-hidden:hover{background:rgba(244,81,64,0.32)!important;border-color:rgba(244,81,64,0.65)!important}
@@ -287,7 +292,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div class="tg">
     <button class="tb" id="bopen"><i class="ti ti-folder-open"></i>My Events</button>
   </div>
-  <div class="tg" style="position:relative">
+  <div class="tg" style="display:none;position:relative">
     <button class="tb" id="bvenue"><i class="ti ti-building"></i>Saved Venues<i class="ti ti-chevron-down" style="font-size:10px;margin-left:1px;margin-top:2px"></i></button>
     <div id="venue-dd">
       <button class="venue-dd-item" id="bcreate-venue">Create Venue</button>
@@ -295,49 +300,61 @@ canvas{position:absolute;inset:0;pointer-events:none}
     </div>
   </div>
   <div class="tg">
+    <select class="el-drop" id="define-drop">
+      <option value="" disabled selected>Define Event Site</option>
+      <option value="border">Draw Venue Border</option>
+      <option value="subzone">Draw Sub Zone</option>
+      <option value="restrict">Restrict Areas</option>
+      <option value="dim">Measure</option>
+      <option value="erase">Erase Zones</option>
+    </select>
+  </div>
+  <div class="tg">
     <select class="el-drop" id="el-drop">
       <option value="" disabled selected>Add Elements to Event Site</option>
       <option value="tent10">10×10 Tent</option>
       <option value="tent20">10×20 Tent</option>
       <option value="customtent">+ Add custom tent size…</option>
-      <option value="stage">Stage</option>
       <option value="truck">Food Truck</option>
-      <option value="gen">Generator</option>
-      <option value="mix">Mix Platform</option>
-      <option value="─────────" disabled>─────────</option>
+      <option value="stage">Stage</option>
       <option value="custom">+ Add your own element…</option>
-    </select>
-  </div>
-  <div class="tg">
-    <select class="el-drop" id="sm-drop">
-      <option value="" disabled selected>Site Management</option>
-      <option value="extinguisher">Fire Extinguisher</option>
-      <option value="─────────" disabled>─────────</option>
-      <option value="electric">Electric Source</option>
-      <option value="water">Water Source</option>
-      <option value="trash">Trash Bin</option>
-      <option value="security">Security</option>
-      <option value="─────────" disabled>─────────</option>
-      <option value="ingress">Ingress/Egress</option>
-      <option value="─────────" disabled>─────────</option>
-      <option value="ada">ADA Path</option>
-      <option value="fence">Fencing</option>
       <option value="label">+ Add Map Label…</option>
     </select>
   </div>
   <div class="tg">
-    <button class="tb" id="bdim"><i class="ti ti-dimensions"></i>Measure</button>
+    <select class="el-drop" id="vi-drop">
+      <option value="" disabled selected>Venue Infrastructure</option>
+      <option value="dim">Measure Distance</option>
+      <option value="electric">Electric Source</option>
+      <option value="water">Water Source</option>
+      <option value="trash">Trash Bin</option>
+      <option value="fence">Fencing</option>
+      <option value="gen">Generator</option>
+      <option value="label">+ Add Map Label…</option>
+    </select>
   </div>
   <div class="tg">
-    <button class="tb active" id="bsel"><i class="ti ti-map-2"></i>Adjust Map</button>
+    <select class="el-drop" id="sc-drop">
+      <option value="" disabled selected>Safety &amp; Compliance</option>
+      <option value="ingress">Ingress/Egress</option>
+      <option value="firstaid">First Aid Contact</option>
+      <option value="security">Security Post</option>
+      <option value="extinguisher">Fire Extinguisher</option>
+      <option value="ada">ADA Path</option>
+    </select>
   </div>
-  <div class="tg">
+  <div class="tg" style="display:none">
     <button class="tb" id="bhideutil"><i class="ti ti-eye-off"></i><span id="bhideutil-lbl">Safety Review Ready Map</span></button>
   </div>
   <div class="spacer"></div>
   <div class="tg">
     <button class="tb exp" id="bsave-evt"><i class="ti ti-device-floppy"></i>Save Event</button>
-    <button class="tb exp" id="bpdf"><i class="ti ti-file-type-pdf"></i>Export PDF</button>
+    <button class="tb exp" id="bpdf" style="display:none"><i class="ti ti-file-type-pdf"></i>Export PDF</button>
+    <select class="el-drop" id="export-drop">
+      <option value="" disabled selected>Export</option>
+      <option value="safety">Safety Review Ready Map</option>
+      <option value="full">Full Operational Map</option>
+    </select>
     <button class="tb" id="bundo"><i class="ti ti-corner-up-left"></i>Undo</button>
     <button class="tb warn" id="bclr"><i class="ti ti-trash"></i>Clear</button>
   </div>
@@ -351,6 +368,10 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div id="cv-area">
     <div id="map"></div>
     <div id="map-overlay"></div>
+    <div id="canvas-tool-ctrl">
+      <button class="ctc-btn" id="ctc-measure" title="Measure distance"><i class="ti ti-ruler-2"></i><span>Measure</span></button>
+      <button class="ctc-btn active" id="ctc-select" title="Pan and adjust the map"><i class="ti ti-map-2"></i><span>Adjust Map</span></button>
+    </div>
     <div id="opacity-ctrl">
       <label for="opacity-slider">Map Opacity</label>
       <input type="range" id="opacity-slider" min="0" max="50" value="25" step="1">
@@ -386,15 +407,23 @@ canvas{position:absolute;inset:0;pointer-events:none}
         <div id="vcr-list"></div>
       </div>
 
-      <div class="panel" id="evt-panel">
-        <div class="plabel">Event Name and Date</div>
-        <input id="evt-name" class="evt-inp" type="text" placeholder="Event name — shown on PDF">
-        <input id="evt-date" class="evt-inp" type="date" style="margin-top:6px">
-      </div>
-
-      <div class="panel" id="notes-panel">
-        <div class="plabel">Event Notes</div>
-        <textarea id="evt-notes" placeholder="Add notes, instructions, or details for your event team or venue — included in the exported PDF." style="width:100%;min-height:80px;padding:8px;background:var(--surf2);border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:12px;font-family:var(--font);resize:vertical;outline:none;box-sizing:border-box;line-height:1.5"></textarea>
+      <div class="panel" id="event-details-panel">
+        <div class="panel-toggle" id="event-details-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
+          <span class="plabel" style="margin-bottom:0">Event Details</span>
+          <i class="ti ti-chevron-down" id="event-details-chevron" style="color:var(--tx3);font-size:14px;transition:transform .2s"></i>
+        </div>
+        <div id="event-details-body" style="display:none;margin-top:12px">
+          <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:0">Event Name</div>
+          <input id="evt-name" class="evt-inp" type="text" placeholder="Event name — shown on PDF">
+          <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:10px">Event Date</div>
+          <input id="evt-date" class="evt-inp" type="date">
+          <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:10px">Notes</div>
+          <textarea id="evt-notes" placeholder="Add notes, instructions, or details for your event team or venue — included in the exported PDF." style="width:100%;min-height:80px;padding:8px;background:var(--surf2);border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:12px;font-family:var(--font);resize:vertical;outline:none;box-sizing:border-box;line-height:1.5"></textarea>
+          <div id="settings-panel" style="margin-top:12px;display:none">
+            <div class="plabel" style="font-size:10px;margin-bottom:4px">Access &amp; History</div>
+            <div id="settings-body"></div>
+          </div>
+        </div>
       </div>
 
       <div class="panel">
@@ -407,18 +436,21 @@ canvas{position:absolute;inset:0;pointer-events:none}
         <div id="vl"><div style="font-size:10px;color:var(--tx3)">No elements placed yet</div></div>
       </div>
 
+      <div class="panel" id="vi-panel">
+        <div class="plabel">Venue Infrastructure</div>
+        <div id="vil"></div>
+      </div>
+
+      <div class="panel" id="sc-panel">
+        <div class="plabel">Safety &amp; Compliance</div>
+        <div id="sml"></div>
+      </div>
+
       <div class="panel">
-        <div class="plabel">Capacity &amp; Zones</div>
-        <div style="font-size:12px;color:var(--tx3);line-height:1.55;padding:2px 0 8px">Draw a border around your event space to calculate usable square footage and estimated capacity.</div>
-        <div class="vrow" style="margin-bottom:6px">
-          <button class="vbtn gold" id="zbrd-sb" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-vector-triangle" style="font-size:13px"></i>Draw Venue Border</button>
-        </div>
-        <div class="vrow">
-          <button class="vbtn gold-ol" id="zbrd-vip" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-plus" style="font-size:12px"></i>Add Sub-zone (VIP etc.)</button>
-        </div>
-        <div class="vrow" style="margin-top:6px">
-          <button class="vbtn" id="zr" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-ban" style="font-size:12px"></i>Restrict</button>
-          <button class="vbtn" id="ze" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-eraser" style="font-size:12px"></i>Erase Zone</button>
+        <div class="plabel">Capacity</div>
+        <div style="display:none">
+          <button class="vbtn gold" id="zbrd-sb"></button>
+          <button class="vbtn gold-ol" id="zbrd-vip"></button>
         </div>
         <div style="margin-top:8px">
           <div id="cap-na" class="cap-na">No borders drawn yet</div>
@@ -434,18 +466,8 @@ canvas{position:absolute;inset:0;pointer-events:none}
       </div>
 
       <div class="panel">
-        <div class="plabel">Site Management</div>
-        <div id="sml"></div>
-      </div>
-
-      <div class="panel">
         <div class="plabel">Color Key</div>
         <div id="ckey"></div>
-      </div>
-
-      <div class="panel" id="settings-panel" style="display:none">
-        <div class="plabel">Event Settings</div>
-        <div id="settings-body"></div>
       </div>
 
       <div class="panel" style="display:none">
@@ -601,7 +623,7 @@ function undo(){
   S.els=snap.els;S.zonePolys=snap.zonePolys;
   S.adaPaths=snap.adaPaths;S.dims=snap.dims;S.fences=snap.fences||[];S.firstAids=snap.firstAids;
   if(snap.colorTags)S.colorTags=snap.colorTags;
-  renderEls();renderColorKey();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+  renderEls();renderColorKey();redrawZones();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
 }
 document.getElementById('bundo').addEventListener('click',undo);
 
@@ -1017,7 +1039,7 @@ function runRules(){
   if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.'});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.'});}
   if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.'});
   document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
-  renderEls();updateCap();renderSiteManagement();renderVenueChanges();
+  renderEls();updateCap();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();
 }
 
 // ── Render Elements ────────────────────────────────────────────────────────
@@ -1126,7 +1148,7 @@ function renderEls(){
         ev.stopPropagation();ev.preventDefault();
         pushUndo();S.els=S.els.filter(x=>x.id!==el.id);
         if(S.selId===el.id)S.selId=null;
-        renderEls();renderSiteManagement();runRules();
+        renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
       });
       wrap.appendChild(db);
     }else{
@@ -1201,15 +1223,49 @@ function makeDrag(div,el){
   });
 }
 
-// ── Site Management sidebar ────────────────────────────────────────────────
-function renderSiteManagement(){
-  const d=document.getElementById('sml');if(!d)return;
-  const smTypes=['electric','water','trash','extinguisher','security'];
-  const smLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',extinguisher:'Fire Extinguisher',security:'Security'};
+// ── Venue Infrastructure sidebar ───────────────────────────────────────────
+function renderVenueInfra(){
+  const d=document.getElementById('vil');if(!d)return;
+  const viTypes=['electric','water','trash'];
+  const viLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin'};
   const counts={};
-  smTypes.forEach(type=>{const c=S.els.filter(e=>e.type===type).length;if(c)counts[type]=c;});
+  viTypes.forEach(type=>{const c=S.els.filter(e=>e.type===type).length;if(c)counts[type]=c;});
+  let html='';
+  const countKeys=Object.keys(counts);
+  if(countKeys.length){
+    html+='<div class="plabel-sub" style="margin-top:0">Placed</div>';
+    viTypes.forEach(type=>{
+      if(!counts[type])return;
+      html+=`<div class="ec-row"><span class="ec-name">${viLabels[type]}</span><span class="ec-val">(${counts[type]})</span></div>`;
+    });
+  }
+  if(S.fences.length){
+    html+='<div class="plabel-sub" style="margin-top:10px">Fencing</div>';
+    S.fences.forEach(f=>{
+      const flbl=(f.material||'Fence')+(f.totalFt?' — '+Math.round(f.totalFt)+' ft':'');
+      html+='<div class="vl-row" data-fid="'+f.id+'"><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+flbl+'</span><button class="vl-del fence-del-btn" data-fid="'+f.id+'" title="Delete fence run">×</button></div>';
+    });
+  }
+  d.innerHTML=html;
+  d.querySelectorAll('.fence-del-btn').forEach(btn=>{
+    btn.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      const fid=parseInt(ev.currentTarget.dataset.fid);
+      pushUndo();S.fences=S.fences.filter(f=>f.id!==fid);
+      drawDims();renderVenueInfra();runRules();
+    });
+  });
+}
+
+// ── Safety & Compliance sidebar ────────────────────────────────────────────
+function renderSafetyCompliance(){
+  const d=document.getElementById('sml');if(!d)return;
+  const scTypes=['extinguisher','security'];
+  const scLabels={extinguisher:'Fire Extinguisher',security:'Security'};
+  const counts={};
+  scTypes.forEach(type=>{const c=S.els.filter(e=>e.type===type).length;if(c)counts[type]=c;});
   const ingressEls=S.els.filter(e=>e.type==='ingress');
-  const tnMapSM=getTypeNums();
+  const tnMap=getTypeNums();
   let html='<div class="plabel-sub" style="margin-top:0">First Aid</div>';
   if(S.firstAids.length){
     html+=S.firstAids.map(c=>`<div class="fa-item"><strong>${c.name}</strong><span>${c.cert}</span></div>`).join('');
@@ -1220,21 +1276,14 @@ function renderSiteManagement(){
   const countKeys=Object.keys(counts);
   if(countKeys.length){
     html+='<div class="plabel-sub" style="margin-top:10px">Placed</div>';
-    smTypes.forEach(type=>{
+    scTypes.forEach(type=>{
       if(!counts[type])return;
-      html+=`<div class="ec-row"><span class="ec-name">${smLabels[type]}</span><span class="ec-val">(${counts[type]})</span></div>`;
+      html+=`<div class="ec-row"><span class="ec-name">${scLabels[type]}</span><span class="ec-val">(${counts[type]})</span></div>`;
     });
   }
   if(ingressEls.length){
     html+='<div class="plabel-sub" style="margin-top:10px">Ingress / Egress</div>';
-    html+=ingressEls.map(el=>`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMapSM[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.vendorName||el.label||'Gate'}</span><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove gate">×</button></div>`).join('');
-  }
-  if(S.fences.length){
-    html+='<div class="plabel-sub" style="margin-top:10px">Fencing</div>';
-    S.fences.forEach(f=>{
-      const flbl=(f.material||'Fence')+(f.totalFt?' — '+Math.round(f.totalFt)+' ft':'');
-      html+='<div class="vl-row" data-fid="'+f.id+'"><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+flbl+'</span><button class="vl-del fence-del-btn" data-fid="'+f.id+'" title="Delete fence run">×</button></div>';
-    });
+    html+=ingressEls.map(el=>`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMap[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.vendorName||el.label||'Gate'}</span><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove gate">×</button></div>`).join('');
   }
   d.innerHTML=html;
   const addBtn=d.querySelector('#add-fa-btn');
@@ -1245,7 +1294,7 @@ function renderSiteManagement(){
         ()=>{
           const name=document.getElementById('fan').value.trim()||'Unknown';
           const cert=document.getElementById('fac2').value.trim()||'CPR';
-          S.firstAids.push({name,cert});renderSiteManagement();
+          S.firstAids.push({name,cert});renderSafetyCompliance();
         },'Add Contact');
     });
   }
@@ -1255,19 +1304,11 @@ function renderSiteManagement(){
       const id=parseInt(ev.currentTarget.dataset.id);
       pushUndo();S.els=S.els.filter(x=>x.id!==id);
       if(S.selId===id)S.selId=null;
-      renderEls();renderSiteManagement();runRules();
-    });
-  });
-  d.querySelectorAll('.fence-del-btn').forEach(btn=>{
-    btn.addEventListener('click',ev=>{
-      ev.stopPropagation();
-      const fid=parseInt(ev.currentTarget.dataset.fid);
-      pushUndo();S.fences=S.fences.filter(f=>f.id!==fid);
-      drawDims();renderSiteManagement();runRules();
+      renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
     });
   });
 }
-function renderFal(){renderSiteManagement();}
+function renderFal(){renderVenueInfra();renderSafetyCompliance();}
 function renderVendorList(){
   const vl=document.getElementById('vl');if(!vl)return;
   const tnMap=getTypeNums();
@@ -1288,7 +1329,7 @@ function renderVendorList(){
       if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==id);}
       S.els=S.els.filter(x=>x.id!==id);
       if(S.selId===id)S.selId=null;
-      renderVendorList();renderEls();renderSiteManagement();runRules();
+      renderVendorList();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
     });
   });
   vl.querySelectorAll('.vl-edt').forEach(btn=>{btn.addEventListener('click',ev=>{ev.stopPropagation();const id=parseInt(ev.currentTarget.dataset.id);const found=S.els.find(x=>x.id===id);if(found)editEl(found);});});
@@ -1388,8 +1429,8 @@ function colorTagPickerHtml(selectedId){const swatches=S.colorTags.map(t=>`<div 
 function wireTagPicker(){const row=document.querySelector('.tag-picker-row');if(!row)return;const hidInp=document.getElementById('tag-sel-id');const colInp=document.getElementById('tag-custom-input');row.querySelectorAll('.tag-swatch[data-tagid]').forEach(sw=>{sw.addEventListener('click',()=>{row.querySelectorAll('.tag-swatch').forEach(s=>s.classList.remove('selected'));sw.classList.add('selected');hidInp.value=sw.dataset.tagid;});});const cb=row.querySelector('.tag-custom-btn');if(cb)cb.addEventListener('click',()=>colInp.click());if(colInp)colInp.addEventListener('change',()=>{const hex=colInp.value;let tag=S.colorTags.find(t=>t.hex.toLowerCase()===hex.toLowerCase());if(!tag){tag={id:'custom-'+Date.now(),hex,name:null};S.colorTags.push(tag);}row.querySelectorAll('.tag-swatch').forEach(s=>s.classList.remove('selected'));hidInp.value=tag.id;if(tag.name===null)promptNameColorTag(tag.id);});}
 
 // ── Venue mode toolbar ─────────────────────────────────────────────────────
-const EL_DROP_NORMAL=`<option value="" disabled selected>Add Elements to Event Site</option><option value="tent10">10×10 Tent</option><option value="tent20">10×20 Tent</option><option value="customtent">+ Add custom tent size…</option><option value="stage">Stage</option><option value="truck">Food Truck</option><option value="gen">Generator</option><option value="mix">Mix Platform</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
-const EL_DROP_VENUE=`<option value="" disabled selected>Add Venue Elements</option><option value="stage">Stage</option><option value="gen">Generator</option><option value="mix">Mix Platform</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
+const EL_DROP_NORMAL=`<option value="" disabled selected>Add Elements to Event Site</option><option value="tent10">10×10 Tent</option><option value="tent20">10×20 Tent</option><option value="customtent">+ Add custom tent size…</option><option value="truck">Food Truck</option><option value="stage">Stage</option><option value="custom">+ Add your own element…</option><option value="label">+ Add Map Label…</option>`;
+const EL_DROP_VENUE=`<option value="" disabled selected>Add Venue Elements</option><option value="stage">Stage</option><option value="gen">Generator</option><option value="─────────" disabled>─────────</option><option value="custom">+ Add your own element…</option>`;
 
 function enterVenueMode(editLabel,editId,editPin){
   S.venueMode=true;
@@ -1423,7 +1464,7 @@ function exitVenueMode(){
 }
 document.getElementById('vm-exit-btn').addEventListener('click',()=>{
   modal('Exit Venue Mode?','Your current canvas will be cleared. Any unsaved venue work will be lost.',
-    '',()=>{exitVenueMode();pushUndo();S.els=[];S.zonePolys=[];S.adaPaths=[];S.dims=[];S.fences=[];S.firstAids=[];S.selId=null;renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();},'Exit');
+    '',()=>{exitVenueMode();pushUndo();S.els=[];S.zonePolys=[];S.adaPaths=[];S.dims=[];S.fences=[];S.firstAids=[];S.selId=null;renderEls();redrawZones();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();},'Exit');
 });
 
 // ── Place elements ─────────────────────────────────────────────────────────
@@ -1478,14 +1519,14 @@ function place(type,x,y){
     modal('Place Ingress/Egress','ADA minimum is 10ft wide. Both directions must be clear.',mf('Gate Label','inlbl','text','','e.g. Main Entrance, North Gate')+mf('Opening Width (ft)','inw','number','12'),()=>{
       pushUndo();const lbl=document.getElementById('inlbl').value.trim()||'Ingress/Egress',wFt=parseFloat(document.getElementById('inw').value)||12;
       S.els.push({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt,hFt:8,label:lbl,vendorName:lbl,rot:0,hr:false,sr:false});
-      renderEls();renderSiteManagement();runRules();
+      renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
     });return;
   }
   if(type==='firstaid'){
     modal('Place First Aid Station','Document the certified responder at this station.',mf('Responder Name','fan','text','','Full name')+mf('Certification','fac2','text','','e.g. CPR/AED, EMT, Paramedic'),()=>{
       pushUndo();const name=document.getElementById('fan').value.trim()||'Unknown',cert=document.getElementById('fac2').value.trim()||'CPR',eid=S.idCtr++;
       S.els.push({id:eid,type,lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:'First Aid',vendorName:name,cpName:name,rot:0,hr:false,sr:false});
-      S.firstAids.push({eid,name,cert});renderSiteManagement();renderVendorList();renderEls();runRules();
+      S.firstAids.push({eid,name,cert});renderVenueInfra();renderSafetyCompliance();renderVendorList();renderEls();runRules();
     });return;
   }
   if(type==='label'){
@@ -1504,7 +1545,7 @@ function place(type,x,y){
     document.getElementById('cust-shape').addEventListener('change',function(){const c=this.value==='circle';document.getElementById('cust-dims-sq').style.display=c?'none':'';document.getElementById('cust-dims-ci').style.display=c?'':'none';});
     wireTagPicker();return;
   }
-  pushUndo();S.els.push(base());renderVendorList();renderEls();renderSiteManagement();runRules();
+  pushUndo();S.els.push(base());renderVendorList();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
 }
 
 function editEl(el){
@@ -1550,8 +1591,9 @@ function setTool(id){
   clearTimeout(overlapWarnTimeout);overlapWarnTimeout=null;
   S.tool=id;
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.ctc-btn').forEach(b=>b.classList.remove('active'));
   ['ba','bfence'].forEach(bid=>{const _b=document.getElementById(bid);if(_b)_b.classList.remove('active');});
-  const m={select:'bsel',ada:'ba',dim:'bdim',fence:'bfence',restrict:'zr',border:'zbrd',erase:'ze'};
+  const m={select:'ctc-select',ada:'ba',dim:'ctc-measure',fence:'bfence',restrict:'zr',border:'zbrd',erase:'ze'};
   const btn=document.getElementById(m[id]);if(btn)btn.classList.add('active');
   // Select passes clicks through to map; every other tool needs canvas input
   cw.style.pointerEvents=id==='select'?'none':'auto';
@@ -1568,7 +1610,7 @@ cw.addEventListener('mousedown',e=>{
   const r=cw.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
   if(S.tool==='dim'){e.preventDefault();e.stopPropagation();dimStart={x,y};return;}
   if(S.tool==='fence'){
-    if(e.detail===2){if(fenceCur.length>=2){pushUndo();const fPts=[...fenceCur];const fTot=fPts.slice(1).reduce((s,p,i)=>{const dlat=(p.lat-fPts[i].lat)*364000,dlng=(p.lng-fPts[i].lng)*364000*Math.cos(p.lat*Math.PI/180);return s+Math.sqrt(dlat*dlat+dlng*dlng);},0);S.fences.push({id:S.idCtr++,material:fenceMaterial,pts:fPts,totalFt:Math.round(fTot)});drawDims();renderSiteManagement();}fenceCur=[];drawDims();const _ftt=document.getElementById('tool-tip');if(_ftt)_ftt.style.display='none';return;}
+    if(e.detail===2){if(fenceCur.length>=2){pushUndo();const fPts=[...fenceCur];const fTot=fPts.slice(1).reduce((s,p,i)=>{const dlat=(p.lat-fPts[i].lat)*364000,dlng=(p.lng-fPts[i].lng)*364000*Math.cos(p.lat*Math.PI/180);return s+Math.sqrt(dlat*dlat+dlng*dlng);},0);S.fences.push({id:S.idCtr++,material:fenceMaterial,pts:fPts,totalFt:Math.round(fTot)});drawDims();renderVenueInfra();renderSafetyCompliance();}fenceCur=[];drawDims();const _ftt=document.getElementById('tool-tip');if(_ftt)_ftt.style.display='none';return;}
     e.preventDefault();e.stopPropagation();
     const fll=pixelToLatLng(x,y);fenceCur.push({lat:fll.lat,lng:fll.lng});drawDims();return;
   }
@@ -1640,7 +1682,7 @@ document.addEventListener('keydown',e=>{
       pushUndo();const found=S.els.find(x=>x.id===S.selId);
       if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==S.selId);}
       S.els=S.els.filter(x=>x.id!==S.selId);S.selId=null;
-      renderVendorList();renderEls();renderSiteManagement();runRules();
+      renderVendorList();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
     }
   }
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}
@@ -1662,6 +1704,8 @@ document.getElementById('zbrd-vip').addEventListener('click',()=>{
 [['bsel','select'],['zr','restrict'],['ze','erase'],['bdim','dim']].forEach(([id,tool])=>{
   const b=document.getElementById(id);if(b)b.addEventListener('click',()=>setTool(tool));
 });
+document.getElementById('ctc-measure').addEventListener('click',()=>setTool('dim'));
+document.getElementById('ctc-select').addEventListener('click',()=>setTool('select'));
 (document.getElementById('ba')||document.createElement('span')).addEventListener('click',()=>{
   modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',
     msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+
@@ -1669,7 +1713,10 @@ document.getElementById('zbrd-vip').addEventListener('click',()=>{
     ()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');
 });
 document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
-document.getElementById('sm-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='fence'){modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},'Start Drawing');return;}setTool(val);});
+document.getElementById('define-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
+document.getElementById('vi-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},'Start Drawing');return;}setTool(val);});
+document.getElementById('sc-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}setTool(val);});
+document.getElementById('export-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='safety'){document.getElementById('bhideutil').click();return;}if(val==='full'){document.getElementById('bpdf').click();}});
 
 // ── Venue helpers ──────────────────────────────────────────────────────────
 function venueDataSnapshot(){
@@ -1764,7 +1811,7 @@ function createVenue(){
       pushUndo();
       S.els=[];S.zonePolys=[];S.adaPaths=[];S.dims=[];S.firstAids=[];S.selId=null;
       S.activeVenueId=null;S.loadedVenueSnapshot=null;
-      renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+      renderEls();redrawZones();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
       enterVenueMode();
     },'Start Venue');
 }
@@ -1836,7 +1883,7 @@ async function useVenue(id){
   S.activeVenueId=id;
   S.loadedVenueSnapshot=JSON.parse(JSON.stringify(vd));
   if(S.idCtr<2)S.idCtr=2;
-  redrawZones();renderEls();renderColorKey();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+  redrawZones();renderEls();renderColorKey();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
   renderVenueChanges();
   showToast(`"${data.name}" loaded.`);
 
@@ -1879,7 +1926,7 @@ function editVenuePinPrompt(id,name){
       S.fences=(vd.fences||[]).map(f=>({...f}));
       S.adaPaths=[];S.dims=[];S.firstAids=[];S.selId=null;
       S.activeVenueId=null;S.loadedVenueSnapshot=null;
-      redrawZones();renderEls();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+      redrawZones();renderEls();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
       enterVenueMode(`EDITING VENUE: ${data.name}`,id,pin);
       showToast(`Editing "${data.name}" — make changes, then click Save Venue.`);
       document.getElementById('vm-save-btn').onclick=()=>saveVenue(id,pin);
@@ -1904,7 +1951,7 @@ async function deleteVenue(id,name,pin){
         pushUndo();
         S.els=[];S.zonePolys=[];S.adaPaths=[];S.dims=[];S.firstAids=[];S.selId=null;
         S.activeVenueId=null;S.loadedVenueSnapshot=null;
-        renderEls();redrawZones();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+        renderEls();redrawZones();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
         showToast(`"${result.name||name}" deleted.`);
       }catch(err){showToast('Network error — venue not deleted.',true);}
     },'Delete Venue');
@@ -2024,7 +2071,7 @@ async function openEvents(){
           if(gmap&&state.mapCenter&&state.mapZoom){gmap.setCenter(state.mapCenter);gmap.setZoom(state.mapZoom);}
           S.activeVenueId=state.activeVenueId||null;
           S.loadedVenueSnapshot=null;
-          redrawZones();renderEls();renderColorKey();drawAda();drawDims();renderSiteManagement();renderVendorList();runRules();
+          redrawZones();renderEls();renderColorKey();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
           S.currentEventId=ev.id;
           S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
           updateSettingsPanelVisibility();
@@ -2058,6 +2105,13 @@ async function openEvents(){
 
 document.getElementById('bsave-evt').addEventListener('click',()=>requireLogin(saveEvent));
 document.getElementById('evt-notes').addEventListener('input',function(){S.eventNotes=this.value;});
+document.getElementById('event-details-toggle').addEventListener('click',()=>{
+  const body=document.getElementById('event-details-body');
+  const chev=document.getElementById('event-details-chevron');
+  const open=body.style.display==='none';
+  body.style.display=open?'':'none';
+  chev.style.transform=open?'rotate(180deg)':'rotate(0deg)';
+});
 document.getElementById('bopen').addEventListener('click',()=>requireLogin(openEvents));
 
 document.getElementById('brand-logo').addEventListener('click',()=>{
@@ -2079,7 +2133,7 @@ document.getElementById('brand-logo').addEventListener('click',()=>{
 
 function resetCanvas(){
   pushUndo();
-  S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderColorKey();renderSiteManagement();renderVendorList();
+  S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderColorKey();renderVenueInfra();renderSafetyCompliance();renderVendorList();
   S.dims=[];drawDims();
   S.zonePolys=[];redrawZones();
   S.adaPaths=[];S.curAda=[];S.hasSoftSurface=null;S.undoStack=[];
@@ -2186,7 +2240,7 @@ document.getElementById('bclr').addEventListener('click',()=>{
       const v=document.getElementById('clr-opt').value;
       if(v==='all'){resetCanvas();S.currentEventId=null;S.currentEventMeta=null;updateSettingsPanelVisibility();return;}
       pushUndo();
-      if(v==='els'){S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderColorKey();renderSiteManagement();renderVendorList();}
+      if(v==='els'){S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderColorKey();renderVenueInfra();renderSafetyCompliance();renderVendorList();}
       if(v==='els'||v==='dims'){S.dims=[];drawDims();}
       if(v==='zones'){S.zonePolys=[];redrawZones();}
       drawAda();runRules();
@@ -2237,25 +2291,43 @@ function renderVenueChanges(){
 // ── Color key ──────────────────────────────────────────────────────────────
 function renderColorKey(){
   const eventOnly=new Set(['Vendor/Activity Tent','Cooking Tent','Food Truck']);
-  let rows=[
-    {type:'swatch',bg:'#fff',bord:'#2dd4a0',lbl:'Vendor/Activity Tent',dim:'Non-cooking use'},
-    {type:'swatch',bg:'#facc15',bord:'#eab308',lbl:'Cooking Tent',dim:'Cooking use — food safety rules apply'},
-    {type:'swatch',bg:'#ef4444',bord:'#b91c1c',lbl:'Food Truck',dim:'20×8 ft (default)'},
-    {type:'swatch',bg:'#a78bfa25',bord:'#a78bfa',lbl:'Stage',dim:'20×16 ft (default)'},
-    {type:'swatch',bg:'rgba(34,197,94,0.2)',bord:'#22c55e',lbl:'Ingress / Egress',dim:'10+ ft wide'},
-    {type:'swatch',bg:'#f0525225',bord:'#f05252',lbl:'First Aid / Fire Ext.',dim:'Variable'},
-    {type:'swatch',bg:'#fbbf2425',bord:'#fbbf24',lbl:'Generator',dim:'6×6 ft'},
-    {type:'swatch',bg:'#c084fc25',bord:'#c084fc',lbl:'Mix Platform',dim:'10×8 ft'},
-    ...([...new Set(S.els.filter(e=>e.colorTag).map(e=>e.colorTag))].map(tid=>{const tag=S.colorTags.find(t=>t.id===tid)||{hex:'#8b93a8',name:null,id:tid};const lbl=colorTagLabel(tid);return{type:'swatch',bg:tag.hex+'40',bord:tag.hex,lbl,dim:'Custom Element / Tent',tid};})),
-    {type:'svg',svg:`<svg viewBox="0 0 24 24" width="14" height="14"><path d="M14.5 3 5 13.5h7.5L10 21l9.5-11H12z" fill="#FBBD2F" stroke="#d4a012" stroke-width="0.5"/></svg>`,lbl:'Electric Source',dim:'Utility marker'},
-    {type:'svg',svg:`<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2C10 6 4 12 4 16a8 8 0 0016 0C20 12 14 6 12 2z" fill="#3B82F6" stroke="#2563eb" stroke-width="0.8"/></svg>`,lbl:'Water Source',dim:'Utility marker'},
-    {type:'circle',color:'#8b93a8',lbl:'Trash Bin',dim:'Utility marker'},
-    {type:'line',color:'rgba(79,126,248,0.65)',lbl:'ADA Path',dim:'Accessible routes'},
-    {type:'line',color:'#f5a623',lbl:'Dimension',dim:'Measured distances'},
-    {type:'zone',color:'#f05252',lbl:'Restricted Zone',dim:'Off-limits area'},
-    {type:'zone',color:'#f5a623',lbl:'Venue Border',dim:'Event boundary / capacity'},
-    {type:'zone',color:'#2dd4a0',lbl:'Sub-zone',dim:'VIP, Beer Garden, etc.'}
-  ];
+  const closedBorders=S.zonePolys.filter(z=>z.type==='border'&&!z.open&&z.pts.length>=3);
+  const subzoneCK=new Set();
+  closedBorders.forEach((inner,i)=>{closedBorders.forEach((outer,j)=>{if(i!==j&&isBorderNestedIn(inner,outer))subzoneCK.add(inner);});});
+  let rows=[];
+  if(S.els.some(e=>{const t=TYPES[e.type];return t&&t.tent&&e.tentType!=='cooking'&&e.tentType!=='food'&&!e.colorTag;}))
+    rows.push({type:'swatch',bg:'#fff',bord:'#2dd4a0',lbl:'Vendor/Activity Tent',dim:'Non-cooking use'});
+  if(S.els.some(e=>{const t=TYPES[e.type];return t&&t.tent&&(e.tentType==='cooking'||e.tentType==='food');}))
+    rows.push({type:'swatch',bg:'#facc15',bord:'#eab308',lbl:'Cooking Tent',dim:'Cooking use — food safety rules apply'});
+  if(S.els.some(e=>e.type==='truck'))
+    rows.push({type:'swatch',bg:'#ef4444',bord:'#b91c1c',lbl:'Food Truck',dim:'20×8 ft (default)'});
+  if(S.els.some(e=>e.type==='stage'))
+    rows.push({type:'swatch',bg:'#a78bfa25',bord:'#a78bfa',lbl:'Stage',dim:'20×16 ft (default)'});
+  if(S.els.some(e=>e.type==='ingress'))
+    rows.push({type:'swatch',bg:'rgba(34,197,94,0.2)',bord:'#22c55e',lbl:'Ingress / Egress',dim:'10+ ft wide'});
+  if(S.firstAids.length>0||S.els.some(e=>e.type==='extinguisher'))
+    rows.push({type:'swatch',bg:'#f0525225',bord:'#f05252',lbl:'First Aid / Fire Ext.',dim:'Variable'});
+  if(S.els.some(e=>e.type==='gen'))
+    rows.push({type:'swatch',bg:'#fbbf2425',bord:'#fbbf24',lbl:'Generator',dim:'6×6 ft'});
+  if(S.els.some(e=>e.type==='mix'))
+    rows.push({type:'swatch',bg:'#c084fc25',bord:'#c084fc',lbl:'Mix Platform',dim:'10×8 ft'});
+  rows.push(...([...new Set(S.els.filter(e=>e.colorTag).map(e=>e.colorTag))].map(tid=>{const tag=S.colorTags.find(t=>t.id===tid)||{hex:'#8b93a8',name:null,id:tid};const lbl=colorTagLabel(tid);return{type:'swatch',bg:tag.hex+'40',bord:tag.hex,lbl,dim:'Custom Element / Tent',tid};})));
+  if(S.els.some(e=>e.type==='electric'))
+    rows.push({type:'svg',svg:`<svg viewBox="0 0 24 24" width="14" height="14"><path d="M14.5 3 5 13.5h7.5L10 21l9.5-11H12z" fill="#FBBD2F" stroke="#d4a012" stroke-width="0.5"/></svg>`,lbl:'Electric Source',dim:'Utility marker'});
+  if(S.els.some(e=>e.type==='water'))
+    rows.push({type:'svg',svg:`<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2C10 6 4 12 4 16a8 8 0 0016 0C20 12 14 6 12 2z" fill="#3B82F6" stroke="#2563eb" stroke-width="0.8"/></svg>`,lbl:'Water Source',dim:'Utility marker'});
+  if(S.els.some(e=>e.type==='trash'))
+    rows.push({type:'circle',color:'#8b93a8',lbl:'Trash Bin',dim:'Utility marker'});
+  if(S.adaPaths.length>0)
+    rows.push({type:'line',color:'rgba(79,126,248,0.65)',lbl:'ADA Path',dim:'Accessible routes'});
+  if(S.dims.length>0)
+    rows.push({type:'line',color:'#f5a623',lbl:'Dimension',dim:'Measured distances'});
+  if(S.zonePolys.some(z=>z.type==='restrict'&&!z.open))
+    rows.push({type:'zone',color:'#f05252',lbl:'Restricted Zone',dim:'Off-limits area'});
+  if(closedBorders.some(z=>!subzoneCK.has(z)))
+    rows.push({type:'zone',color:'#f5a623',lbl:'Venue Border',dim:'Event boundary / capacity'});
+  if(subzoneCK.size>0)
+    rows.push({type:'zone',color:'#2dd4a0',lbl:'Sub-zone',dim:'VIP, Beer Garden, etc.'});
   if(S.venueMode)rows=rows.filter(r=>!eventOnly.has(r.lbl));
   document.getElementById('ckey').innerHTML=rows.map(r=>{
     let sw;
@@ -3217,7 +3289,7 @@ async function init(){
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 sz();
-renderColorKey();renderVendorList();renderSiteManagement();renderVenueChanges();
+renderColorKey();renderVendorList();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();
 // pointer-events: none on cw initially (select tool)
 cw.style.pointerEvents='none';
 init();
