@@ -80,7 +80,11 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #onboard-sub{font-size:12.5px;color:rgba(255,255,255,0.7);font-family:var(--font);font-weight:500;line-height:1.55;max-width:260px}
 #onboard-dismiss{margin-top:4px;padding:6px 18px;background:transparent;border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:rgba(255,255,255,0.55);font-size:11px;font-family:var(--font);font-weight:600;cursor:pointer;transition:all .14s}
 #onboard-dismiss:hover{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.85);border-color:rgba(255,255,255,0.4)}
-.onboard-glow{box-shadow:0 0 0 2px rgba(45,212,160,0.75),0 0 14px rgba(45,212,160,0.45)!important;border-color:rgba(45,212,160,0.8)!important;transition:box-shadow .3s ease,border-color .3s ease}
+#onboard-icon{font-size:32px;color:var(--gold);margin-bottom:2px}
+#onboard-sub2{display:block;margin-top:5px;color:rgba(255,255,255,0.55);font-size:11.5px}
+@keyframes onboard-pulse{0%,100%{box-shadow:0 0 0 2px rgba(45,212,160,0.75),0 0 14px rgba(45,212,160,0.45)}50%{box-shadow:0 0 0 3px rgba(45,212,160,0.9),0 0 22px rgba(45,212,160,0.65)}}
+.onboard-glow{animation:onboard-pulse 1.8s ease-in-out infinite!important;border-color:rgba(45,212,160,0.8)!important;transition:none!important}
+.tb.onboard-glow{box-shadow:0 0 0 2px rgba(45,212,160,0.75),0 0 14px rgba(45,212,160,0.45)!important;border-radius:9px}
 .ctc-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:transparent;border:1px solid transparent;color:rgba(255,255,255,0.62);font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
 .ctc-btn i{font-size:15px;line-height:1}
 .ctc-btn:hover{background:rgba(255,255,255,0.16);color:#fff;border-color:rgba(255,255,255,0.2)}
@@ -90,12 +94,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .tb.util-hidden:hover{background:rgba(244,81,64,0.32)!important;border-color:rgba(244,81,64,0.65)!important}
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
-#sb{width:260px;background:var(--bg);border-left:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;box-shadow:-4px 0 28px rgba(0,0,0,0.1);position:relative}
+#sb{width:260px;background:var(--surf);border-left:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;box-shadow:-4px 0 28px rgba(0,0,0,0.1);position:relative}
 .sb-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:thin}
 .sb-scroll::-webkit-scrollbar{width:6px}
 .sb-scroll::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
 .panel{padding:16px;border-bottom:1px solid var(--brd);transition:background .2s ease}
-.panel.has-content{background:var(--surf)}
+.panel.has-content{background:rgba(196,181,253,0.07)}
 .plabel{font-size:12px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--slate);margin-bottom:12px}
 .plabel-sub{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--acc);margin-bottom:8px;margin-top:12px}
 
@@ -390,7 +394,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div id="cv-area">
     <div id="map"></div>
     <div id="map-overlay"></div>
-    <div id="onboard-card"><div id="onboard-heading">Let's Get Started!</div><div id="onboard-sub">Search for venue or address and begin placing elements</div><button id="onboard-dismiss">Dismiss</button></div>
+    <div id="onboard-card"><i class="ti ti-calendar-star" id="onboard-icon"></i><div id="onboard-heading">Let's Get Started!</div><div id="onboard-sub"><span>Search your event venue or address or choose from your saved events.</span><span id="onboard-sub2">Then begin placing elements on your event site!</span></div><button id="onboard-dismiss">Dismiss</button></div>
     <div id="canvas-tool-ctrl">
       <button class="ctc-btn" id="ctc-measure" title="Measure distance"><i class="ti ti-ruler-2"></i><span>Measure</span></button>
       <button class="ctc-btn active" id="ctc-select" title="Pan and adjust the map"><i class="ti ti-map-2"></i><span>Adjust Map</span></button>
@@ -437,7 +441,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div class="panel has-content" id="event-details-panel">
         <div class="panel-toggle" id="event-details-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
           <span class="plabel" style="margin-bottom:0">Event Details</span>
-          <i class="ti ti-chevron-down" id="event-details-chevron" style="color:var(--orange);font-size:16px;transition:transform .2s;flex-shrink:0;transform:rotate(180deg)"></i>
+          <svg id="event-details-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div id="event-details-body" style="display:block;margin-top:12px">
           <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:0">Event Name</div>
@@ -1771,10 +1775,10 @@ document.getElementById('ctc-select').addEventListener('click',()=>setTool('sele
     (S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),
     ()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');
 });
-document.getElementById('el-drop').addEventListener('change',e=>{clearGlow();updateOnboardCard();const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
-document.getElementById('define-drop').addEventListener('change',e=>{clearGlow();updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
-document.getElementById('vi-drop').addEventListener('change',e=>{clearGlow();updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
-document.getElementById('sc-drop').addEventListener('change',e=>{clearGlow();updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='firstaid'){addFirstAidContact();return;}setTool(val);});
+document.getElementById('el-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
+document.getElementById('define-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
+document.getElementById('vi-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
+document.getElementById('sc-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='firstaid'){addFirstAidContact();return;}setTool(val);});
 document.getElementById('export-trigger').addEventListener('click',()=>{
   modal('Export Site Plan','Choose which version of your map to export.',
     `<div class="export-opt-card" data-mode="full"><div class="export-opt-title"><i class="ti ti-map-2"></i>Full Operational Map</div><div class="export-opt-blurb">Export will keep all information viewable.</div></div><div class="export-opt-card" data-mode="safety"><div class="export-opt-title"><i class="ti ti-shield-check"></i>Safety Review Ready Map</div><div class="export-opt-blurb">Utilities and color tags are not captured for this view.</div></div>`,
@@ -2191,22 +2195,21 @@ document.getElementById('brand-logo').addEventListener('click',()=>{
     },'Log In');
 });
 
-let glowTimeout=null;
 function startGlow(){
   const search=document.getElementById('map-search');
   const elDrop=document.getElementById('el-drop');
+  const bopen=document.getElementById('bopen');
   if(search)search.classList.add('onboard-glow');
   if(elDrop)elDrop.classList.add('onboard-glow');
-  clearTimeout(glowTimeout);
-  glowTimeout=setTimeout(()=>clearGlow(),5000);
+  if(bopen)bopen.classList.add('onboard-glow');
 }
 function clearGlow(){
   const search=document.getElementById('map-search');
   const elDrop=document.getElementById('el-drop');
+  const bopen=document.getElementById('bopen');
   if(search)search.classList.remove('onboard-glow');
   if(elDrop)elDrop.classList.remove('onboard-glow');
-  clearTimeout(glowTimeout);
-  glowTimeout=null;
+  if(bopen)bopen.classList.remove('onboard-glow');
 }
 function updateOnboardCard(){
   const card=document.getElementById('onboard-card');if(!card)return;
@@ -3405,7 +3408,6 @@ sz();
 renderColorKey();renderVendorList();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();
 updateOnboardCard();startGlow();
 document.getElementById('onboard-dismiss').addEventListener('click',()=>{const card=document.getElementById('onboard-card');if(card)card.classList.add('hidden');clearGlow();});
-document.getElementById('map-search').addEventListener('focus',()=>{clearGlow();},{ once:true });
 // pointer-events: none on cw initially (select tool)
 cw.style.pointerEvents='none';
 init();
