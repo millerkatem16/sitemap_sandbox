@@ -47,10 +47,12 @@ html,body{height:100vh;background:var(--bg);color:var(--tx);font-family:var(--fo
 .tb.warn:hover{background:rgba(244,81,64,0.28);color:#fff;border-color:rgba(244,81,64,0.5)}
 .tb.exp{color:rgba(255,255,255,0.42)}
 .tb.exp:hover{background:rgba(45,212,160,0.2);color:#2dd4a0;border-color:rgba(45,212,160,0.42)}
+.tb.save{background:rgba(45,212,160,0.18);color:#2dd4a0;border-color:rgba(45,212,160,0.4)}
+.tb.save:hover{background:rgba(45,212,160,0.3);color:#2dd4a0;border-color:rgba(45,212,160,0.6)}
 .spacer{flex:1}
 .el-drop{padding:6px 11px;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.22);border-radius:9px;color:#fff;font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;outline:none;height:36px;min-width:148px;text-align:center;transition:background .12s,border-color .12s}
 .el-drop:hover,.el-drop:focus{background:rgba(255,255,255,0.22);border-color:rgba(255,255,255,0.38)}
-.el-drop option{background:#2A5F64;color:#fff}
+.el-drop option{background:#2A5F64;color:#fff;text-align:left}
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
 #main{display:flex;flex:1;min-height:0;overflow:hidden}
@@ -352,7 +354,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="spacer"></div>
   <div class="tg">
-    <button class="tb exp" id="bsave-evt"><i class="ti ti-device-floppy"></i>Save Event</button>
+    <button class="tb save" id="bsave-evt"><i class="ti ti-device-floppy"></i>Save Event</button>
     <button class="tb exp" id="bpdf" style="display:none"><i class="ti ti-file-type-pdf"></i>Export PDF</button>
     <select class="el-drop" id="export-drop">
       <option value="" disabled selected>Export</option>
@@ -1011,7 +1013,7 @@ function runRules(){
   const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
   cookingTents.forEach(c=>{[...nonCookingTents,...trucks].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — 20ft separation required for Fire Code compliance (~${Math.round(clr)}ft).`});c.hr=true;o.hr=true;}});});
   gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`});});
-  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:'No ingress/egress placed.'});else if(ins.length===1)warns.push({type:'hard',msg:'Only 1 ingress/egress — minimum 2 required. 3 recommended.'});else if(ins.length===2)warns.push({type:'soft',msg:'2 ingress/egress — a 3rd is recommended.'});}}
+  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:`No ingress/egress placed${zoneDesc}.`});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 ingress/egress${zoneDesc} — minimum 2 required. 3 recommended.`});else if(ins.length===2)warns.push({type:'soft',msg:`2 ingress/egress${zoneDesc} — a 3rd is recommended.`});}}
   ins.forEach(i=>{
     if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is under 10ft wide — ADA minimum not met.`});i.hr=true;}
     const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`});i.hr=true;blocked.forEach(b=>b.hr=true);}
@@ -3116,12 +3118,12 @@ async function exportPDF(capture){
     c2y+=2;
   }
   // ── 3. Untagged non-cooking tents by tentType ─────────────────────────────
-  const tentTypeNames={vendor:'Vendor / Activity',activity:'Activity',production:'Production',event:'Event Use'};
+  const tentTypeNames={vendor:'Vendor / Activity',activity:'Activity',production:'Production',event:'Event Use',unassigned:'Tents'};
   const untaggedTentMap=new Map();
   actAll.forEach(el=>{
     const t=TYPES[el.type]||TYPES.custom;
     if(!t.tent||el.colorTag||el.tentType==='cooking'||el.tentType==='food')return;
-    const tt=el.tentType||'vendor';
+    const tt=getTentCat(el);
     if(!untaggedTentMap.has(tt))untaggedTentMap.set(tt,{name:tentTypeNames[tt]||tt,buckets:new Map()});
     const key=el.wFt+'|'+el.hFt;const ug=untaggedTentMap.get(tt);
     if(!ug.buckets.has(key))ug.buckets.set(key,{wFt:el.wFt,hFt:el.hFt,els:[]});
