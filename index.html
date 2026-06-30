@@ -1309,33 +1309,56 @@ function renderSafetyCompliance(){
 function renderFal(){renderVenueInfra();renderSafetyCompliance();}
 function renderVendorList(){
   const vl=document.getElementById('vl');if(!vl)return;
+  const tentBuckets={};const truckEls=[];const stageEls=[];const customEls=[];
+  S.els.forEach(el=>{
+    const t=TYPES[el.type]||TYPES.custom;
+    if(t.circle||t.noRender||t.crowdMgmt||t.isLabel)return;
+    if(t.tent){const key=`tent-${el.wFt}x${el.hFt}`;if(!tentBuckets[key])tentBuckets[key]={wFt:el.wFt,hFt:el.hFt,els:[]};tentBuckets[key].els.push(el);}
+    else if(el.type==='truck')truckEls.push(el);
+    else if(el.type==='stage')stageEls.push(el);
+    else if(el.type==='custom')customEls.push(el);
+  });
+  let html='';
+  Object.values(tentBuckets).forEach(b=>{
+    if(!b.els.length)return;
+    const key=`tent-${b.wFt}x${b.hFt}`;
+    html+=`<div class="vl-group-row" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--brd)"><span style="font-size:12px;color:var(--tx2);font-weight:600">${b.wFt}×${b.hFt} Tents (${b.els.length})</span><button class="vbtn manage-btn" data-bucket-key="${key}" style="font-size:11px;padding:4px 10px">Manage</button></div>`;
+  });
+  if(truckEls.length)html+=`<div class="vl-group-row" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--brd)"><span style="font-size:12px;color:var(--tx2);font-weight:600">Food Trucks (${truckEls.length})</span><button class="vbtn manage-btn" data-bucket-key="truck" style="font-size:11px;padding:4px 10px">Manage</button></div>`;
+  if(stageEls.length)html+=`<div class="vl-group-row" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--brd)"><span style="font-size:12px;color:var(--tx2);font-weight:600">Stages (${stageEls.length})</span><button class="vbtn manage-btn" data-bucket-key="stage" style="font-size:11px;padding:4px 10px">Manage</button></div>`;
+  if(customEls.length)html+=`<div class="vl-group-row" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--brd)"><span style="font-size:12px;color:var(--tx2);font-weight:600">Custom Elements (${customEls.length})</span><button class="vbtn manage-btn" data-bucket-key="custom" style="font-size:11px;padding:4px 10px">Manage</button></div>`;
+  if(!html){vl.innerHTML='<div style="font-size:10px;color:var(--tx3)">No elements placed yet</div>';return;}
+  vl.innerHTML=html;
+  vl.querySelectorAll('.manage-btn').forEach(btn=>{btn.addEventListener('click',ev=>{ev.stopPropagation();openManageModal(ev.currentTarget.dataset.bucketKey);});});
+}
+
+function openManageModal(bucketKey){
+  const tentBuckets={};const truckEls=[];const stageEls=[];const customEls=[];
+  S.els.forEach(el=>{
+    const t=TYPES[el.type]||TYPES.custom;
+    if(t.circle||t.noRender||t.crowdMgmt||t.isLabel)return;
+    if(t.tent){const key=`tent-${el.wFt}x${el.hFt}`;if(!tentBuckets[key])tentBuckets[key]={wFt:el.wFt,hFt:el.hFt,els:[]};tentBuckets[key].els.push(el);}
+    else if(el.type==='truck')truckEls.push(el);
+    else if(el.type==='stage')stageEls.push(el);
+    else if(el.type==='custom')customEls.push(el);
+  });
+  let bucketEls,bucketLabel,bucketDesc,hasDetails;
+  if(bucketKey.startsWith('tent-')){const b=tentBuckets[bucketKey];if(!b||!b.els.length)return;bucketEls=b.els;bucketLabel=`${b.wFt}×${b.hFt} Tents`;bucketDesc='Rename each item or click details to edit its type and color tag.';hasDetails=true;}
+  else if(bucketKey==='truck'){if(!truckEls.length)return;bucketEls=truckEls;bucketLabel='Food Trucks';bucketDesc='Rename each item or click details to edit its dimensions.';hasDetails=true;}
+  else if(bucketKey==='stage'){if(!stageEls.length)return;bucketEls=stageEls;bucketLabel='Stages';bucketDesc='Rename each item.';hasDetails=false;}
+  else if(bucketKey==='custom'){if(!customEls.length)return;bucketEls=customEls;bucketLabel='Custom Elements';bucketDesc='Rename each item or click details to edit its type and color tag.';hasDetails=true;}
+  else return;
   const tnMap=getTypeNums();
-  const active=document.activeElement,wasId=active&&active.classList&&active.classList.contains('vl-inp')?active.dataset.id:null;
-  const actEls=S.els.filter(e=>{const t=TYPES[e.type]||TYPES.custom;return!t.circle&&!t.noRender&&!t.crowdMgmt&&!t.isLabel;});
-  if(!actEls.length){vl.innerHTML='<div style="font-size:10px;color:var(--tx3)">No elements placed yet</div>';return;}
-  vl.innerHTML=actEls.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');const isCustom=['customtent','custom','truck'].includes(el.type);const dimBadge=isCustom?`<span style="font-size:9px;color:var(--tx3);flex-shrink:0;white-space:nowrap">${el.wFt}×${el.hFt} ft</span>`:'';const hasEdit=['tent10','tent20','customtent','custom'].includes(el.type);const editBtn=hasEdit?`<button class="vl-edt" data-id="${el.id}" title="Edit">✏</button>`:'';return`<div class="vl-row"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${(TYPES[el.type]||TYPES.custom).lbl}">${dimBadge}${editBtn}<button class="vl-del" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
-  vl.querySelectorAll('.vl-inp').forEach(inp=>{
-    inp.addEventListener('input',ev=>{const id=parseInt(ev.target.dataset.id),found=S.els.find(x=>x.id===id);if(found)found.vendorName=ev.target.value;});
-    inp.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const all=[...vl.querySelectorAll('.vl-inp')],idx=all.indexOf(ev.target);if(idx<all.length-1)all[idx+1].focus();else ev.target.blur();}});
-  });
-  vl.querySelectorAll('.vl-del').forEach(btn=>{
-    btn.addEventListener('click',ev=>{
-      ev.stopPropagation();
-      const id=parseInt(ev.currentTarget.dataset.id);
-      pushUndo();
-      const found=S.els.find(x=>x.id===id);
-      if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==id);}
-      S.els=S.els.filter(x=>x.id!==id);
-      if(S.selId===id)S.selId=null;
-      renderVendorList();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
-    });
-  });
-  vl.querySelectorAll('.vl-edt').forEach(btn=>{btn.addEventListener('click',ev=>{ev.stopPropagation();const id=parseInt(ev.currentTarget.dataset.id);const found=S.els.find(x=>x.id===id);if(found)editEl(found);});});
-  if(wasId){const ni=vl.querySelector(`.vl-inp[data-id="${wasId}"]`);if(ni)ni.focus();}
+  const buildBody=()=>bucketEls.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');const ph=(TYPES[el.type]||TYPES.custom).lbl;const detBtn=hasDetails?`<button class="vl-edt manage-details-btn" data-id="${el.id}" style="flex-shrink:0">details</button>`:'';return`<div class="manage-row" data-id="${el.id}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp manage-rename-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${ph}" style="flex:1">${detBtn}<button class="vl-del manage-del-btn" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
+  modal(`Manage ${bucketLabel}`,bucketDesc,buildBody(),()=>{},'Done',{wide:420});
+  mOnClose=()=>{renderVendorList();};
+  document.querySelectorAll('#mb .manage-rename-inp').forEach(inp=>{inp.addEventListener('input',ev=>{const id=parseInt(ev.target.dataset.id),found=S.els.find(x=>x.id===id);if(found){found.vendorName=ev.target.value;renderEls();}});});
+  document.querySelectorAll('#mb .manage-details-btn').forEach(btn=>{btn.addEventListener('click',ev=>{ev.stopPropagation();const id=parseInt(ev.currentTarget.dataset.id),found=S.els.find(x=>x.id===id);if(found){closeModal();editEl(found);}});});
+  document.querySelectorAll('#mb .manage-del-btn').forEach(btn=>{btn.addEventListener('click',ev=>{ev.stopPropagation();const id=parseInt(ev.currentTarget.dataset.id),found=S.els.find(x=>x.id===id);if(!found)return;pushUndo();if(found.type==='firstaid')S.firstAids=S.firstAids.filter(c=>c.eid!==id);S.els=S.els.filter(x=>x.id!==id);if(S.selId===id)S.selId=null;const idx=bucketEls.findIndex(x=>x.id===id);if(idx!==-1)bucketEls.splice(idx,1);const row=document.querySelector(`#mb .manage-row[data-id="${id}"]`);if(row)row.remove();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();if(!bucketEls.length){closeModal();}});});
 }
 
 // ── Modal ──────────────────────────────────────────────────────────────────
-let mCb=null;
+let mCb=null;let mOnClose=null;
 function modal(title,desc,body,cb,okLabel='Place',opts={}){
   document.getElementById('mtt').textContent=title;document.getElementById('mdesc').textContent=desc;
   document.getElementById('mb').innerHTML=body;document.getElementById('mok').textContent=okLabel;
@@ -1344,7 +1367,7 @@ function modal(title,desc,body,cb,okLabel='Place',opts={}){
   document.getElementById('mo').style.display='flex';mCb=cb;
   setTimeout(()=>{const f=document.querySelector('#mb input,#mb select');if(f)f.focus();},80);
 }
-function closeModal(){document.getElementById('mo').style.display='none';document.getElementById('md').style.maxWidth='360px';document.getElementById('mcan').style.display='';}
+function closeModal(){const fn=mOnClose;mOnClose=null;if(fn)fn();document.getElementById('mo').style.display='none';document.getElementById('md').style.maxWidth='360px';document.getElementById('mcan').style.display='';}
 function showToast(msg,isError=false){const c=document.getElementById('toast-container');if(!c)return;const t=document.createElement('div');t.className='toast'+(isError?' error':'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.classList.add('leaving');setTimeout(()=>t.remove(),200);},3500);}
 document.getElementById('mcan').addEventListener('click',closeModal);
 document.getElementById('mok').addEventListener('click',()=>{closeModal();if(mCb)mCb();});
@@ -1565,6 +1588,13 @@ function editEl(el){
     document.getElementById('ct-type').value=el.tentType||'vendor';
     wireTagPicker();
     document.getElementById('ct-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
+  }else if(el.type==='truck'){
+    modal('Edit Food Truck','Update this truck\'s dimensions.',mr(mf('Length (ft)','tkl','number',String(el.wFt||20)),mf('Width (ft)','tkw','number',String(el.hFt||8)))+colorTagPickerHtml(el.colorTag||''),()=>{
+      pushUndo();const wFt=Math.max(1,parseFloat(document.getElementById('tkl').value)||20);const hFt=Math.max(1,parseFloat(document.getElementById('tkw').value)||8);const colorTag=document.getElementById('tag-sel-id').value||(S.colorTags[0]&&S.colorTags[0].id)||null;
+      el.wFt=wFt;el.hFt=hFt;el.colorTag=colorTag;
+      renderVendorList();renderEls();runRules();
+    },'Save');
+    wireTagPicker();
   }
 }
 
