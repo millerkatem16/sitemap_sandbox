@@ -48,7 +48,7 @@ html,body{height:100vh;background:var(--bg);color:var(--tx);font-family:var(--fo
 .tb.exp{color:rgba(255,255,255,0.42)}
 .tb.exp:hover{background:rgba(45,212,160,0.2);color:#2dd4a0;border-color:rgba(45,212,160,0.42)}
 .spacer{flex:1}
-.el-drop{padding:6px 11px;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.22);border-radius:9px;color:#fff;font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;outline:none;height:36px;min-width:148px;transition:background .12s,border-color .12s}
+.el-drop{padding:6px 11px;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.22);border-radius:9px;color:#fff;font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;outline:none;height:36px;min-width:148px;text-align:center;transition:background .12s,border-color .12s}
 .el-drop:hover,.el-drop:focus{background:rgba(255,255,255,0.22);border-color:rgba(255,255,255,0.38)}
 .el-drop option{background:#2A5F64;color:#fff}
 
@@ -68,6 +68,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #opacity-slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.35)}
 #opacity-slider::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,0.35)}
 #canvas-tool-ctrl{position:absolute;bottom:78px;left:50%;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:14px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
+#canvas-action-ctrl{position:absolute;top:16px;right:16px;z-index:9;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:14px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
 .ctc-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:transparent;border:1px solid transparent;color:rgba(255,255,255,0.62);font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
 .ctc-btn i{font-size:15px;line-height:1}
 .ctc-btn:hover{background:rgba(255,255,255,0.16);color:#fff;border-color:rgba(255,255,255,0.2)}
@@ -145,10 +146,13 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .vl-del:hover{color:var(--crimson);background:rgba(242,95,136,0.1)}
 .vl-edt{width:22px;height:22px;flex-shrink:0;background:none;border:none;color:var(--tx3);cursor:pointer;font-size:13px;line-height:1;border-radius:5px;transition:color .12s,background .12s;padding:0;display:flex;align-items:center;justify-content:center}
 .vl-edt:hover{color:var(--slate);background:rgba(100,116,139,0.12)}
+.manage-details-btn{background:rgba(168,85,247,0.12);color:#7c3aed;border:1px solid rgba(168,85,247,0.35);border-radius:var(--r);padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:background .12s,border-color .12s}
+.manage-details-btn:hover{background:rgba(168,85,247,0.22);border-color:rgba(168,85,247,0.55)}
 
 /* ── Color key ───────────────────────────────────────────────────────────── */
 .ck-row{display:flex;align-items:flex-start;gap:9px;padding:4px 0;font-size:12px;color:var(--tx2);font-weight:500}
 .ck-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0;border:1.5px solid;margin-top:2px}
+.ck-row[data-tagid] .ck-swatch:hover{outline:1.5px solid var(--slate);outline-offset:1px}
 .ck-line{width:22px;height:3px;border-radius:2px;flex-shrink:0;margin-top:6px}
 .ck-zone{width:14px;height:14px;border-radius:3px;border:2px dashed;flex-shrink:0;margin-top:2px}
 .tag-picker-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
@@ -323,7 +327,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="tg">
     <select class="el-drop" id="vi-drop">
-      <option value="" disabled selected>Infrastructure</option>
+      <option value="" disabled selected>Add Infrastructure</option>
       <option value="dim">Measure Distance</option>
       <option value="electric">Electric Source</option>
       <option value="water">Water Source</option>
@@ -335,7 +339,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="tg">
     <select class="el-drop" id="sc-drop">
-      <option value="" disabled selected>Safety</option>
+      <option value="" disabled selected>Add Safety</option>
       <option value="ingress">Ingress/Egress</option>
       <option value="firstaid">First Aid Contact</option>
       <option value="security">Security Post</option>
@@ -355,8 +359,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <option value="safety">Safety Review Ready Map</option>
       <option value="full">Full Operational Map</option>
     </select>
-    <button class="tb" id="bundo"><i class="ti ti-corner-up-left"></i>Undo</button>
-    <button class="tb warn" id="bclr"><i class="ti ti-trash"></i>Clear</button>
   </div>
 </div>
 
@@ -371,6 +373,10 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <div id="canvas-tool-ctrl">
       <button class="ctc-btn" id="ctc-measure" title="Measure distance"><i class="ti ti-ruler-2"></i><span>Measure</span></button>
       <button class="ctc-btn active" id="ctc-select" title="Pan and adjust the map"><i class="ti ti-map-2"></i><span>Adjust Map</span></button>
+    </div>
+    <div id="canvas-action-ctrl">
+      <button class="ctc-btn" id="bundo"><i class="ti ti-corner-up-left"></i><span>Undo</span></button>
+      <button class="ctc-btn" id="bclr" style="color:#F45140"><i class="ti ti-trash"></i><span>Clear</span></button>
     </div>
     <div id="opacity-ctrl">
       <label for="opacity-slider">Map Opacity</label>
@@ -410,7 +416,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div class="panel" id="event-details-panel">
         <div class="panel-toggle" id="event-details-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
           <span class="plabel" style="margin-bottom:0">Event Details</span>
-          <i class="ti ti-chevron-down" id="event-details-chevron" style="color:var(--tx3);font-size:14px;transition:transform .2s"></i>
+          <i class="ti ti-chevron-down" id="event-details-chevron" style="color:var(--tx3);font-size:16px;transition:transform .2s"></i>
         </div>
         <div id="event-details-body" style="display:none;margin-top:12px">
           <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:0">Event Name</div>
@@ -983,8 +989,8 @@ function segDSq(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;if(!L)r
 function ovlp(a,b,m=0){return!(elX(a)+elW(a)+m<=elX(b)||elX(b)+elW(b)+m<=elX(a)||elY(a)+elH(a)+m<=elY(b)||elY(b)+elH(b)+m<=elY(a));}
 
 // ── Rules ──────────────────────────────────────────────────────────────────
-function getTentCat(el){const tt=el.tentType||'vendor';if(tt==='event'||tt==='production')return'production';if(tt==='activity')return'activity';if(tt==='cooking'||tt==='food')return'cooking';return'vendor';}
-const TENT_CAT_PRE={vendor:'V',activity:'A',production:'P',cooking:'C'};
+function getTentCat(el){const tt=el.tentType;if(!tt)return'unassigned';if(tt==='event'||tt==='production')return'production';if(tt==='activity')return'activity';if(tt==='cooking'||tt==='food')return'cooking';if(tt==='vendor')return'vendor';return'unassigned';}
+const TENT_CAT_PRE={vendor:'V',activity:'A',production:'P',cooking:'C',unassigned:'T'};
 function getTypeNums(){const c={},r={};S.els.forEach(el=>{const t=TYPES[el.type]||TYPES.custom;const key=t.tent?('tent:'+getTentCat(el)):el.type;c[key]=(c[key]||0)+1;r[el.id]=c[key];});return r;}
 function elCode(el,tnMap){const t=TYPES[el.type]||TYPES.custom;if(t.tent)return TENT_CAT_PRE[getTentCat(el)]+(tnMap[el.id]||'?');return(TYPE_PRE[el.type]||'?')+(tnMap[el.id]||'?');}
 
@@ -996,14 +1002,14 @@ function runRules(){
   const gens=S.els.filter(e=>e.type==='gen'),ins=S.els.filter(e=>e.type==='ingress'),stages=S.els.filter(e=>e.type==='stage');
   S.els.forEach(e=>{e.hr=false;e.sr=false;});
   trucks.forEach(t=>{
-    tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)} — 20ft required (~${Math.round(clr)}ft).`});t.hr=true;n.hr=true;}});
-    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} within 10ft of each other (~${Math.round(clr)}ft edge to edge).`});t.hr=true;o.hr=true;}});
+    tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)} — 20ft required for Fire Code compliance (~${Math.round(clr)}ft).`});t.hr=true;n.hr=true;}});
+    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} within 10ft of each other — 10ft required for Fire Code compliance (~${Math.round(clr)}ft).`});t.hr=true;o.hr=true;}});
     const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} in restricted zone.`});t.hr=true;}
   });
   // Cooking tent must be 20ft from other activations (non-cooking tents)
   const cookingTents=tents.filter(t=>getTentCat(t)==='cooking');
   const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
-  cookingTents.forEach(c=>{[...nonCookingTents,...trucks].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — cooking areas require 20ft separation from other activations (~${Math.round(clr)}ft).`});c.hr=true;o.hr=true;}});});
+  cookingTents.forEach(c=>{[...nonCookingTents,...trucks].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — 20ft separation required for Fire Code compliance (~${Math.round(clr)}ft).`});c.hr=true;o.hr=true;}});});
   gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`});});
   {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:'No ingress/egress placed.'});else if(ins.length===1)warns.push({type:'hard',msg:'Only 1 ingress/egress — minimum 2 required. 3 recommended.'});else if(ins.length===2)warns.push({type:'soft',msg:'2 ingress/egress — a 3rd is recommended.'});}}
   ins.forEach(i=>{
@@ -1224,8 +1230,8 @@ function makeDrag(div,el){
 // ── Venue Infrastructure sidebar ───────────────────────────────────────────
 function renderVenueInfra(){
   const d=document.getElementById('vil');if(!d)return;
-  const viTypes=['electric','water','trash'];
-  const viLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin'};
+  const viTypes=['electric','water','trash','gen'];
+  const viLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',gen:'Generator'};
   const counts={};
   viTypes.forEach(type=>{const c=S.els.filter(e=>e.type===type).length;if(c)counts[type]=c;});
   let html='';
@@ -1255,6 +1261,15 @@ function renderVenueInfra(){
   });
 }
 
+function addFirstAidContact(){
+  modal('First Aid Point of Contact','Add contact details for a first aid responder on site.',
+    mf('Responder Name','fan','text','','Full name')+mf('Certification','fac2','text','','e.g. CPR/AED, EMT, Paramedic'),
+    ()=>{
+      const name=document.getElementById('fan').value.trim()||'Unknown';
+      const cert=document.getElementById('fac2').value.trim()||'CPR';
+      S.firstAids.push({name,cert});renderSafetyCompliance();
+    },'Add Contact');
+}
 // ── Safety & Compliance sidebar ────────────────────────────────────────────
 function renderSafetyCompliance(){
   const d=document.getElementById('sml');if(!d)return;
@@ -1286,15 +1301,7 @@ function renderSafetyCompliance(){
   d.innerHTML=html;
   const addBtn=d.querySelector('#add-fa-btn');
   if(addBtn){
-    addBtn.addEventListener('click',()=>{
-      modal('First Aid Point of Contact','Add contact details for a first aid responder on site.',
-        mf('Responder Name','fan','text','','Full name')+mf('Certification','fac2','text','','e.g. CPR/AED, EMT, Paramedic'),
-        ()=>{
-          const name=document.getElementById('fan').value.trim()||'Unknown';
-          const cert=document.getElementById('fac2').value.trim()||'CPR';
-          S.firstAids.push({name,cert});renderSafetyCompliance();
-        },'Add Contact');
-    });
+    addBtn.addEventListener('click',addFirstAidContact);
   }
   d.querySelectorAll('.sm-ingress-del').forEach(btn=>{
     btn.addEventListener('click',ev=>{
@@ -1312,7 +1319,7 @@ function renderVendorList(){
   const tentBuckets={};const truckEls=[];const stageEls=[];const customEls=[];
   S.els.forEach(el=>{
     const t=TYPES[el.type]||TYPES.custom;
-    if(t.circle||t.noRender||t.crowdMgmt||t.isLabel)return;
+    if(t.circle||t.noRender||t.crowdMgmt||t.isLabel||el.type==='gen')return;
     if(t.tent){const key=`tent-${el.wFt}x${el.hFt}`;if(!tentBuckets[key])tentBuckets[key]={wFt:el.wFt,hFt:el.hFt,els:[]};tentBuckets[key].els.push(el);}
     else if(el.type==='truck')truckEls.push(el);
     else if(el.type==='stage')stageEls.push(el);
@@ -1336,7 +1343,7 @@ function openManageModal(bucketKey){
   const tentBuckets={};const truckEls=[];const stageEls=[];const customEls=[];
   S.els.forEach(el=>{
     const t=TYPES[el.type]||TYPES.custom;
-    if(t.circle||t.noRender||t.crowdMgmt||t.isLabel)return;
+    if(t.circle||t.noRender||t.crowdMgmt||t.isLabel||el.type==='gen')return;
     if(t.tent){const key=`tent-${el.wFt}x${el.hFt}`;if(!tentBuckets[key])tentBuckets[key]={wFt:el.wFt,hFt:el.hFt,els:[]};tentBuckets[key].els.push(el);}
     else if(el.type==='truck')truckEls.push(el);
     else if(el.type==='stage')stageEls.push(el);
@@ -1345,11 +1352,11 @@ function openManageModal(bucketKey){
   let bucketEls,bucketLabel,bucketDesc,hasDetails;
   if(bucketKey.startsWith('tent-')){const b=tentBuckets[bucketKey];if(!b||!b.els.length)return;bucketEls=b.els;bucketLabel=`${b.wFt}×${b.hFt} Tents`;bucketDesc='Rename each item or click details to edit its type and color tag.';hasDetails=true;}
   else if(bucketKey==='truck'){if(!truckEls.length)return;bucketEls=truckEls;bucketLabel='Food Trucks';bucketDesc='Rename each item or click details to edit its dimensions.';hasDetails=true;}
-  else if(bucketKey==='stage'){if(!stageEls.length)return;bucketEls=stageEls;bucketLabel='Stages';bucketDesc='Rename each item.';hasDetails=false;}
+  else if(bucketKey==='stage'){if(!stageEls.length)return;bucketEls=stageEls;bucketLabel='Stages';bucketDesc='Click details to update name and dimensions.';hasDetails=true;}
   else if(bucketKey==='custom'){if(!customEls.length)return;bucketEls=customEls;bucketLabel='Custom Elements';bucketDesc='Rename each item or click details to edit its type and color tag.';hasDetails=true;}
   else return;
   const tnMap=getTypeNums();
-  const buildBody=()=>bucketEls.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');const ph=(TYPES[el.type]||TYPES.custom).lbl;const detBtn=hasDetails?`<button class="vl-edt manage-details-btn" data-id="${el.id}" style="flex-shrink:0">details</button>`:'';return`<div class="manage-row" data-id="${el.id}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp manage-rename-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${ph}" style="flex:1">${detBtn}<button class="vl-del manage-del-btn" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
+  const buildBody=()=>bucketEls.map(el=>{const val=(el.vendorName||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');const ph=(TYPES[el.type]||TYPES.custom).lbl;const detBtn=hasDetails?`<button class="manage-details-btn" data-id="${el.id}" style="flex-shrink:0">details</button>`:'';return`<div class="manage-row" data-id="${el.id}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="vl-num">${elCode(el,tnMap)}</span><input class="vl-inp manage-rename-inp" type="text" data-id="${el.id}" value="${val}" placeholder="${ph}" style="flex:1">${detBtn}<button class="vl-del manage-del-btn" data-id="${el.id}" title="Remove from map">×</button></div>`;}).join('');
   modal(`Manage ${bucketLabel}`,bucketDesc,buildBody(),()=>{},'Done',{wide:420});
   mOnClose=()=>{renderVendorList();};
   document.querySelectorAll('#mb .manage-rename-inp').forEach(inp=>{inp.addEventListener('input',ev=>{const id=parseInt(ev.target.dataset.id),found=S.els.find(x=>x.id===id);if(found){found.vendorName=ev.target.value;renderEls();}});});
@@ -1494,27 +1501,20 @@ function place(type,x,y){
   const t=TYPES[type]||TYPES.custom;
   const base=(extra={})=>({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:t.lbl,vendorName:'',rot:0,hr:false,sr:false,...extra});
   if(type==='tent10'||type==='tent20'){
-    pushUndo();S.els.push(base({vendorName:'',tentType:'vendor',colorTag:null}));
+    pushUndo();S.els.push(base({vendorName:'',tentType:null,colorTag:null}));
     renderVendorList();renderEls();renderColorKey();runRules();
     return;
   }
   if(type==='customtent'){
-    modal('Add Custom Tent Size','Specify dimensions and use type. Tent-to-food-truck clearance rules still apply.',
-      mf('Tent Label','ctlbl','text','','e.g. 20×40 Frame Tent')+
-      mr(mf('Width (ft)','ctw','number','20'),mf('Length (ft)','ctl','number','40'))+
-      msel('Tent Use','ct-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(''),
+    modal('Add Custom Tent Size','Specify dimensions. Tent-to-food-truck clearance rules still apply.',
+      mr(mf('Width (ft)','ctw','number','20'),mf('Length (ft)','ctl','number','40')),
       ()=>{
         pushUndo();
-        const lbl=document.getElementById('ctlbl').value.trim()||'Custom Tent';
         const wFt=Math.max(1,parseFloat(document.getElementById('ctw').value)||20);
         const hFt=Math.max(1,parseFloat(document.getElementById('ctl').value)||40);
-        const tentType=document.getElementById('ct-type').value;
-        const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
-        S.els.push({id:S.idCtr++,type:'customtent',lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,tentType,...(colorTag?{colorTag}:{}),rot:0,hr:false,sr:false});
-        renderVendorList();renderEls();renderColorKey();runRules();
+        S.els.push({id:S.idCtr++,type:'customtent',lat:ll.lat,lng:ll.lng,wFt,hFt,label:'Custom Tent',vendorName:'',tentType:null,rot:0,hr:false,sr:false});
+        renderVendorList();renderEls();runRules();
       });
-    wireTagPicker();
-    document.getElementById('ct-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
     return;
   }
   if(type==='truck'){
@@ -1523,21 +1523,16 @@ function place(type,x,y){
     return;
   }
   if(type==='stage'){
-    pushUndo();S.els.push({id:S.idCtr++,type:'stage',lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:t.lbl,vendorName:'',heightFt:2,rot:0,hr:false,sr:false});
-    renderVendorList();renderEls();renderColorKey();runRules();
-    return;
+    modal('Place Stage','Stages over 256 sq ft or 3ft tall may require a building permit.',mf('Stage Name','stlbl','text','','e.g. Main Stage')+mr(mf('Width (ft)','stw','number','20'),mf('Depth (ft)','std','number','16'),mf('Height (ft)','sth','number','2')),()=>{
+      pushUndo();const lbl=document.getElementById('stlbl').value.trim()||'Stage',wFt=parseFloat(document.getElementById('stw').value)||20,hFt=parseFloat(document.getElementById('std').value)||16,heightFt=parseFloat(document.getElementById('sth').value)||2;
+      S.els.push({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,heightFt,rot:0,hr:false,sr:false});
+      renderVendorList();renderEls();runRules();
+    });return;
   }
   if(type==='ingress'){
     pushUndo();S.els.push({id:S.idCtr++,type:'ingress',lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:t.lbl,vendorName:'',rot:0,hr:false,sr:false});
     renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
     return;
-  }
-  if(type==='firstaid'){
-    modal('Place First Aid Station','Document the certified responder at this station.',mf('Responder Name','fan','text','','Full name')+mf('Certification','fac2','text','','e.g. CPR/AED, EMT, Paramedic'),()=>{
-      pushUndo();const name=document.getElementById('fan').value.trim()||'Unknown',cert=document.getElementById('fac2').value.trim()||'CPR',eid=S.idCtr++;
-      S.els.push({id:eid,type,lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:'First Aid',vendorName:name,cpName:name,rot:0,hr:false,sr:false});
-      S.firstAids.push({eid,name,cert});renderVenueInfra();renderSafetyCompliance();renderVendorList();renderEls();runRules();
-    });return;
   }
   if(type==='label'){
     modal('Add Text Label','Enter the annotation text.',mf('Label Text','lbl-txt','text','','e.g. Parking entrance this way'),()=>{
@@ -1561,12 +1556,12 @@ function place(type,x,y){
 function editEl(el){
   const t=TYPES[el.type]||TYPES.custom;
   if(el.type==='tent10'||el.type==='tent20'){
-    modal(`Edit ${t.lbl}`,'Update this tent\'s label, use type, or color tag.',mf('Tent Label','tlbl','text',el.vendorName||el.label||'','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(el.colorTag||''),()=>{
-      pushUndo();const lbl=document.getElementById('tlbl').value.trim()||(el.vendorName||el.label||t.lbl);const tentType=document.getElementById('tent-type').value;const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
+    modal(`Edit ${t.lbl}`,'Update this tent\'s label, use type, or color tag.',mf('Tent Label','tlbl','text',el.vendorName||el.label||'','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'',t:'— Unassigned —'},{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(el.colorTag||''),()=>{
+      pushUndo();const lbl=document.getElementById('tlbl').value.trim()||(el.vendorName||el.label||t.lbl);const tentType=document.getElementById('tent-type').value||null;const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
       el.label=lbl;el.vendorName=lbl;el.tentType=tentType;el.colorTag=colorTag;
       renderVendorList();renderEls();renderColorKey();runRules();
     },'Save');
-    document.getElementById('tent-type').value=el.tentType||'vendor';
+    document.getElementById('tent-type').value=el.tentType||'';
     wireTagPicker();
     document.getElementById('tent-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
   }else if(el.type==='custom'){
@@ -1580,28 +1575,33 @@ function editEl(el){
     document.getElementById('cust-shape').addEventListener('change',function(){const c=this.value==='circle';document.getElementById('cust-dims-sq').style.display=c?'none':'';document.getElementById('cust-dims-ci').style.display=c?'':'none';});
     wireTagPicker();
   }else if(el.type==='customtent'){
-    modal('Edit Custom Tent','Update this tent\'s details.',mf('Tent Label','ctlbl','text',el.vendorName||el.label||'Custom Tent','e.g. 20×40 Frame Tent')+mr(mf('Width (ft)','ctw','number',String(el.wFt||20)),mf('Length (ft)','ctl','number',String(el.hFt||40)))+msel('Tent Use','ct-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(el.colorTag||''),()=>{
-      pushUndo();const lbl=document.getElementById('ctlbl').value.trim()||'Custom Tent';const wFt=Math.max(1,parseFloat(document.getElementById('ctw').value)||20);const hFt=Math.max(1,parseFloat(document.getElementById('ctl').value)||40);const tentType=document.getElementById('ct-type').value;const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
+    modal('Edit Custom Tent','Update this tent\'s details.',mf('Tent Label','ctlbl','text',el.vendorName||el.label||'Custom Tent','e.g. 20×40 Frame Tent')+mr(mf('Width (ft)','ctw','number',String(el.wFt||20)),mf('Length (ft)','ctl','number',String(el.hFt||40)))+msel('Tent Use','ct-type',[{v:'',t:'— Unassigned —'},{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(el.colorTag||''),()=>{
+      pushUndo();const lbl=document.getElementById('ctlbl').value.trim()||'Custom Tent';const wFt=Math.max(1,parseFloat(document.getElementById('ctw').value)||20);const hFt=Math.max(1,parseFloat(document.getElementById('ctl').value)||40);const tentType=document.getElementById('ct-type').value||null;const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
       el.label=lbl;el.vendorName=lbl;el.wFt=wFt;el.hFt=hFt;el.tentType=tentType;el.colorTag=colorTag;
       renderVendorList();renderEls();runRules();
     },'Save');
-    document.getElementById('ct-type').value=el.tentType||'vendor';
+    document.getElementById('ct-type').value=el.tentType||'';
     wireTagPicker();
     document.getElementById('ct-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
   }else if(el.type==='truck'){
-    modal('Edit Food Truck','Update this truck\'s dimensions.',mr(mf('Length (ft)','tkl','number',String(el.wFt||20)),mf('Width (ft)','tkw','number',String(el.hFt||8)))+colorTagPickerHtml(el.colorTag||''),()=>{
-      pushUndo();const wFt=Math.max(1,parseFloat(document.getElementById('tkl').value)||20);const hFt=Math.max(1,parseFloat(document.getElementById('tkw').value)||8);const colorTag=document.getElementById('tag-sel-id').value||(S.colorTags[0]&&S.colorTags[0].id)||null;
-      el.wFt=wFt;el.hFt=hFt;el.colorTag=colorTag;
+    modal('Edit Food Truck','Update this truck\'s dimensions.',mr(mf('Length (ft)','tkl','number',String(el.wFt||20)),mf('Width (ft)','tkw','number',String(el.hFt||8))),()=>{
+      pushUndo();const wFt=Math.max(1,parseFloat(document.getElementById('tkl').value)||20);const hFt=Math.max(1,parseFloat(document.getElementById('tkw').value)||8);
+      el.wFt=wFt;el.hFt=hFt;
       renderVendorList();renderEls();runRules();
     },'Save');
-    wireTagPicker();
+  }else if(el.type==='stage'){
+    modal('Edit Stage',"Stages over 256 sq ft or 3ft tall may require a building permit.",mf('Stage Name','stlbl','text',el.vendorName||el.label||'Stage','e.g. Main Stage')+mr(mf('Width (ft)','stw','number',String(el.wFt||20)),mf('Depth (ft)','std','number',String(el.hFt||16)),mf('Height (ft)','sth','number',String(el.heightFt||2))),()=>{
+      pushUndo();const lbl=document.getElementById('stlbl').value.trim()||'Stage';const wFt=parseFloat(document.getElementById('stw').value)||20;const hFt=parseFloat(document.getElementById('std').value)||16;const heightFt=parseFloat(document.getElementById('sth').value)||2;
+      el.label=lbl;el.vendorName=lbl;el.wFt=wFt;el.hFt=hFt;el.heightFt=heightFt;
+      renderVendorList();renderEls();runRules();
+    },'Save');
   }
 }
 
 // ── Tool management ────────────────────────────────────────────────────────
 let fenceCur=[];let fenceMaterial='';let overlapWarnTimeout=null;
 const ZONE_TOOLS=['restrict','border','erase'];
-const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','extinguisher','mix','custom','electric','water','trash','security','label','firstaid'];
+const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','extinguisher','mix','custom','electric','water','trash','security','label'];
 const DRAWING_TOOLS=[...ZONE_TOOLS,'ada','dim','fence'];
 
 function setTool(id){
@@ -1732,7 +1732,7 @@ document.getElementById('ctc-select').addEventListener('click',()=>setTool('sele
 document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
 document.getElementById('define-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
 document.getElementById('vi-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
-document.getElementById('sc-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}setTool(val);});
+document.getElementById('sc-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='firstaid'){addFirstAidContact();return;}setTool(val);});
 document.getElementById('export-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='safety'){S.hideUtils=true;applyHideUtils();startExportFlow();return;}if(val==='full'){S.hideUtils=false;applyHideUtils();startExportFlow();}});
 
 // ── Venue helpers ──────────────────────────────────────────────────────────
@@ -2018,7 +2018,7 @@ async function saveEvent(){
           if(!r.ok){showToast(d.error||'Save failed.',true);return;}
           S.currentEventId=d.id;
           S.currentEventMeta={edit_log:[{email:S.currentUser,timestamp:new Date().toISOString()}],access:[],owner_email:S.currentUser};
-          updateSettingsPanelVisibility();
+          updateSettingsPanelVisibility();{const _b=document.getElementById('event-details-body');const _c=document.getElementById('event-details-chevron');if(_b&&_b.style.display==='none'){_b.style.display='block';if(_c)_c.style.transform='rotate(180deg)';}}
           showToast(`"${name}" saved.`);
         }catch(e){showToast('Network error saving event.',true);}
       },'Save');
@@ -2088,7 +2088,7 @@ async function openEvents(){
           redrawZones();renderEls();renderColorKey();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
           S.currentEventId=ev.id;
           S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
-          updateSettingsPanelVisibility();
+          updateSettingsPanelVisibility();{const _b=document.getElementById('event-details-body');const _c=document.getElementById('event-details-chevron');if(_b&&_b.style.display==='none'){_b.style.display='block';if(_c)_c.style.transform='rotate(180deg)';}}
           showToast(`"${name}" loaded.`);
           if(S.activeVenueId){
             fetch(`/api/venues/${S.activeVenueId}`).then(r2=>r2.json()).then(d=>{
@@ -2319,8 +2319,12 @@ function renderColorKey(){
     rows.push({type:'swatch',bg:'#a78bfa25',bord:'#a78bfa',lbl:'Stage',dim:'20×16 ft (default)'});
   if(S.els.some(e=>e.type==='ingress'))
     rows.push({type:'swatch',bg:'rgba(34,197,94,0.2)',bord:'#22c55e',lbl:'Ingress / Egress',dim:'10+ ft wide'});
-  if(S.firstAids.length>0||S.els.some(e=>e.type==='extinguisher'))
-    rows.push({type:'swatch',bg:'#f0525225',bord:'#f05252',lbl:'First Aid / Fire Ext.',dim:'Variable'});
+  if(S.firstAids.length>0)
+    rows.push({type:'swatch',bg:'#f0525225',bord:'#f05252',lbl:'First Aid Contact',dim:'Certified responder on site'});
+  if(S.els.some(e=>e.type==='extinguisher'))
+    rows.push({type:'circle',color:'#f05252',lbl:'Fire Extinguisher',dim:'Utility marker'});
+  if(S.els.some(e=>e.type==='security'))
+    rows.push({type:'circle',color:'#7c3aed',lbl:'Security',dim:'Utility marker'});
   if(S.els.some(e=>e.type==='gen'))
     rows.push({type:'swatch',bg:'#fbbf2425',bord:'#fbbf24',lbl:'Generator',dim:'6×6 ft'});
   if(S.els.some(e=>e.type==='mix'))
@@ -2873,8 +2877,9 @@ async function exportPDF(capture){
       pdf.setFillColor(r,g,b);pdf.circle(bx,by,sz,'F');
     }else{
       const[r,g,b]=opts.rgb||[200,200,200];
-      const[dr,dg,db]=[Math.max(0,r-50),Math.max(0,g-50),Math.max(0,b-50)];
-      pdf.setFillColor(r,g,b);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.15);
+      const isNearWhite=r>235&&g>235&&b>235;
+      const[dr,dg,db]=isNearWhite?[45,212,160]:[Math.max(0,r-50),Math.max(0,g-50),Math.max(0,b-50)];
+      pdf.setFillColor(r,g,b);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.3);
       pdf.rect(bx-sz,by-sz,sz*2,sz*2,'FD');
     }
   };
@@ -3049,6 +3054,21 @@ async function exportPDF(capture){
       renderActSubList(sb.els);c2y+=1;
     });
   };
+  if(S.hideUtils){
+    const _dimBkt=new Map();
+    actAll.filter(el=>{const t=TYPES[el.type]||TYPES.custom;return t.tent;}).forEach(el=>{
+      const k=el.wFt+'|'+el.hFt;
+      if(!_dimBkt.has(k))_dimBkt.set(k,{wFt:el.wFt,hFt:el.hFt,els:[]});
+      _dimBkt.get(k).els.push(el);
+    });
+    _dimBkt.forEach(b=>{
+      if(c2y>=p2MaxY)advanceAct();
+      pdfIcon('rect',acX+iconSz,c2y-iconSz,{rgb:[255,255,255]});
+      pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(42,95,100);
+      pdf.text(b.wFt+'×'+b.hFt+' Tents ('+b.els.length+')',acX+txtOff,c2y);c2y+=p2LH;
+      renderActSubList(b.els);c2y+=2;
+    });
+  }else{
   // ── 1. Color-tag groups (tagged tents + tagged custom elements) ────────────
   const tagGroupMap=new Map();
   actAll.forEach(el=>{
@@ -3110,11 +3130,13 @@ async function exportPDF(capture){
   untaggedTentMap.forEach(ug=>{
     if(c2y>=p2MaxY)advanceAct();
     const total=[...ug.buckets.values()].reduce((s,b)=>s+b.els.length,0);
+    pdfIcon('rect',acX+iconSz,c2y-iconSz,{rgb:[255,255,255]});
     pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(42,95,100);
     pdf.text(ug.name.toUpperCase()+' ('+total+')',acX+txtOff,c2y);c2y+=p2LH;
     renderTentBuckets(ug.buckets,255,255,255,45,212,160);
     c2y+=2;
   });
+  }
   // ── 4. Standard types (unchanged order: stage, truck, gen, mix, ingress, + untagged custom) ─
   const actStdGroups=new Map();
   const actCustomGroups=new Map();
