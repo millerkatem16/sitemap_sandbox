@@ -47,8 +47,8 @@ html,body{height:100vh;background:var(--bg);color:var(--tx);font-family:var(--fo
 .tb.warn:hover{background:rgba(244,81,64,0.28);color:#fff;border-color:rgba(244,81,64,0.5)}
 .tb.exp{color:rgba(255,255,255,0.42)}
 .tb.exp:hover{background:rgba(45,212,160,0.2);color:#2dd4a0;border-color:rgba(45,212,160,0.42)}
-.tb.save{background:rgba(45,212,160,0.18);color:#2dd4a0;border-color:rgba(45,212,160,0.4)}
-.tb.save:hover{background:rgba(45,212,160,0.3);color:#2dd4a0;border-color:rgba(45,212,160,0.6)}
+.tb.save{background:rgba(45,212,160,0.32);color:#1a3d33;border-color:rgba(45,212,160,0.6)}
+.tb.save:hover{background:rgba(45,212,160,0.45);color:#1a3d33;border-color:rgba(45,212,160,0.75)}
 .spacer{flex:1}
 .el-drop{padding:6px 11px;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.22);border-radius:9px;color:#fff;font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;outline:none;height:36px;min-width:148px;text-align:center;transition:background .12s,border-color .12s}
 .el-drop:hover,.el-drop:focus{background:rgba(255,255,255,0.22);border-color:rgba(255,255,255,0.38)}
@@ -418,7 +418,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div class="panel" id="event-details-panel">
         <div class="panel-toggle" id="event-details-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
           <span class="plabel" style="margin-bottom:0">Event Details</span>
-          <i class="ti ti-chevron-down" id="event-details-chevron" style="color:var(--tx3);font-size:16px;transition:transform .2s"></i>
+          <i class="ti ti-chevron-down" id="event-details-chevron" style="color:var(--slate);font-size:16px;transition:transform .2s;flex-shrink:0"></i>
         </div>
         <div id="event-details-body" style="display:none;margin-top:12px">
           <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:0">Event Name</div>
@@ -1267,8 +1267,9 @@ function addFirstAidContact(){
   modal('First Aid Point of Contact','Add contact details for a first aid responder on site.',
     mf('Responder Name','fan','text','','Full name')+mf('Certification','fac2','text','','e.g. CPR/AED, EMT, Paramedic'),
     ()=>{
-      const name=document.getElementById('fan').value.trim()||'Unknown';
-      const cert=document.getElementById('fac2').value.trim()||'CPR';
+      const name=document.getElementById('fan').value.trim();
+      if(!name){showToast('Responder name is required.',true);return;}
+      const cert=document.getElementById('fac2').value.trim()||'Unspecified';
       S.firstAids.push({name,cert});renderSafetyCompliance();
     },'Add Contact');
 }
@@ -2724,6 +2725,7 @@ async function exportPDF(capture){
     }
   });
   // ── 10. Draw elements (rotation-aware) ────────────────────────────────────
+  try{pdf.setGState(pdf.GState({opacity:1}));}catch(e){}
   const tnMap=getTypeNums();
   S.els.forEach(el=>{
     const t=TYPES[el.type]||TYPES.custom;
