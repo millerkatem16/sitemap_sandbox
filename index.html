@@ -74,11 +74,13 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #opacity-slider::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--gold);cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,0.35)}
 #canvas-tool-ctrl{position:absolute;bottom:78px;left:50%;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:14px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
 #canvas-action-ctrl{position:absolute;top:8px;right:16px;z-index:9;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:14px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
-@keyframes onboard-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-#onboard-card{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 36px;background:rgba(20,32,33,0.78);backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(255,255,255,0.12);pointer-events:none;text-align:center}
-#onboard-card .ob-icon{font-size:36px;animation:onboard-bounce 2s ease-in-out infinite}
-#onboard-card .ob-title{color:#fff;font-size:15px;font-weight:700;font-family:var(--font)}
-#onboard-card .ob-sub{color:rgba(255,255,255,0.55);font-size:12px;font-family:var(--font);max-width:220px;line-height:1.5}
+#onboard-card{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;background:rgba(20,32,33,0.88);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.14);border-radius:16px;padding:24px 32px;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:auto;box-shadow:0 8px 32px rgba(0,0,0,0.45);transition:opacity .35s ease,transform .35s ease;min-width:320px;text-align:center}
+#onboard-card.hidden{opacity:0;pointer-events:none;transform:translate(-50%,-50%) scale(0.96)}
+#onboard-heading{font-size:17px;font-weight:800;color:#fff;letter-spacing:-.02em;font-family:var(--font)}
+#onboard-sub{font-size:12.5px;color:rgba(255,255,255,0.7);font-family:var(--font);font-weight:500;line-height:1.55;max-width:260px}
+#onboard-dismiss{margin-top:4px;padding:6px 18px;background:transparent;border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:rgba(255,255,255,0.55);font-size:11px;font-family:var(--font);font-weight:600;cursor:pointer;transition:all .14s}
+#onboard-dismiss:hover{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.85);border-color:rgba(255,255,255,0.4)}
+.onboard-glow{box-shadow:0 0 0 2px rgba(45,212,160,0.75),0 0 14px rgba(45,212,160,0.45)!important;border-color:rgba(45,212,160,0.8)!important;transition:box-shadow .3s ease,border-color .3s ease}
 .ctc-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:transparent;border:1px solid transparent;color:rgba(255,255,255,0.62);font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
 .ctc-btn i{font-size:15px;line-height:1}
 .ctc-btn:hover{background:rgba(255,255,255,0.16);color:#fff;border-color:rgba(255,255,255,0.2)}
@@ -88,12 +90,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .tb.util-hidden:hover{background:rgba(244,81,64,0.32)!important;border-color:rgba(244,81,64,0.65)!important}
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
-#sb{width:260px;background:var(--surf);border-left:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;box-shadow:-4px 0 28px rgba(0,0,0,0.1);position:relative}
+#sb{width:260px;background:var(--bg);border-left:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;box-shadow:-4px 0 28px rgba(0,0,0,0.1);position:relative}
 .sb-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:thin}
 .sb-scroll::-webkit-scrollbar{width:6px}
 .sb-scroll::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
-.panel{padding:16px;border-bottom:1px solid var(--brd)}
-.panel.has-content{border-left:2.5px solid var(--slate);padding-left:13.5px}
+.panel{padding:16px;border-bottom:1px solid var(--brd);transition:background .2s ease}
+.panel.has-content{background:var(--surf)}
 .plabel{font-size:12px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--slate);margin-bottom:12px}
 .plabel-sub{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--acc);margin-bottom:8px;margin-top:12px}
 
@@ -388,7 +390,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div id="cv-area">
     <div id="map"></div>
     <div id="map-overlay"></div>
-    <div id="onboard-card"><div class="ob-icon">🗺️</div><div class="ob-title">Your canvas is empty</div><div class="ob-sub">Select an element from the toolbar above and click the map to place it</div></div>
+    <div id="onboard-card"><div id="onboard-heading">Let's Get Started!</div><div id="onboard-sub">Search for venue or address and begin placing elements</div><button id="onboard-dismiss">Dismiss</button></div>
     <div id="canvas-tool-ctrl">
       <button class="ctc-btn" id="ctc-measure" title="Measure distance"><i class="ti ti-ruler-2"></i><span>Measure</span></button>
       <button class="ctc-btn active" id="ctc-select" title="Pan and adjust the map"><i class="ti ti-map-2"></i><span>Adjust Map</span></button>
@@ -435,7 +437,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div class="panel has-content" id="event-details-panel">
         <div class="panel-toggle" id="event-details-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
           <span class="plabel" style="margin-bottom:0">Event Details</span>
-          <i class="ti ti-chevron-down" id="event-details-chevron" style="color:var(--slate);font-size:16px;transition:transform .2s;flex-shrink:0;transform:rotate(180deg)"></i>
+          <i class="ti ti-chevron-down" id="event-details-chevron" style="color:var(--orange);font-size:16px;transition:transform .2s;flex-shrink:0;transform:rotate(180deg)"></i>
         </div>
         <div id="event-details-body" style="display:block;margin-top:12px">
           <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:0">Event Name</div>
@@ -1769,10 +1771,10 @@ document.getElementById('ctc-select').addEventListener('click',()=>setTool('sele
     (S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),
     ()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');
 });
-document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
-document.getElementById('define-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
-document.getElementById('vi-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
-document.getElementById('sc-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='firstaid'){addFirstAidContact();return;}setTool(val);});
+document.getElementById('el-drop').addEventListener('change',e=>{clearGlow();updateOnboardCard();const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
+document.getElementById('define-drop').addEventListener('change',e=>{clearGlow();updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
+document.getElementById('vi-drop').addEventListener('change',e=>{clearGlow();updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
+document.getElementById('sc-drop').addEventListener('change',e=>{clearGlow();updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='firstaid'){addFirstAidContact();return;}setTool(val);});
 document.getElementById('export-trigger').addEventListener('click',()=>{
   modal('Export Site Plan','Choose which version of your map to export.',
     `<div class="export-opt-card" data-mode="full"><div class="export-opt-title"><i class="ti ti-map-2"></i>Full Operational Map</div><div class="export-opt-blurb">Export will keep all information viewable.</div></div><div class="export-opt-card" data-mode="safety"><div class="export-opt-title"><i class="ti ti-shield-check"></i>Safety Review Ready Map</div><div class="export-opt-blurb">Utilities and color tags are not captured for this view.</div></div>`,
@@ -2189,10 +2191,27 @@ document.getElementById('brand-logo').addEventListener('click',()=>{
     },'Log In');
 });
 
+let glowTimeout=null;
+function startGlow(){
+  const search=document.getElementById('map-search');
+  const elDrop=document.getElementById('el-drop');
+  if(search)search.classList.add('onboard-glow');
+  if(elDrop)elDrop.classList.add('onboard-glow');
+  clearTimeout(glowTimeout);
+  glowTimeout=setTimeout(()=>clearGlow(),5000);
+}
+function clearGlow(){
+  const search=document.getElementById('map-search');
+  const elDrop=document.getElementById('el-drop');
+  if(search)search.classList.remove('onboard-glow');
+  if(elDrop)elDrop.classList.remove('onboard-glow');
+  clearTimeout(glowTimeout);
+  glowTimeout=null;
+}
 function updateOnboardCard(){
   const card=document.getElementById('onboard-card');if(!card)return;
-  const hasContent=S.els.length>0||S.zonePolys.length>0||S.fences.length>0||S.dims.length>0||S.adaPaths.length>0;
-  card.style.display=hasContent?'none':'flex';
+  const hasContent=S.els.length>0||S.zonePolys.length>0||S.fences.length>0||S.dims.length>0||S.adaPaths.length>0||!!S.currentEventId;
+  if(hasContent){card.classList.add('hidden');clearGlow();}
 }
 
 function resetCanvas(){
@@ -3384,6 +3403,9 @@ async function init(){
 // ── Boot ───────────────────────────────────────────────────────────────────
 sz();
 renderColorKey();renderVendorList();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();
+updateOnboardCard();startGlow();
+document.getElementById('onboard-dismiss').addEventListener('click',()=>{const card=document.getElementById('onboard-card');if(card)card.classList.add('hidden');clearGlow();});
+document.getElementById('map-search').addEventListener('focus',()=>{clearGlow();},{ once:true });
 // pointer-events: none on cw initially (select tool)
 cw.style.pointerEvents='none';
 init();
