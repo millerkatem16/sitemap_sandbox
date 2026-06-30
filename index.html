@@ -51,6 +51,7 @@ html,body{height:100vh;background:var(--bg);color:var(--tx);font-family:var(--fo
 .tb.save:hover{background:#26c393;color:#0a2e24;border-color:#1ea378;box-shadow:0 2px 10px rgba(45,212,160,0.5),inset 0 1px 0 rgba(255,255,255,0.18)}
 .tb.export-trigger{background:#c4b5fd;color:#3b1f6b;border-color:#a78bfa;box-shadow:0 1px 6px rgba(167,139,250,0.35),inset 0 1px 0 rgba(255,255,255,0.18)}
 .tb.export-trigger:hover{background:#b4a1fc;border-color:#9370f5;box-shadow:0 2px 10px rgba(167,139,250,0.5),inset 0 1px 0 rgba(255,255,255,0.18)}
+#export-trigger{margin-left:8px}
 .spacer{flex:1}
 .el-drop{padding:6px 11px;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.22);border-radius:9px;color:#fff;font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;outline:none;height:36px;min-width:148px;text-align:center;transition:background .12s,border-color .12s}
 .el-drop:hover,.el-drop:focus{background:rgba(255,255,255,0.22);border-color:rgba(255,255,255,0.38)}
@@ -366,7 +367,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div class="tg">
     <button class="tb save" id="bsave-evt"><i class="ti ti-device-floppy"></i>Save Event</button>
     <button class="tb exp" id="bpdf" style="display:none"><i class="ti ti-file-type-pdf"></i>Export PDF</button>
-    <button class="tb export-trigger" id="export-trigger"><i class="ti ti-file-export"></i>Export</button>
+    <button class="tb export-trigger" id="export-trigger"><i class="ti ti-file-export"></i>Export Event</button>
   </div>
 </div>
 
@@ -1381,6 +1382,15 @@ function closeModal(){const fn=mOnClose;mOnClose=null;if(fn)fn();document.getEle
 function showToast(msg,isError=false){const c=document.getElementById('toast-container');if(!c)return;const t=document.createElement('div');t.className='toast'+(isError?' error':'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.classList.add('leaving');setTimeout(()=>t.remove(),200);},3500);}
 document.getElementById('mcan').addEventListener('click',closeModal);
 document.getElementById('mok').addEventListener('click',()=>{closeModal();if(mCb)mCb();});
+document.getElementById('mb').addEventListener('click',ev=>{
+  const card=ev.target.closest('.export-opt-card');
+  if(!card)return;
+  const mode=card.dataset.mode;
+  closeModal();
+  S.hideUtils=(mode==='safety');
+  applyHideUtils();
+  startExportFlow();
+});
 function mf(lbl,id,type='text',val='',ph=''){return`<div class="mf"><label>${lbl}</label><input type="${type}" id="${id}" value="${val}" placeholder="${ph}"></div>`;}
 function msel(lbl,id,opts){return`<div class="mf"><label>${lbl}</label><select id="${id}">${opts.map(o=>`<option value="${o.v}">${o.t}</option>`).join('')}</select></div>`;}
 function mr(...fs){return`<div class="mrow">${fs.join('')}</div>`;}
@@ -1738,17 +1748,8 @@ document.getElementById('vi-drop').addEventListener('change',e=>{const val=e.tar
 document.getElementById('sc-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='firstaid'){addFirstAidContact();return;}setTool(val);});
 document.getElementById('export-trigger').addEventListener('click',()=>{
   modal('Export Site Plan','Choose which version of your map to export.',
-    `<div class="export-opt-card" data-mode="safety"><div class="export-opt-title"><i class="ti ti-shield-check"></i>Safety Review Ready Map</div><div class="export-opt-blurb">Utilities and color tags are hidden for this review for a cleaner read.</div></div><div class="export-opt-card" data-mode="full"><div class="export-opt-title"><i class="ti ti-map-2"></i>Full Operational Map</div><div class="export-opt-blurb">Export will keep all information viewable.</div></div>`,
+    `<div class="export-opt-card" data-mode="full"><div class="export-opt-title"><i class="ti ti-map-2"></i>Full Operational Map</div><div class="export-opt-blurb">Export will keep all information viewable.</div></div><div class="export-opt-card" data-mode="safety"><div class="export-opt-title"><i class="ti ti-shield-check"></i>Safety Review Ready Map</div><div class="export-opt-blurb">Utilities and color tags are not captured for this view.</div></div>`,
     ()=>{},'Close',{wide:420,noCancel:true});
-  document.querySelectorAll('.export-opt-card').forEach(card=>{
-    card.addEventListener('click',()=>{
-      const mode=card.dataset.mode;
-      closeModal();
-      S.hideUtils=(mode==='safety');
-      applyHideUtils();
-      startExportFlow();
-    });
-  });
 });
 
 // ── Venue helpers ──────────────────────────────────────────────────────────
