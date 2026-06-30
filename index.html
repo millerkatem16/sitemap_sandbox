@@ -1471,13 +1471,8 @@ function place(type,x,y){
   const t=TYPES[type]||TYPES.custom;
   const base=(extra={})=>({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:t.lbl,vendorName:'',rot:0,hr:false,sr:false,...extra});
   if(type==='tent10'||type==='tent20'){
-    modal(`Place ${t.lbl}`,'Label this tent and select its use type.',mf('Tent Label','tlbl','text','','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(''),()=>{
-      pushUndo();const lbl=document.getElementById('tlbl').value.trim()||t.lbl;const tentType=document.getElementById('tent-type').value;const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
-      S.els.push(base({label:lbl,vendorName:lbl,tentType,colorTag}));
-      renderVendorList();renderEls();renderColorKey();runRules();
-    });
-    wireTagPicker();
-    document.getElementById('tent-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
+    pushUndo();S.els.push(base({vendorName:'',tentType:'vendor',colorTag:null}));
+    renderVendorList();renderEls();renderColorKey();runRules();
     return;
   }
   if(type==='customtent'){
@@ -1500,25 +1495,19 @@ function place(type,x,y){
     return;
   }
   if(type==='truck'){
-    modal('Place Food Truck','Enter vendor name and dimensions.',mf('Vendor Name','tklbl','text','','e.g. Tacos El Rey')+mr(mf('Length (ft)','tkl','number','20'),mf('Width (ft)','tkw','number','8')),()=>{
-      pushUndo();const lbl=document.getElementById('tklbl').value.trim()||'Food Truck',wFt=parseFloat(document.getElementById('tkl').value)||20,hFt=parseFloat(document.getElementById('tkw').value)||8;
-      S.els.push({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,rot:0,hr:false,sr:false});
-      renderVendorList();renderEls();renderColorKey();runRules();
-    });return;
+    pushUndo();S.els.push({id:S.idCtr++,type:'truck',lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:t.lbl,vendorName:'',rot:0,hr:false,sr:false});
+    renderVendorList();renderEls();renderColorKey();runRules();
+    return;
   }
   if(type==='stage'){
-    modal('Place Stage','Stages over 256 sq ft or 3ft tall may require a building permit.',mf('Stage Name','stlbl','text','','e.g. Main Stage')+mr(mf('Width (ft)','stw','number','20'),mf('Depth (ft)','std','number','16'),mf('Height (ft)','sth','number','2')),()=>{
-      pushUndo();const lbl=document.getElementById('stlbl').value.trim()||'Stage',wFt=parseFloat(document.getElementById('stw').value)||20,hFt=parseFloat(document.getElementById('std').value)||16,heightFt=parseFloat(document.getElementById('sth').value)||2;
-      S.els.push({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt,hFt,label:lbl,vendorName:lbl,heightFt,rot:0,hr:false,sr:false});
-      renderVendorList();renderEls();renderColorKey();runRules();
-    });return;
+    pushUndo();S.els.push({id:S.idCtr++,type:'stage',lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:t.lbl,vendorName:'',heightFt:2,rot:0,hr:false,sr:false});
+    renderVendorList();renderEls();renderColorKey();runRules();
+    return;
   }
   if(type==='ingress'){
-    modal('Place Ingress/Egress','ADA minimum is 10ft wide. Both directions must be clear.',mf('Gate Label','inlbl','text','','e.g. Main Entrance, North Gate')+mf('Opening Width (ft)','inw','number','12'),()=>{
-      pushUndo();const lbl=document.getElementById('inlbl').value.trim()||'Ingress/Egress',wFt=parseFloat(document.getElementById('inw').value)||12;
-      S.els.push({id:S.idCtr++,type,lat:ll.lat,lng:ll.lng,wFt,hFt:8,label:lbl,vendorName:lbl,rot:0,hr:false,sr:false});
-      renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
-    });return;
+    pushUndo();S.els.push({id:S.idCtr++,type:'ingress',lat:ll.lat,lng:ll.lng,wFt:t.wFt,hFt:t.hFt,label:t.lbl,vendorName:'',rot:0,hr:false,sr:false});
+    renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
+    return;
   }
   if(type==='firstaid'){
     modal('Place First Aid Station','Document the certified responder at this station.',mf('Responder Name','fan','text','','Full name')+mf('Certification','fac2','text','','e.g. CPR/AED, EMT, Paramedic'),()=>{
@@ -1712,7 +1701,7 @@ document.getElementById('ctc-select').addEventListener('click',()=>setTool('sele
 });
 document.getElementById('el-drop').addEventListener('change',e=>{const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
 document.getElementById('define-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
-document.getElementById('vi-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},'Start Drawing');return;}setTool(val);});
+document.getElementById('vi-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
 document.getElementById('sc-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}setTool(val);});
 document.getElementById('export-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='safety'){S.hideUtils=true;applyHideUtils();startExportFlow();return;}if(val==='full'){S.hideUtils=false;applyHideUtils();startExportFlow();}});
 
@@ -1961,10 +1950,7 @@ document.getElementById('bvenue').addEventListener('click',ev=>{ev.stopPropagati
 document.addEventListener('click',ev=>{if(!document.getElementById('bvenue').contains(ev.target)){document.getElementById('venue-dd').style.display='none';}});
 document.getElementById('vm-save-btn').onclick=()=>saveVenue();
 (document.getElementById('bfence')||document.createElement('span')).addEventListener('click',()=>{
-  modal('Add Fencing','Click to place fence points on the map. Double-click to finish a segment.',
-    mf('Material','fnc-mat','text','','e.g. Sand Fence, Chain Link, Snow Fence'),
-    ()=>{fenceMaterial=document.getElementById('fnc-mat').value.trim()||'Fence';fenceCur=[];setTool('fence');},
-    'Start Drawing');
+  fenceMaterial='Fence';fenceCur=[];setTool('fence');
 });
 
 // ── Save / Open Event ──────────────────────────────────────────────────────
