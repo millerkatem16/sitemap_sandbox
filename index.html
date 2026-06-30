@@ -1286,7 +1286,7 @@ function renderSafetyCompliance(){
   const tnMap=getTypeNums();
   let html='';
   if(S.firstAids.length){
-    html+='<div class="plabel-sub" style="margin-top:0">First Aid</div>';
+    html+='<div class="plabel-sub" style="margin-top:0">First Aid Contact</div>';
     html+=S.firstAids.map(c=>`<div class="fa-item"><strong>${c.name}</strong><span>${c.cert}</span></div>`).join('');
   }
   const countKeys=Object.keys(counts);
@@ -2318,8 +2318,6 @@ function renderColorKey(){
     rows.push({type:'swatch',bg:'#a78bfa25',bord:'#a78bfa',lbl:'Stage',dim:'20×16 ft (default)'});
   if(S.els.some(e=>e.type==='ingress'))
     rows.push({type:'swatch',bg:'rgba(34,197,94,0.2)',bord:'#22c55e',lbl:'Ingress / Egress',dim:'10+ ft wide'});
-  if(S.firstAids.length>0)
-    rows.push({type:'swatch',bg:'#f0525225',bord:'#f05252',lbl:'First Aid Contact',dim:'Certified responder on site'});
   if(S.els.some(e=>e.type==='extinguisher'))
     rows.push({type:'circle',color:'#f05252',lbl:'Fire Extinguisher',dim:'Utility marker'});
   if(S.els.some(e=>e.type==='security'))
