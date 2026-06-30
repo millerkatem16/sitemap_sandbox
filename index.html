@@ -535,6 +535,13 @@ const S={
 };
 
 let gmap=null,mapsApiKey='';
+let ADMIN_EMAIL='';
+function displayEmail(email){
+  if(!email)return'';
+  const adminEm=S.adminEmail||(typeof ADMIN_EMAIL!=='undefined'?ADMIN_EMAIL:'');
+  if(adminEm&&email.toLowerCase()===adminEm.toLowerCase())return'Admin';
+  return email;
+}
 
 const cvArea=document.getElementById('cv-area'),cw=document.getElementById('cw');
 const zc=document.getElementById('zc'),bc=document.getElementById('bc'),dc=document.getElementById('dc');
@@ -2035,7 +2042,7 @@ async function saveEvent(){
           if(!r.ok){showToast(d.error||'Save failed.',true);return;}
           S.currentEventId=d.id;
           S.currentEventMeta={edit_log:[{email:S.currentUser,timestamp:new Date().toISOString()}],access:[],owner_email:S.currentUser};
-          updateSettingsPanelVisibility();{const _b=document.getElementById('event-details-body');const _c=document.getElementById('event-details-chevron');if(_b&&_b.style.display==='none'){_b.style.display='block';if(_c)_c.style.transform='rotate(180deg)';}}
+          updateSettingsPanelVisibility(true);
           showToast(`"${name}" saved.`);
         }catch(e){showToast('Network error saving event.',true);}
       },'Save');
@@ -2105,7 +2112,7 @@ async function openEvents(){
           redrawZones();renderEls();renderColorKey();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
           S.currentEventId=ev.id;
           S.currentEventMeta={edit_log:ev.edit_log||[],access:ev.access||[],owner_email:ev.owner_email};
-          updateSettingsPanelVisibility();{const _b=document.getElementById('event-details-body');const _c=document.getElementById('event-details-chevron');if(_b&&_b.style.display==='none'){_b.style.display='block';if(_c)_c.style.transform='rotate(180deg)';}}
+          updateSettingsPanelVisibility(true);
           showToast(`"${name}" loaded.`);
           if(S.activeVenueId){
             fetch(`/api/venues/${S.activeVenueId}`).then(r2=>r2.json()).then(d=>{
@@ -2171,11 +2178,18 @@ function resetCanvas(){
   drawAda();runRules();
 }
 
-function updateSettingsPanelVisibility(){
+function updateSettingsPanelVisibility(autoExpand=false){
   const panel=document.getElementById('settings-panel');
   if(!panel)return;
-  if(S.currentEventId){panel.style.display='';renderSettingsPanel();}
-  else panel.style.display='none';
+  if(S.currentEventId){
+    panel.style.display='';
+    renderSettingsPanel();
+    if(autoExpand){
+      const _b=document.getElementById('event-details-body');
+      const _c=document.getElementById('event-details-chevron');
+      if(_b&&_b.style.display==='none'){_b.style.display='block';if(_c)_c.style.transform='rotate(180deg)';}
+    }
+  }else panel.style.display='none';
 }
 
 function renderSettingsPanel(){
@@ -2187,11 +2201,11 @@ function renderSettingsPanel(){
   const ownerEmail=meta.owner_email||'';
   const fmt=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const histHtml=editLog.length
-    ?editLog.map(e=>`<div style="font-size:11px;padding:2px 0;color:var(--tx2)">${e.email.replace(/</g,'&lt;')} · ${fmt(e.timestamp)}</div>`).join('')
+    ?editLog.map(e=>`<div style="font-size:11px;padding:2px 0;color:var(--tx2)">${displayEmail(e.email).replace(/</g,'&lt;')} · ${fmt(e.timestamp)}</div>`).join('')
     :'<div style="font-size:11px;color:var(--tx3)">No edits recorded.</div>';
   const accessRowsHtml=accessList.map(a=>`
     <div data-email="${a.user_email.replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:6px;padding:2px 0">
-      <span style="flex:1;font-size:11px;color:var(--tx2)">${a.user_email.replace(/</g,'&lt;')}</span>
+      <span style="flex:1;font-size:11px;color:var(--tx2)">${displayEmail(a.user_email).replace(/</g,'&lt;')}</span>
       <button class="sp-revoke" style="background:none;border:none;cursor:pointer;color:var(--crimson);font-size:15px;line-height:1;padding:0 4px" title="Remove access">×</button>
     </div>`).join('');
   body.innerHTML=`
@@ -2201,7 +2215,7 @@ function renderSettingsPanel(){
     </div>
     <div style="margin-bottom:8px">
       <div class="plabel" style="font-size:10px;margin-bottom:4px">Access</div>
-      <div style="font-size:11px;padding:2px 0;color:var(--tx2)">Owner: ${ownerEmail.replace(/</g,'&lt;')}</div>
+      <div style="font-size:11px;padding:2px 0;color:var(--tx2)">Owner: ${displayEmail(ownerEmail).replace(/</g,'&lt;')}</div>
       ${accessRowsHtml}
       <div style="margin-top:6px;display:flex;gap:4px">
         <input id="sp-grant-email" type="email" placeholder="Email to grant access" style="flex:1;font-size:11px;padding:3px 5px;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx)">
