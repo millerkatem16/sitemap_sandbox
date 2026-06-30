@@ -49,6 +49,8 @@ html,body{height:100vh;background:var(--bg);color:var(--tx);font-family:var(--fo
 .tb.exp:hover{background:rgba(45,212,160,0.2);color:#2dd4a0;border-color:rgba(45,212,160,0.42)}
 .tb.save{background:#2dd4a0;color:#0a2e24;border-color:#22b88a;box-shadow:0 1px 6px rgba(45,212,160,0.35),inset 0 1px 0 rgba(255,255,255,0.18)}
 .tb.save:hover{background:#26c393;color:#0a2e24;border-color:#1ea378;box-shadow:0 2px 10px rgba(45,212,160,0.5),inset 0 1px 0 rgba(255,255,255,0.18)}
+.tb.export-trigger{background:#c4b5fd;color:#3b1f6b;border-color:#a78bfa;box-shadow:0 1px 6px rgba(167,139,250,0.35),inset 0 1px 0 rgba(255,255,255,0.18)}
+.tb.export-trigger:hover{background:#b4a1fc;border-color:#9370f5;box-shadow:0 2px 10px rgba(167,139,250,0.5),inset 0 1px 0 rgba(255,255,255,0.18)}
 .spacer{flex:1}
 .el-drop{padding:6px 11px;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.22);border-radius:9px;color:#fff;font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;outline:none;height:36px;min-width:148px;text-align:center;transition:background .12s,border-color .12s}
 .el-drop:hover,.el-drop:focus{background:rgba(255,255,255,0.22);border-color:rgba(255,255,255,0.38)}
@@ -201,6 +203,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .mrow{display:flex;gap:10px}
 .mrow .mf{flex:1}
 .mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+.export-opt-card{padding:14px 16px;border-radius:var(--r2);border:1.5px solid var(--brd2);background:var(--surf2);cursor:pointer;margin-bottom:10px;transition:background .12s,border-color .12s,transform .1s}
+.export-opt-card:last-child{margin-bottom:0}
+.export-opt-card:hover{background:var(--surf3);border-color:var(--slate);transform:translateY(-1px)}
+.export-opt-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--tx);margin-bottom:5px}
+.export-opt-title i{font-size:17px;color:var(--slate)}
+.export-opt-blurb{font-size:11.5px;color:var(--tx2);line-height:1.5}
 .mbtn{padding:9px 20px;border-radius:10px;border:1px solid var(--brd2);background:var(--surf2);color:var(--tx2);cursor:pointer;font-size:13px;font-family:var(--font);font-weight:600;transition:all .14s}
 .mbtn:hover{background:var(--surf3);color:var(--tx)}
 .mbtn.p{background:var(--acc);color:#fff;border-color:transparent;box-shadow:0 2px 12px rgba(244,81,64,0.3),inset 0 1px 0 rgba(255,255,255,0.1)}
@@ -358,11 +366,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div class="tg">
     <button class="tb save" id="bsave-evt"><i class="ti ti-device-floppy"></i>Save Event</button>
     <button class="tb exp" id="bpdf" style="display:none"><i class="ti ti-file-type-pdf"></i>Export PDF</button>
-    <select class="el-drop" id="export-drop">
-      <option value="" disabled selected>Export</option>
-      <option value="safety">Safety Review Ready Map</option>
-      <option value="full">Full Operational Map</option>
-    </select>
+    <button class="tb export-trigger" id="export-trigger"><i class="ti ti-file-export"></i>Export</button>
   </div>
 </div>
 
@@ -1732,7 +1736,20 @@ document.getElementById('el-drop').addEventListener('change',e=>{const val=e.tar
 document.getElementById('define-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
 document.getElementById('vi-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
 document.getElementById('sc-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='firstaid'){addFirstAidContact();return;}setTool(val);});
-document.getElementById('export-drop').addEventListener('change',e=>{const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='safety'){S.hideUtils=true;applyHideUtils();startExportFlow();return;}if(val==='full'){S.hideUtils=false;applyHideUtils();startExportFlow();}});
+document.getElementById('export-trigger').addEventListener('click',()=>{
+  modal('Export Site Plan','Choose which version of your map to export.',
+    `<div class="export-opt-card" data-mode="safety"><div class="export-opt-title"><i class="ti ti-shield-check"></i>Safety Review Ready Map</div><div class="export-opt-blurb">Utilities and color tags are hidden for this review for a cleaner read.</div></div><div class="export-opt-card" data-mode="full"><div class="export-opt-title"><i class="ti ti-map-2"></i>Full Operational Map</div><div class="export-opt-blurb">Export will keep all information viewable.</div></div>`,
+    ()=>{},'Close',{wide:420,noCancel:true});
+  document.querySelectorAll('.export-opt-card').forEach(card=>{
+    card.addEventListener('click',()=>{
+      const mode=card.dataset.mode;
+      closeModal();
+      S.hideUtils=(mode==='safety');
+      applyHideUtils();
+      startExportFlow();
+    });
+  });
+});
 
 // ── Venue helpers ──────────────────────────────────────────────────────────
 function venueDataSnapshot(){
