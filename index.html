@@ -999,6 +999,25 @@ function polyArea(pts){
   for(let i=0,j=px.length-1;i<px.length;j=i++){a+=(px[j].x+px[i].x)*(px[j].y-px[i].y);}
   return Math.abs(a/2);
 }
+function restrictedOverlapSqFt(borderPts,restrictPolys){
+  if(!restrictPolys.length)return 0;
+  const bPx=ptsToPixels(borderPts);
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  bPx.forEach(p=>{minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);});
+  const bboxW=maxX-minX,bboxH=maxY-minY;
+  if(bboxW<=0||bboxH<=0)return 0;
+  const cellPx=Math.max(bboxW,bboxH)/80;
+  const cols=Math.ceil(bboxW/cellPx),rows=Math.ceil(bboxH/cellPx);
+  let inBorder=0,inOverlap=0;
+  for(let r=0;r<rows;r++){for(let c=0;c<cols;c++){
+    const pt={x:minX+(c+0.5)*cellPx,y:minY+(r+0.5)*cellPx};
+    if(!pip(pt,borderPts))continue;
+    inBorder++;
+    if(restrictPolys.some(rz=>pip(pt,rz.pts)))inOverlap++;
+  }}
+  if(!inBorder)return 0;
+  return(inOverlap/inBorder)*(polyArea(borderPts)/(S.scale*S.scale));
+}
 function getClosedBorders(){return S.zonePolys.filter(z=>z.type==='border'&&!z.open&&z.pts.length>=3);}
 
 // Majority-vote: >50% of inner vertices must be inside outer polygon
@@ -1032,11 +1051,13 @@ function getZoneCapacities(){
     if(bestZone>=0)zoneStruc[bestZone]+=e.wFt*e.hFt;
   });
   const multi=borders.length>1;
+  const restrictPolys=S.zonePolys.filter(z=>z.type==='restrict'&&!z.open&&z.pts.length>=3);
   return borders.map((b,i)=>{
     const zs=zoneStruc[i];
     const base=multi?netAreas[i]:rawAreas[0];
-    const sqFt=Math.round(Math.max(0,base-zs));
-    const cap=Math.max(0,Math.floor((base-zs)/10));
+    const rOvlp=restrictedOverlapSqFt(b.pts,restrictPolys);
+    const sqFt=Math.round(Math.max(0,base-zs-rOvlp));
+    const cap=Math.max(0,Math.floor((base-zs-rOvlp)/10));
     const placeholder=parentIdx[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`;
     return{zid:b.zid,label:b.label,cap,sqFt,peakAtt:b.peakAtt||null,isSub:parentIdx[i]>=0,placeholder};
   });
@@ -1085,11 +1106,6 @@ function updateCap(){
     borders.forEach((b,i)=>{if(pip(ePx,b.pts)&&rawAreas[i]<bestArea){bestZone=i;bestArea=rawAreas[i];}});
     if(bestZone>=0)zoneStruc[bestZone]+=e.wFt*e.hFt;
   });
-  const totalFtSq=netAreas.reduce((s,a)=>s+Math.max(0,a),0);
-  const restrictFtSq=S.zonePolys.filter(z=>z.type==='restrict'&&!z.open&&z.pts.length>=3).reduce((s,z)=>s+polyArea(z.pts)/(S.scale*S.scale),0);
-  const usableFtSq=Math.max(0,totalFtSq-restrictFtSq);
-  const totalCap=Math.max(0,Math.floor((usableFtSq-struc)/10));
-
   const bordersEl=document.getElementById('cap-borders');
   const multi=borders.length>1;
   // Preserve focus on zone name/peak-att inputs during re-render
@@ -1097,6 +1113,8 @@ function updateCap(){
   const wasZid=activeZoneEl&&activeZoneEl.classList&&activeZoneEl.classList.contains('zone-name-inp')?activeZoneEl.dataset.zid:null;
   const wasPeakZid=activeZoneEl&&activeZoneEl.classList&&activeZoneEl.classList.contains('peak-att-inp')?activeZoneEl.dataset.zid:null;
   const zones=getZoneCapacities();
+  const usableFtSq=zones.reduce((s,z)=>s+z.sqFt,0);
+  const totalCap=zones.reduce((s,z)=>s+z.cap,0);
   bordersEl.innerHTML=zones.map(z=>{
     const sub=z.isSub?` <span style="font-size:8px;color:var(--acc);font-weight:700;vertical-align:middle">SUB</span>`:'';
     const escapedLabel=(z.label||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
@@ -3351,6 +3369,7 @@ async function exportPDF(capture){
         p2Borders.forEach((b,i)=>{if(pip(ePx,b.pts)&&rawAreas2[i]<bestArea){bestZone=i;bestArea=rawAreas2[i];}});
         if(bestZone>=0)zoneStruc2[bestZone]+=e.wFt*e.hFt;
       });
+      const restrictPolys2=S.zonePolys.filter(z=>z.type==='restrict'&&!z.open&&z.pts.length>=3);
       p2Borders.forEach((b,i)=>{
         if(c1y>=p2MaxY)return;
         const isSub=parIdx2[i]>=0;
@@ -3360,9 +3379,10 @@ async function exportPDF(capture){
         // Use same base-area logic as updateCap: rawAreas[0] for single zone, netAreas[i] for multi
         const baseArea=multi2?netAreas2[i]:rawAreas2[0];
         const zs=zoneStruc2[i];
+        const rOvlp=restrictedOverlapSqFt(b.pts,restrictPolys2);
         const totalSqFt=Math.round(Math.max(0,baseArea));
-        const sqFt2=Math.round(Math.max(0,baseArea-zs));
-        const cap2=Math.max(0,Math.floor((baseArea-zs)/10));
+        const sqFt2=Math.round(Math.max(0,baseArea-zs-rOvlp));
+        const cap2=Math.max(0,Math.floor((baseArea-zs-rOvlp)/10));
         console.log('[PDF BZ]',lbl2,'baseArea=',Math.round(baseArea),'zs=',Math.round(zs),'sqFt2=',sqFt2,'cap2=',cap2);
         pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
         pdf.text(lbl2,p2C1X+txtOff,c1y);c1y+=p2LH;
