@@ -347,6 +347,11 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .pg-highlight-field{outline:2px solid var(--amb)!important;outline-offset:2px}
 .pg-highlight-row{background:rgba(251,189,47,0.14)!important;border-radius:var(--r);transition:background .3s}
 .pg-highlight-panel{box-shadow:inset 0 0 0 2px var(--amb)!important;transition:box-shadow .3s}
+.pg-dismiss{background:none;border:none;cursor:pointer;color:var(--tx3);font-size:14px;line-height:1;padding:0 0 0 6px;flex-shrink:0;opacity:.55;margin-top:1px;transition:opacity .12s}
+.pg-dismiss:hover{opacity:1}
+@keyframes pg-check-pop{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.2)}100%{opacity:0;transform:scale(1)}}
+#bpg-check{position:absolute;top:-8px;right:-8px;font-size:16px;color:var(--grn);pointer-events:none;opacity:0}
+#bpg-check.pg-check-animate{animation:pg-check-pop .7s ease-out forwards}
 </style>
 </head>
 <body>
@@ -415,7 +420,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div class="spacer"></div>
   <div class="tg">
-    <button class="tb" id="bpg"><i class="ti ti-list-check"></i>Planning Guide<span id="bpg-badge"></span></button>
+    <button class="tb" id="bpg" style="position:relative"><i class="ti ti-list-check"></i>Planning Guide<span id="bpg-badge"></span><i class="ti ti-circle-check" id="bpg-check"></i></button>
   </div>
   <div class="tg">
     <button class="tb save" id="bsave-evt"><i class="ti ti-device-floppy"></i>Save Event</button>
@@ -479,9 +484,9 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div class="panel has-content" id="event-details-panel">
         <div class="panel-toggle" id="event-details-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
           <span class="plabel" style="margin-bottom:0">Event Details</span>
-          <svg id="event-details-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg id="event-details-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(0deg)"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div id="event-details-body" style="display:block;margin-top:12px">
+        <div id="event-details-body" style="display:none;margin-top:12px">
           <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:0">Event Name</div>
           <input id="evt-name" class="evt-inp" type="text" placeholder="Event name — shown on PDF">
           <div class="plabel" style="font-size:10px;margin-bottom:4px;margin-top:10px">Event Date</div>
@@ -496,47 +501,77 @@ canvas{position:absolute;inset:0;pointer-events:none}
       </div>
 
       <div class="panel" id="precheck-panel">
-        <div class="plabel">Flags &amp; Alerts</div>
-        <div id="wl"><div class="w info"><i class="ti ti-info-circle"></i><span>Place elements to run checks.</span></div></div>
+        <div class="panel-toggle" id="precheck-panel-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
+          <span class="plabel" style="margin-bottom:0">Flags &amp; Alerts</span>
+          <svg id="precheck-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="precheck-panel-body" style="display:block;margin-top:12px">
+          <div id="wl"><div class="w info"><i class="ti ti-info-circle"></i><span>Place elements to run checks.</span></div></div>
+        </div>
       </div>
 
       <div class="panel" id="vnd-panel">
-        <div class="plabel">Activations &amp; Vendors</div>
-        <div id="vl"><div style="font-size:10px;color:var(--tx3)">No elements placed yet</div></div>
+        <div class="panel-toggle" id="vnd-panel-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
+          <span class="plabel" style="margin-bottom:0">Activations &amp; Vendors</span>
+          <svg id="vnd-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="vnd-panel-body" style="display:block;margin-top:12px">
+          <div id="vl"><div style="font-size:10px;color:var(--tx3)">No elements placed yet</div></div>
+        </div>
       </div>
 
       <div class="panel" id="vi-panel">
-        <div class="plabel">Site Utilities</div>
-        <div id="vil"></div>
+        <div class="panel-toggle" id="vi-panel-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
+          <span class="plabel" style="margin-bottom:0">Site Utilities</span>
+          <svg id="vi-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="vi-panel-body" style="display:block;margin-top:12px">
+          <div id="vil"></div>
+        </div>
       </div>
 
       <div class="panel" id="sc-panel">
-        <div class="plabel">Safety &amp; Compliance</div>
-        <div id="sml"></div>
+        <div class="panel-toggle" id="sc-panel-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
+          <span class="plabel" style="margin-bottom:0">Safety &amp; Compliance</span>
+          <svg id="sc-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="sc-panel-body" style="display:block;margin-top:12px">
+          <div id="sml"></div>
+        </div>
       </div>
 
       <div class="panel" id="cap-panel">
-        <div class="plabel">Capacity</div>
-        <div style="display:none">
-          <button class="vbtn gold" id="zbrd-sb"></button>
-          <button class="vbtn gold-ol" id="zbrd-vip"></button>
+        <div class="panel-toggle" id="cap-panel-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
+          <span class="plabel" style="margin-bottom:0">Capacity</span>
+          <svg id="cap-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div style="margin-top:8px">
-          <div id="cap-na" class="cap-na">No borders drawn yet — use Draw Venue Border from the Define Site menu above</div>
-          <div id="cap-live" style="display:none">
-            <div id="cap-borders"></div>
-            <div class="cap-center" id="cap-total-wrap">
-              <div class="cap-big" id="cn">—</div>
-              <div class="cap-sub" id="cn-lbl">estimated occupants</div>
-              <div class="cap-detail" id="cd">Draw a border to calculate</div>
+        <div id="cap-panel-body" style="display:block;margin-top:12px">
+          <div style="display:none">
+            <button class="vbtn gold" id="zbrd-sb"></button>
+            <button class="vbtn gold-ol" id="zbrd-vip"></button>
+          </div>
+          <div style="margin-top:8px">
+            <div id="cap-na" class="cap-na">No borders drawn yet — use Draw Venue Border from the Define Site menu above</div>
+            <div id="cap-live" style="display:none">
+              <div id="cap-borders"></div>
+              <div class="cap-center" id="cap-total-wrap">
+                <div class="cap-big" id="cn">—</div>
+                <div class="cap-sub" id="cn-lbl">estimated occupants</div>
+                <div class="cap-detail" id="cd">Draw a border to calculate</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div class="panel" id="ckey-panel">
-        <div class="plabel">Color Key</div>
-        <div id="ckey"></div>
+        <div class="panel-toggle" id="ckey-panel-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
+          <span class="plabel" style="margin-bottom:0">Color Key</span>
+          <svg id="ckey-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="ckey-panel-body" style="display:block;margin-top:12px">
+          <div id="ckey"></div>
+        </div>
       </div>
 
       <div class="panel" style="display:none">
@@ -585,7 +620,8 @@ const S={
   activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[],
   eventNotes:'',
   colorTags:[{id:'pink',hex:'#f9a8d4',name:null},{id:'lpurple',hex:'#c4b5fd',name:null},{id:'lblue',hex:'#93c5fd',name:null},{id:'dblue',hex:'#1e40af',name:null},{id:'green',hex:'#4ade80',name:null},{id:'gray',hex:'#9ca3af',name:null},{id:'orange',hex:'#fb923c',name:null},{id:'teal',hex:'#0d9488',name:null}],
-  currentUser:null,currentEventId:null,currentEventMeta:null,isAdmin:false,adminEmail:null,lastWarns:null
+  currentUser:null,currentEventId:null,currentEventMeta:null,isAdmin:false,adminEmail:null,lastWarns:null,
+  pgDismissed:new Set(),pgSeenOpenKeys:null
 };
 
 let gmap=null,mapsApiKey='';
@@ -1121,7 +1157,8 @@ function runRules(){
   const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
   cookingTents.forEach(c=>{[...nonCookingTents,...trucks].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — 20ft separation required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[c.id,o.id]});c.hr=true;o.hr=true;}});});
   gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`,ids:[g.id]});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`,ids:[g.id]});});
-  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:`No ingress/egress placed${zoneDesc}.`,ids:[]});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 ingress/egress${zoneDesc} — minimum 2 required. 3 recommended.`,ids:[ins[0].id]});else if(ins.length===2)warns.push({type:'soft',msg:`2 ingress/egress${zoneDesc} — a 3rd is recommended.`,ids:ins.map(ii=>ii.id)});}}
+  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}// TODO: change target to 'define-drop' once ingress/egress is relocated from sc-drop
+if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:`No ingress/egress placed${zoneDesc}.`,ids:[],action:{type:'topbar',target:'sc-drop',value:'ingress'}});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 ingress/egress${zoneDesc} — minimum 2 required. 3 recommended.`,ids:[ins[0].id],action:{type:'topbar',target:'sc-drop',value:'ingress'}});else if(ins.length===2)warns.push({type:'soft',msg:`2 ingress/egress${zoneDesc} — a 3rd is recommended.`,ids:ins.map(ii=>ii.id)});}}
   ins.forEach(i=>{
     if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is under 10ft wide — ADA minimum not met.`,ids:[i.id]});i.hr=true;}
     const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`,ids:[i.id,...blocked.map(b=>b.id)]});i.hr=true;blocked.forEach(b=>b.hr=true);}
@@ -1162,14 +1199,14 @@ function runRules(){
 
 // ── Planning Guide ─────────────────────────────────────────────────────────
 function buildPlanningGuide(){
-  const items=[];
+  let items=[];
   const add=(phase,severity,text,action)=>items.push({phase,severity,text,action});
   // ── Phase 1: Define the Site ─────────────────────────────────────────────
   const searchVal=((document.getElementById('map-search')||{}).value||'').trim();
   const atDefault=S.mapCenter.lat===36.8508&&S.mapCenter.lng===-76.2858;
   if(!searchVal&&atDefault)add(1,'todo','No venue searched yet — search an address or venue name to set your event location.',{type:'topbar',target:'map-search'});
   const borders=getClosedBorders();
-  if(borders.length===0&&S.els.length>0)add(1,'todo','No site border drawn — use Define Site to draw a venue border.',{type:'topbar',target:'define-drop'});
+  if(borders.length===0&&S.els.length>0)add(1,'todo','No site border drawn — use Define Site to draw a venue border.',{type:'topbar',target:'define-drop',value:'border'});
   if(borders.some(b=>b.hasDesignatedIngress===undefined))add(1,'todo','A zone border has no ingress/egress answer — click the zone to confirm whether it has a designated entry point.',{type:'sidebarPanel',panel:'precheck-panel'});
   getZoneCapacities().filter(z=>!z.placeholder).forEach(z=>{if(z.sqFt<500)add(1,'soft',`${z.label||'A zone'} is under 500 sq ft — confirm this boundary is intentional.`,{type:'sidebarPanel',panel:'cap-panel'});});
   if(borders.length>1&&borders.every(b=>!b.label||!b.label.trim()))add(1,'todo','Multiple zone borders exist but none are labeled — add names in the Capacity panel to distinguish zones.',{type:'sidebarPanel',panel:'cap-panel'});
@@ -1197,7 +1234,7 @@ function buildPlanningGuide(){
       if(w.type==='ok')return;
       if(typeof w.msg==='string'&&w.msg.includes('peak attendance'))return;
       const sev=w.type==='hard'?'flag':w.type==='soft'?'soft':'info';
-      const action=w.ids&&w.ids.length?{type:'highlightElements',ids:w.ids}:{type:'sidebarPanel',panel:'precheck-panel'};
+      const action=w.action?w.action:(w.ids&&w.ids.length?{type:'highlightElements',ids:w.ids}:{type:'sidebarPanel',panel:'precheck-panel'});
       add(3,sev,w.msg,action);
     });
   }
@@ -1213,6 +1250,8 @@ function buildPlanningGuide(){
   if(!evtDate)add(4,'todo','Set the event date so it appears on exported documents.',{type:'sidebarField',target:'evt-date',panel:'event-details-panel'});
   if(!S.eventNotes||!S.eventNotes.trim())add(4,'info','No notes entered — add notes or instructions for your event team.',{type:'sidebarField',target:'evt-notes',panel:'event-details-panel'});
   if(!S.currentEventId)add(4,'todo','Event not saved — save your event to preserve your work.',{type:'topbar',target:'bsave-evt'});
+  // Filter session-dismissed soft/info items
+  items=items.filter(x=>!((x.severity==='soft'||x.severity==='info')&&S.pgDismissed.has(x.text)));
   // Sort: phase asc, then severity
   const sevOrd={flag:0,todo:1,soft:2,info:3,ok:4};
   items.sort((a,b)=>a.phase!==b.phase?a.phase-b.phase:((sevOrd[a.severity]??5)-(sevOrd[b.severity]??5)));
@@ -1246,6 +1285,7 @@ function dispatchPgAction(action){
   if(!action)return;
   clearPgHighlights();
   if(action.type==='topbar'){
+    if(action.value!==undefined){const sel=document.getElementById(action.target);if(sel){sel.value=action.value;sel.dispatchEvent(new Event('change',{bubbles:true}));}}
     glowEl(action.target);
   } else if(action.type==='highlightElements'){
     action.ids.forEach(id=>{const div=document.querySelector(`#el [data-id="${id}"]`);if(div)div.classList.add('pg-highlight');});
@@ -1275,16 +1315,15 @@ function openPlanningGuide(){
   if(pgItems.length===1&&pgItems[0].severity==='ok'){
     html=`<div class="pg-ok-state"><i class="ti ti-circle-check"></i><span>${pgItems[0].text}</span></div>`;
   } else {
-    [1,2,3,4].forEach(ph=>{
-      const phItems=pgItems.filter(x=>x.phase===ph);
-      if(!phItems.length)return;
-      html+=`<div class="pg-phase-hdr">${PG_PHASE_LABELS[ph]}</div>`;
-      phItems.forEach(item=>{
-        const idx=pgItems.indexOf(item);
-        const hasAction=!!item.action;
-        const arrow=hasAction?`<i class="ti ti-chevron-right pg-arrow"></i>`:'';
-        html+=`<div class="pg-item pg-sev-${item.severity}"${hasAction?` data-pg-idx="${idx}"`:''}><i class="ti ${PG_SEV_ICON[item.severity]||'ti-info-circle'} pg-icon"></i><span class="pg-text">${item.text}</span>${arrow}</div>`;
-      });
+    const nonOk=pgItems.filter(x=>x.severity!=='ok');
+    const visible=nonOk.slice(0,3);
+    html+=`<div class="pg-phase-hdr" style="padding-top:2px">Recommended Next Steps</div>`;
+    visible.forEach(item=>{
+      const idx=pgItems.indexOf(item);
+      const hasAction=!!item.action;
+      const arrow=hasAction?`<i class="ti ti-chevron-right pg-arrow"></i>`:'';
+      const dismissBtn=(item.severity==='soft'||item.severity==='info')?`<button class="pg-dismiss" data-pg-dismiss="${idx}" title="Dismiss">×</button>`:'';
+      html+=`<div class="pg-item pg-sev-${item.severity}"${hasAction?` data-pg-idx="${idx}"`:''}><i class="ti ${PG_SEV_ICON[item.severity]||'ti-info-circle'} pg-icon"></i><span class="pg-text">${item.text}</span>${arrow}${dismissBtn}</div>`;
     });
   }
   modal('Planning Guide','',html,null,'Close',{wide:460,noCancel:true});
@@ -1298,6 +1337,17 @@ function updatePlanningGuideBadge(){
   if(flags>0){badge.textContent=flags;badge.className='pg-flag';}
   else if(todos>0){badge.textContent=todos;badge.className='pg-todo';}
   else{badge.textContent='✓';badge.className='pg-ok';}
+  // Detect newly-resolved items and show check animation
+  const openKeys=new Set(items.filter(x=>x.severity!=='ok').map(x=>x.text));
+  if(S.pgSeenOpenKeys!==null){
+    let anyResolved=false;
+    S.pgSeenOpenKeys.forEach(k=>{if(!openKeys.has(k))anyResolved=true;});
+    if(anyResolved){
+      const chk=document.getElementById('bpg-check');
+      if(chk){chk.classList.remove('pg-check-animate');void chk.offsetWidth;chk.classList.add('pg-check-animate');}
+    }
+  }
+  S.pgSeenOpenKeys=openKeys;
 }
 
 // ── Render Elements ────────────────────────────────────────────────────────
@@ -2387,15 +2437,20 @@ async function openEvents(){
 
 document.getElementById('bsave-evt').addEventListener('click',()=>requireLogin(saveEvent));
 document.getElementById('bpg').addEventListener('click',openPlanningGuide);
-document.getElementById('mb').addEventListener('click',ev=>{const item=ev.target.closest('.pg-item[data-pg-idx]');if(!item)return;const idx=parseInt(item.dataset.pgIdx);const pgItem=pgItems[idx];if(!pgItem||!pgItem.action)return;closeModal();dispatchPgAction(pgItem.action);});
+document.getElementById('mb').addEventListener('click',ev=>{const item=ev.target.closest('.pg-item[data-pg-idx]');if(!item)return;const btn=ev.target.closest('.pg-dismiss');if(btn)return;const idx=parseInt(item.dataset.pgIdx);const pgItem=pgItems[idx];if(!pgItem||!pgItem.action)return;closeModal();dispatchPgAction(pgItem.action);});
+document.getElementById('mb').addEventListener('click',ev=>{const btn=ev.target.closest('.pg-dismiss[data-pg-dismiss]');if(!btn)return;ev.stopPropagation();const idx=parseInt(btn.dataset.pgDismiss);const pgItem=pgItems[idx];if(!pgItem)return;S.pgDismissed.add(pgItem.text);btn.closest('.pg-item').remove();});
 document.getElementById('cw').addEventListener('mousedown',clearPgHighlights);
 document.getElementById('evt-notes').addEventListener('input',function(){S.eventNotes=this.value;});
-document.getElementById('event-details-toggle').addEventListener('click',()=>{
-  const body=document.getElementById('event-details-body');
-  const chev=document.getElementById('event-details-chevron');
-  const open=body.style.display==='none';
-  body.style.display=open?'block':'none';
-  chev.style.transform=open?'rotate(180deg)':'rotate(0deg)';
+['event-details','precheck-panel','vnd-panel','vi-panel','sc-panel','cap-panel','ckey-panel'].forEach(id=>{
+  const tog=document.getElementById(id+'-toggle');if(!tog)return;
+  tog.addEventListener('click',()=>{
+    const body=document.getElementById(id+'-body');
+    const chev=document.getElementById(id+'-chevron');
+    if(!body||!chev)return;
+    const open=body.style.display==='none';
+    body.style.display=open?'block':'none';
+    chev.style.transform=open?'rotate(180deg)':'rotate(0deg)';
+  });
 });
 document.getElementById('bopen').addEventListener('click',()=>requireLogin(openEvents));
 
