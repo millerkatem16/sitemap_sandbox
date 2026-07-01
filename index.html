@@ -401,6 +401,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <option value="electric">Electric Source</option>
       <option value="water">Water Source</option>
       <option value="trash">Trash Bin</option>
+      <option value="restroom">Portable Restroom</option>
       <option value="fence">Fencing</option>
       <option value="gen">Generator</option>
       <option value="label">+ Add Map Label…</option>
@@ -654,11 +655,12 @@ const TYPES={
   electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:6,hFt:6,sqft:0,circle:true,rot:false,utility:true},
   water:{lbl:'Water Source',color:'#3B82F6',wFt:6,hFt:6,sqft:0,circle:true,rot:false,utility:true},
   trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:4,hFt:4,sqft:0,circle:true,rot:false,utility:true},
+  restroom:{lbl:'Portable Restroom',color:'#1e3a5f',wFt:4,hFt:4,sqft:0,circle:true,rot:false,utility:true},
   security:{lbl:'Security',color:'#7c3aed',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
   label:{lbl:'Label',color:'transparent',wFt:10,hFt:2,sqft:0,rot:true,isLabel:true}
 };
-const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'E',firstaid:'FA',extinguisher:'EX',mix:'M',custom:'X',customtent:'T',electric:'EL',water:'WS',trash:'BIN',security:'SEC',label:'LBL'};
-const VENUE_EL_TYPES=new Set(['electric','water','trash','ingress','extinguisher','security','stage','truck','gen','mix','custom','label','fence']);
+const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'E',firstaid:'FA',extinguisher:'EX',mix:'M',custom:'X',customtent:'T',electric:'EL',water:'WS',trash:'BIN',restroom:'PJ',security:'SEC',label:'LBL'};
+const VENUE_EL_TYPES=new Set(['electric','water','trash','restroom','ingress','extinguisher','security','stage','truck','gen','mix','custom','label','fence']);
 function isVenueEl(el){return VENUE_EL_TYPES.has(el.type)||(TYPES[el.type]&&TYPES[el.type].utility);}
 
 // ── Coordinate conversion ──────────────────────────────────────────────────
@@ -1466,7 +1468,7 @@ function renderEls(){
     }
     wrap.appendChild(icon);
 
-    if(t.circle&&['trash','electric','water','security'].includes(el.type)){
+    if(t.circle&&['trash','electric','water','restroom','security'].includes(el.type)){
       const db=document.createElement('button');db.className='rbtn';
       db.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:${btnOff}px;left:${btnOff}px;font-size:${btnSz}px;background:#ef4444;color:#fff;border-color:#dc2626;line-height:1;`;
       db.innerHTML='×';
@@ -1554,8 +1556,8 @@ function makeDrag(div,el){
 // ── Venue Infrastructure sidebar ───────────────────────────────────────────
 function renderVenueInfra(){
   const d=document.getElementById('vil');if(!d)return;
-  const viTypes=['electric','water','trash','gen'];
-  const viLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',gen:'Generator'};
+  const viTypes=['electric','water','trash','restroom','gen'];
+  const viLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',restroom:'Portable Restroom',gen:'Generator'};
   const counts={};
   viTypes.forEach(type=>{const c=S.els.filter(e=>e.type===type).length;if(c)counts[type]=c;});
   let html='';
@@ -1970,7 +1972,7 @@ function editEl(el){
 // ── Tool management ────────────────────────────────────────────────────────
 let fenceCur=[];let fenceMaterial='';let overlapWarnTimeout=null;
 const ZONE_TOOLS=['restrict','border','erase'];
-const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','extinguisher','mix','custom','electric','water','trash','security','label'];
+const PLACEABLE=['tent10','tent20','customtent','stage','truck','gen','ingress','extinguisher','mix','custom','electric','water','trash','restroom','security','label'];
 const DRAWING_TOOLS=[...ZONE_TOOLS,'ada','dim','fence'];
 
 function setTool(id){
@@ -2751,6 +2753,8 @@ function renderColorKey(){
     rows.push({type:'svg',svg:`<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 2C10 6 4 12 4 16a8 8 0 0016 0C20 12 14 6 12 2z" fill="#3B82F6" stroke="#2563eb" stroke-width="0.8"/></svg>`,lbl:'Water Source',dim:'Utility marker'});
   if(S.els.some(e=>e.type==='trash'))
     rows.push({type:'circle',color:'#8b93a8',lbl:'Trash Bin',dim:'Utility marker'});
+  if(S.els.some(e=>e.type==='restroom'))
+    rows.push({type:'circle',color:'#1e3a5f',lbl:'Portable Restroom',dim:'Utility marker'});
   if(S.adaPaths.length>0)
     rows.push({type:'line',color:'rgba(79,126,248,0.65)',lbl:'ADA Path',dim:'Accessible routes'});
   if(S.dims.length>0)
