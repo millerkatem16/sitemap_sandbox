@@ -933,6 +933,39 @@ function isBorderNestedIn(inner,outer){
   return inside>innerPx.length*0.5;
 }
 
+function getZoneCapacities(){
+  const borders=getClosedBorders();
+  if(!borders.length)return[];
+  borders.forEach(b=>{if(!b.zid)b.zid=S.idCtr++;});
+  const rawAreas=borders.map(b=>polyArea(b.pts)/(S.scale*S.scale));
+  const parentIdx=borders.map((inner,i)=>{
+    let best=-1,bestArea=Infinity;
+    borders.forEach((outer,j)=>{if(i!==j&&isBorderNestedIn(inner,outer)&&rawAreas[j]<bestArea){best=j;bestArea=rawAreas[j];}});
+    return best;
+  });
+  const netAreas=rawAreas.slice();
+  borders.forEach((_,i)=>{if(parentIdx[i]>=0)netAreas[parentIdx[i]]-=rawAreas[i];});
+  const structTypes=['stage','truck','gen','mix','custom','customtent'];
+  const zoneStruc=borders.map(()=>0);
+  S.els.forEach(e=>{
+    const t=TYPES[e.type];
+    if(!t||t.circle||(!(t.sqft>0)&&!structTypes.includes(e.type)))return;
+    const ePx=latLngToPixel(e.lat,e.lng);
+    let bestZone=-1,bestArea=Infinity;
+    borders.forEach((b,i)=>{if(pip(ePx,b.pts)&&rawAreas[i]<bestArea){bestZone=i;bestArea=rawAreas[i];}});
+    if(bestZone>=0)zoneStruc[bestZone]+=e.wFt*e.hFt;
+  });
+  const multi=borders.length>1;
+  return borders.map((b,i)=>{
+    const zs=zoneStruc[i];
+    const base=multi?netAreas[i]:rawAreas[0];
+    const sqFt=Math.round(Math.max(0,base-zs));
+    const cap=Math.max(0,Math.floor((base-zs)/10));
+    const placeholder=parentIdx[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`;
+    return{zid:b.zid,label:b.label,cap,sqFt,peakAtt:b.peakAtt||null,isSub:parentIdx[i]>=0,placeholder};
+  });
+}
+
 function updateCap(){
   const na=document.getElementById('cap-na'),live=document.getElementById('cap-live');
   const borders=getClosedBorders();
@@ -983,19 +1016,15 @@ function updateCap(){
 
   const bordersEl=document.getElementById('cap-borders');
   const multi=borders.length>1;
-  // Preserve focus on zone name inputs during re-render
+  // Preserve focus on zone name/peak-att inputs during re-render
   const activeZoneEl=document.activeElement;
   const wasZid=activeZoneEl&&activeZoneEl.classList&&activeZoneEl.classList.contains('zone-name-inp')?activeZoneEl.dataset.zid:null;
-  // Ensure every border has a zid (retroactively assign for loaded data)
-  borders.forEach(b=>{if(!b.zid)b.zid=S.idCtr++;});
-  bordersEl.innerHTML=borders.map((b,i)=>{
-    const placeholder=parentIdx[i]>=0?`Sub-zone ${i+1}`:`Zone ${i+1}`;
-    const sub=parentIdx[i]>=0?` <span style="font-size:8px;color:var(--acc);font-weight:700;vertical-align:middle">SUB</span>`:'';
-    const zs=zoneStruc[i];
-    const sqFt=Math.round(Math.max(0,(multi?netAreas[i]:rawAreas[0])-zs));
-    const cap=Math.max(0,Math.floor(((multi?netAreas[i]:rawAreas[0])-zs)/10));
-    const escapedLabel=(b.label||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--brd)"><div style="flex:1;min-width:0"><input class="vl-inp zone-name-inp" type="text" data-zid="${b.zid}" value="${escapedLabel}" placeholder="${placeholder}" style="width:100%;margin-bottom:2px">${sub}<br><span style="font-size:9px;color:var(--tx3);font-family:var(--mono)">${sqFt.toLocaleString()} sq ft usable</span></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:4px"><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${cap.toLocaleString()}</span><button class="vl-del zone-del-btn" data-zid="${b.zid}" title="Remove zone">×</button></div></div>`;
+  const wasPeakZid=activeZoneEl&&activeZoneEl.classList&&activeZoneEl.classList.contains('peak-att-inp')?activeZoneEl.dataset.zid:null;
+  const zones=getZoneCapacities();
+  bordersEl.innerHTML=zones.map(z=>{
+    const sub=z.isSub?` <span style="font-size:8px;color:var(--acc);font-weight:700;vertical-align:middle">SUB</span>`:'';
+    const escapedLabel=(z.label||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--brd)"><div style="flex:1;min-width:0"><input class="vl-inp zone-name-inp" type="text" data-zid="${z.zid}" value="${escapedLabel}" placeholder="${z.placeholder}" style="width:100%;margin-bottom:2px">${sub}<br><span style="font-size:9px;color:var(--tx3);font-family:var(--mono)">${z.sqFt.toLocaleString()} sq ft usable</span></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:4px"><input type="number" class="vl-inp peak-att-inp" data-zid="${z.zid}" value="${z.peakAtt||''}" placeholder="Peak att." style="width:64px;font-size:10px;padding:3px 6px;text-align:right"><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${z.cap.toLocaleString()}</span><button class="vl-del zone-del-btn" data-zid="${z.zid}" title="Remove zone">×</button></div></div>`;
   }).join('');
   if(multi){bordersEl.innerHTML+=`<div style="margin-top:6px;margin-bottom:2px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate)">Estimated Total</div>`;}
   bordersEl.querySelectorAll('.zone-name-inp').forEach(inp=>{
@@ -1013,7 +1042,15 @@ function updateCap(){
       redrawZones();runRules();
     });
   });
+  bordersEl.querySelectorAll('.peak-att-inp').forEach(inp=>{
+    inp.addEventListener('change',ev=>{
+      const zid=parseInt(ev.target.dataset.zid);
+      const z=S.zonePolys.find(z=>z.zid===zid);
+      if(z){const v=parseInt(ev.target.value);z.peakAtt=(isNaN(v)||v<=0)?null:v;runRules();}
+    });
+  });
   if(wasZid){const ni=bordersEl.querySelector(`.zone-name-inp[data-zid="${wasZid}"]`);if(ni)ni.focus();}
+  if(wasPeakZid){const pi=bordersEl.querySelector(`.peak-att-inp[data-zid="${wasPeakZid}"]`);if(pi)pi.focus();}
   document.getElementById('cn').textContent=totalCap.toLocaleString();
   document.getElementById('cn-lbl').textContent=multi?'estimated total occupants':'estimated occupants';
   document.getElementById('cd').textContent=`${Math.round(usableFtSq).toLocaleString()} sq ft usable · ${Math.round(struc)} in structures`;
@@ -1076,6 +1113,9 @@ function runRules(){
   // Overlap check — no two elements may occupy the same space
   for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){if(ovlp(S.els[i],S.els[j])){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping.`});S.els[i].hr=true;S.els[j].hr=true;}}}
   if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.'});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.'});}
+  getZoneCapacities().forEach(z=>{
+    if(z.peakAtt&&z.peakAtt>z.cap){warns.push({type:'soft',msg:`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds calculated capacity (~${z.cap.toLocaleString()}) — final occupancy is set by the fire marshal.`});}
+  });
   if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.'});
   document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
   const precheckPanel=document.getElementById('precheck-panel');if(precheckPanel)precheckPanel.classList.toggle('has-content',S.els.length>0||S.zonePolys.length>0);
@@ -3022,6 +3062,7 @@ async function exportPDF(capture){
           pdf.setFont('helvetica','bold');pdf.setFontSize(10.5);pdf.setTextColor(42,95,100);
           pdf.text(`Est. Capacity: ~${cap2.toLocaleString()}`,p2C1X+txtOff,c1y);c1y+=p2LH;
         }
+        if(b.peakAtt){pdf.setFont('helvetica','normal');pdf.setFontSize(10.5);pdf.setTextColor(90,88,120);pdf.text(`Peak Attendance: ${b.peakAtt.toLocaleString()} (capacity ~${cap2.toLocaleString()})`,p2C1X+txtOff,c1y);c1y+=p2LH;}
         c1y+=1;
       });
     }
