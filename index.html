@@ -409,7 +409,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div class="tg">
     <select class="el-drop" id="sc-drop">
       <option value="" disabled selected>Add Safety</option>
-      <option value="firstaid">First Aid Contact</option>
       <option value="security">Security Post</option>
       <option value="extinguisher">Fire Extinguisher</option>
       <option value="ada">ADA Path</option>
@@ -536,6 +535,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
           <svg id="sc-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div id="sc-panel-body" style="display:block;margin-top:12px">
+          <button id="badd-contact" class="vbtn" style="width:100%;margin-bottom:8px">+ Add Event Contact</button>
           <div id="sml"></div>
         </div>
       </div>
@@ -1251,7 +1251,7 @@ function buildPlanningGuide(){
       add(3,sev,w.msg,action);
     });
   }
-  if(hasContent&&S.firstAids.length===0)add(3,'todo','No first aid contact added — add a first aid contact for your event.',{type:'modal',fn:'addFirstAidContact'});
+  if(hasContent&&S.firstAids.length===0)add(3,'todo','No event contacts added — add a contact for your event.',{type:'modal',fn:'addEventContact'});
   getZoneCapacities().filter(z=>!z.placeholder).forEach(z=>{
     if(z.peakAtt&&z.peakAtt>z.cap)add(3,'soft',`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated capacity (~${z.cap.toLocaleString()}).`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
     if(!z.peakAtt)add(3,'info',`${z.label||'Zone'}: set peak attendance for capacity planning.`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
@@ -1586,16 +1586,23 @@ function renderVenueInfra(){
   });
 }
 
-function addFirstAidContact(){
-  modal('First Aid Point of Contact','Add contact details for a first aid responder on site.',
-    mf('Responder Name','fan','text','','Full name')+mf('Certification','fac2','text','','e.g. CPR/AED, EMT, Paramedic'),
+function addEventContact(){
+  modal('Add Event Contact','Add a contact for your event — first aid, event manager, security lead, or any other role.',
+    mf('Name','ec-name','text','','Full name')+
+    mf('Event Role','ec-role','text','','e.g. First Aid, Event Manager, Security Lead')+
+    mf('Phone Number','ec-phone','text','','Optional')+
+    mf('Certification','ec-cert','text','','e.g. CPR/AED, EMT, Paramedic — if applicable'),
     ()=>{
-      const name=document.getElementById('fan').value.trim();
-      if(!name){showToast('Responder name is required.',true);return;}
-      const cert=document.getElementById('fac2').value.trim()||'Unspecified';
-      S.firstAids.push({name,cert});renderSafetyCompliance();
+      const name=document.getElementById('ec-name').value.trim();
+      if(!name){showToast('Name is required.',true);return;}
+      const role=document.getElementById('ec-role').value.trim();
+      const phone=document.getElementById('ec-phone').value.trim();
+      const cert=document.getElementById('ec-cert').value.trim();
+      S.firstAids.push({name,role:role||'Unspecified',phone:phone||'',cert:cert||''});
+      renderSafetyCompliance();runRules();
     },'Add Contact');
 }
+const addFirstAidContact=addEventContact;
 function openIngressDetails(elId){
   const el=S.els.find(e=>e.id===elId);if(!el)return;
   const opts=[{v:'entrance',t:'Entrance'},{v:'exit',t:'Exit'},{v:'both',t:'Both (Entrance & Exit)'}];
@@ -1616,8 +1623,13 @@ function renderSafetyCompliance(){
   const tnMap=getTypeNums();
   let html='';
   if(S.firstAids.length){
-    html+='<div class="plabel-sub" style="margin-top:0">First Aid Contact</div>';
-    html+=S.firstAids.map(c=>`<div class="fa-item"><strong>${c.name}</strong><span>${c.cert}</span></div>`).join('');
+    html+='<div class="plabel-sub" style="margin-top:0">Event Contacts</div>';
+    html+=S.firstAids.map((c,i)=>{
+      const role=c.role||'First Aid';
+      const phone=c.phone?`<span>${c.phone}</span>`:'';
+      const cert=c.cert?`<span>${c.cert}</span>`:'';
+      return`<div class="fa-item" style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px"><div><strong>${c.name}</strong><span>${role}</span>${phone}${cert}</div><button class="fa-del" data-idx="${i}" style="background:none;border:none;cursor:pointer;color:var(--tx3);font-size:14px;padding:0;flex-shrink:0;line-height:1;margin-top:2px" title="Remove">×</button></div>`;
+    }).join('');
   }
   const countKeys=Object.keys(counts);
   if(countKeys.length){
@@ -1647,6 +1659,14 @@ function renderSafetyCompliance(){
     btn.addEventListener('click',ev=>{
       ev.stopPropagation();
       openIngressDetails(parseInt(ev.currentTarget.dataset.id));
+    });
+  });
+  d.querySelectorAll('.fa-del').forEach(btn=>{
+    btn.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      const idx=parseInt(ev.currentTarget.dataset.idx);
+      S.firstAids.splice(idx,1);
+      renderSafetyCompliance();runRules();
     });
   });
 }
@@ -2081,7 +2101,7 @@ document.getElementById('ctc-select').addEventListener('click',()=>setTool('sele
 document.getElementById('el-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
 document.getElementById('define-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
 document.getElementById('vi-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
-document.getElementById('sc-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}if(val==='firstaid'){addFirstAidContact();return;}setTool(val);});
+document.getElementById('sc-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}setTool(val);});
 document.getElementById('export-trigger').addEventListener('click',()=>{
   modal('Export Site Plan','Choose which version of your map to export.',
     `<div class="export-opt-card" data-mode="full"><div class="export-opt-title"><i class="ti ti-map-2"></i>Full Operational Map</div><div class="export-opt-blurb">Export will keep all information viewable.</div></div><div class="export-opt-card" data-mode="safety"><div class="export-opt-title"><i class="ti ti-shield-check"></i>Safety Review Ready Map</div><div class="export-opt-blurb">Utilities and color tags are not captured for this view.</div></div>`,
@@ -2488,6 +2508,7 @@ document.getElementById('evt-notes').addEventListener('input',function(){S.event
   });
 });
 document.getElementById('bopen').addEventListener('click',()=>requireLogin(openEvents));
+document.getElementById('badd-contact').addEventListener('click',addEventContact);
 
 document.getElementById('brand-logo').addEventListener('click',()=>{
   modal('Admin Login','Enter your admin credentials.',
@@ -3382,11 +3403,15 @@ async function exportPDF(capture){
       if(c1y>=p2MaxY)return;
       pdf.setFontSize(11);pdf.setTextColor(28,27,46);
       pdf.setFont('helvetica','bold');
-      const faLbl='First Aid Contact:';
+      const faLbl='Contact:';
       pdf.text(faLbl,p2C1X,c1y);
       const faLblW=pdf.getTextWidth(faLbl+' ');
       pdf.setFont('helvetica','normal');
-      const faDetail=`${fa.name} — ${fa.cert}`;
+      const role=fa.role||'First Aid';
+      const parts=[fa.name,role];
+      if(fa.phone)parts.push(fa.phone);
+      if(fa.cert)parts.push(fa.cert);
+      const faDetail=parts.join(' — ');
       const faDetailLines=pdf.splitTextToSize(faDetail,p2C1W-faLblW);
       if(faDetailLines.length>0&&c1y<p2MaxY){
         pdf.text(faDetailLines[0],p2C1X+faLblW,c1y);c1y+=p2LH;
