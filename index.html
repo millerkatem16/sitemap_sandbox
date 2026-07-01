@@ -1525,7 +1525,6 @@ function renderEls(){
       lbl.textContent=t.tent?elCode(el,tnMap):String(tnMap[el.id]||'?');
       lbl.title=`${elCode(el,tnMap)}${el.vendorName?' · '+el.vendorName:''}`;
       lbl.addEventListener('click',ev=>{
-        ev.stopPropagation();
         const inp=document.querySelector(`.vl-inp[data-id="${el.id}"]`);
         if(inp){inp.focus();inp.select();inp.scrollIntoView({block:'nearest',behavior:'smooth'});}
       });
@@ -1538,7 +1537,7 @@ function renderEls(){
     div.appendChild(wrap);
     makeDrag(div,el);
     div.addEventListener('click',ev=>{
-      if(ev.target.classList.contains('rbtn')||ev.target.classList.contains('el-lbl'))return;
+      if(ev.target.classList.contains('rbtn'))return;
       if(div._dragMoved)return;
       S.selId=el.id;renderEls();
       if(el.type==='ingress')openIngressDetails(el.id);else editEl(el);
