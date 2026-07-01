@@ -409,6 +409,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div class="tg">
     <select class="el-drop" id="sc-drop">
       <option value="" disabled selected>Add Safety</option>
+      <option value="eventcontact">+ Add Event Contact…</option>
       <option value="security">Security Post</option>
       <option value="extinguisher">Fire Extinguisher</option>
       <option value="ada">ADA Path</option>
@@ -535,7 +536,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
           <svg id="sc-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div id="sc-panel-body" style="display:block;margin-top:12px">
-          <button id="badd-contact" class="vbtn" style="width:100%;margin-bottom:8px">+ Add Event Contact</button>
           <div id="sml"></div>
         </div>
       </div>
@@ -1251,7 +1251,7 @@ function buildPlanningGuide(){
       add(3,sev,w.msg,action);
     });
   }
-  if(hasContent&&S.firstAids.length===0)add(3,'todo','No event contacts added — add a contact for your event.',{type:'modal',fn:'addEventContact'});
+  if(hasContent&&S.firstAids.length===0)add(3,'todo','No event contacts added — add a contact for your event.',{type:'topbar',target:'sc-drop',value:'eventcontact'});
   getZoneCapacities().filter(z=>!z.placeholder).forEach(z=>{
     if(z.peakAtt&&z.peakAtt>z.cap)add(3,'soft',`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated capacity (~${z.cap.toLocaleString()}).`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
     if(!z.peakAtt)add(3,'info',`${z.label||'Zone'}: set peak attendance for capacity planning.`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
@@ -2101,7 +2101,7 @@ document.getElementById('ctc-select').addEventListener('click',()=>setTool('sele
 document.getElementById('el-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
 document.getElementById('define-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
 document.getElementById('vi-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
-document.getElementById('sc-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}setTool(val);});
+document.getElementById('sc-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='eventcontact'){addEventContact();return;}if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}setTool(val);});
 document.getElementById('export-trigger').addEventListener('click',()=>{
   modal('Export Site Plan','Choose which version of your map to export.',
     `<div class="export-opt-card" data-mode="full"><div class="export-opt-title"><i class="ti ti-map-2"></i>Full Operational Map</div><div class="export-opt-blurb">Export will keep all information viewable.</div></div><div class="export-opt-card" data-mode="safety"><div class="export-opt-title"><i class="ti ti-shield-check"></i>Safety Review Ready Map</div><div class="export-opt-blurb">Utilities and color tags are not captured for this view.</div></div>`,
@@ -2508,7 +2508,6 @@ document.getElementById('evt-notes').addEventListener('input',function(){S.event
   });
 });
 document.getElementById('bopen').addEventListener('click',()=>requireLogin(openEvents));
-document.getElementById('badd-contact').addEventListener('click',addEventContact);
 
 document.getElementById('brand-logo').addEventListener('click',()=>{
   modal('Admin Login','Enter your admin credentials.',
