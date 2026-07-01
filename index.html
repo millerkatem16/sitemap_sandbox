@@ -1228,20 +1228,20 @@ function runRules(){
   const restrooms=S.els.filter(e=>e.type==='restroom');
   S.els.forEach(e=>{e.hr=false;e.sr=false;});
   trucks.forEach(t=>{
-    tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)} — 20ft required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
-    restrooms.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)} — 20ft required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
-    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} within 10ft of each other — 10ft required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[t.id,o.id]});t.hr=true;o.hr=true;}});
-    const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} in restricted zone.`,ids:[t.id]});t.hr=true;}
+    tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft)`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
+    restrooms.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft)`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
+    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} are too close together. 10ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft).`,ids:[t.id,o.id]});t.hr=true;o.hr=true;}});
+    const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} placed in a restricted zone`,ids:[t.id]});t.hr=true;}
   });
   // Cooking tent must be 20ft from other activations (non-cooking tents)
   const cookingTents=tents.filter(t=>getTentCat(t)==='cooking');
   const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
-  cookingTents.forEach(c=>{[...nonCookingTents,...trucks,...restrooms].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — 20ft separation required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[c.id,o.id]});c.hr=true;o.hr=true;}});});
-  gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`,ids:[g.id]});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`,ids:[g.id]});});
-  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0&&closedBordersList.length>0)warns.push({type:'hard',msg:`No entrance/exit placed${zoneDesc}.`,ids:[],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 entrance/exit${zoneDesc} — minimum 2 required. 3 recommended.`,ids:[ins[0].id],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===2){const _ents=ins.filter(i=>i.access==='entrance'||i.access==='both');const _exts=ins.filter(i=>i.access==='exit'||i.access==='both');if(!(_ents.length>=1&&_exts.length===1))warns.push({type:'soft',msg:`2 entrances/exits${zoneDesc} — a 3rd is recommended.`,ids:ins.map(ii=>ii.id)});}}}
+  cookingTents.forEach(c=>{[...nonCookingTents,...trucks,...restrooms].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} too close to ${N(o)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft).`,ids:[c.id,o.id]});c.hr=true;o.hr=true;}});});
+  gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides for Fire Code compliance`,ids:[g.id]});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed. Please note to keep it secured and inaccessible to the public.`,ids:[g.id]});});
+  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0&&closedBordersList.length>0)warns.push({type:'hard',msg:`No entrances or exits placed${zoneDesc}. You need to place at least 2 exits. 3 are recommended.`,ids:[],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 entrance/exit${zoneDesc}. You need to place at least 2 exits. 3 are recommended.`,ids:[ins[0].id],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===2){const _ents=ins.filter(i=>i.access==='entrance'||i.access==='both');const _exts=ins.filter(i=>i.access==='exit'||i.access==='both');if(!(_ents.length>=1&&_exts.length===1))warns.push({type:'soft',msg:`You have placed 2 entrances/exits${zoneDesc}. It's recommended to place a 3rd (emergency) exit`,ids:ins.map(ii=>ii.id)});}}}
   ins.forEach(i=>{
-    if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is under 10ft wide — ADA minimum not met.`,ids:[i.id]});i.hr=true;}
-    const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`,ids:[i.id,...blocked.map(b=>b.id)]});i.hr=true;blocked.forEach(b=>b.hr=true);}
+    if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is too narrow. 10ft is required to meet ADA minimum.`,ids:[i.id]});i.hr=true;}
+    const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path is blocked by ${N(blocked[0])}`,ids:[i.id,...blocked.map(b=>b.id)]});i.hr=true;blocked.forEach(b=>b.hr=true);}
   });
   // G2.2: flag elements within 10ft of ingress arrow tips
   ins.forEach(i=>{
@@ -1249,7 +1249,7 @@ function runRules(){
     const tips=[{x:icx+hw*Math.cos(rad2),y:icy+hw*Math.sin(rad2)},{x:icx-hw*Math.cos(rad2),y:icy-hw*Math.sin(rad2)}];
     S.els.filter(e=>e.type!=='ingress'&&e.type!=='security').forEach(el=>{
       let flagged=false;const bx1=elX(el),by1=elY(el),bx2=bx1+elW(el),by2=by1+elH(el);
-      tips.forEach(tip=>{if(flagged)return;const nx=Math.max(bx1,Math.min(tip.x,bx2)),ny=Math.max(by1,Math.min(tip.y,by2));const dist=Math.sqrt((tip.x-nx)**2+(tip.y-ny)**2)/S.scale;if(dist<10){const nEl=el.vendorName||elCode(el,getTypeNums());const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:nEl+' within 10ft of '+nIn+' gate tip — keep opening clear.',ids:[el.id,i.id]});el.hr=true;i.hr=true;flagged=true;}});
+      tips.forEach(tip=>{if(flagged)return;const nx=Math.max(bx1,Math.min(tip.x,bx2)),ny=Math.max(by1,Math.min(tip.y,by2));const dist=Math.sqrt((tip.x-nx)**2+(tip.y-ny)**2)/S.scale;if(dist<10){const nEl=el.vendorName||elCode(el,getTypeNums());const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:nEl+' is within 10ft of '+nIn+'. Keep opening clear to reduce crowd flow conflicts.',ids:[el.id,i.id]});el.hr=true;i.hr=true;flagged=true;}});
     });
   });
   // G2.3: flag fencing within 12ft of any ingress center
@@ -1259,7 +1259,7 @@ function runRules(){
     let fFlagged=false;
     ins.forEach(i=>{
       if(fFlagged)return;const cx=ecx(i),cy=ecy(i);
-      for(let fi=0;fi<fPx.length-1&&!fFlagged;fi++){const dsq=segDSq(cx,cy,fPx[fi].x,fPx[fi].y,fPx[fi+1].x,fPx[fi+1].y);if(Math.sqrt(dsq)/S.scale<12){const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:'Fencing within 12ft of '+nIn+' gate — potential crowd flow conflict.',ids:[i.id]});i.hr=true;fFlagged=true;}}
+      for(let fi=0;fi<fPx.length-1&&!fFlagged;fi++){const dsq=segDSq(cx,cy,fPx[fi].x,fPx[fi].y,fPx[fi+1].x,fPx[fi+1].y);if(Math.sqrt(dsq)/S.scale<12){const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:'Fencing is within 12ft of '+nIn+' gate. Keep opening clear to reduce crowd flow conflicts.',ids:[i.id]});i.hr=true;fFlagged=true;}}
     });
   });
   // G2.4: entrance/exit designation checks
@@ -1268,22 +1268,22 @@ function runRules(){
     const extsD=ins.filter(i=>i.access==='exit'||i.access==='both');
     const allUndesignated=ins.every(i=>!i.access);
     if(allUndesignated){
-      warns.push({type:'info',msg:'No entrance/exit designated yet — open Details on each to assign.',ids:ins.map(i=>i.id)});
+      warns.push({type:'info',msg:'You can designate entrance and exit usage by clicking on the entrance/exit and assigning details.',ids:ins.map(i=>i.id)});
     } else {
-      if(entsD.length===0)warns.push({type:'hard',msg:'Place a designated Entrance.',ids:ins.map(i=>i.id)});
-      if(extsD.length===0)warns.push({type:'hard',msg:'Place a designated Exit.',ids:ins.map(i=>i.id)});
-      if(entsD.length>=1&&extsD.length===1)warns.push({type:'soft',msg:'Recommended 2 exits — consider placing another (or emergency) exit.',ids:extsD.map(i=>i.id)});
+      if(entsD.length===0)warns.push({type:'hard',pgSev:'todo',msg:'Place a designated Entrance.',ids:ins.map(i=>i.id)});
+      if(extsD.length===0)warns.push({type:'hard',pgSev:'todo',msg:'Place a designated Exit.',ids:ins.map(i=>i.id)});
+      if(entsD.length>=1&&extsD.length===1)warns.push({type:'soft',msg:'You have placed 2 exits. It\'s recommended to place a 3rd (emergency) exit',ids:extsD.map(i=>i.id)});
     }
   }
   const vis=new Set();
-  tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft — over 900 sq ft may need a building permit.`,ids:grp.map(e=>e.id)});grp.forEach(e=>e.sr=true);}});
-  stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft) — over 256 sq ft may need a building permit.`,ids:[s.id]});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft — over 3ft may need a building permit.`,ids:[s.id]});s.sr=true;}});
-  S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||e.type==='restroom'||(_t2.tent&&(e.tentType==='event'||e.tentType==='production'));if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone.`,ids:[e.id]});e.hr=true;}});
+  tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft. Large clusters over 900 sq ft may need a building permit. You can create a 7ft gap to break up the cluster.`,ids:grp.map(e=>e.id)});grp.forEach(e=>e.sr=true);}});
+  stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft). Stages & platforms over 256 sq ft may need a building permit`,ids:[s.id]});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft. Stages & platforms taller than 3ft may need a building permit`,ids:[s.id]});s.sr=true;}});
+  S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||e.type==='restroom'||(_t2.tent&&(e.tentType==='event'||e.tentType==='production'));if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone`,ids:[e.id]});e.hr=true;}});
   // Overlap check — no two elements may occupy the same space
-  for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){if(ovlp(S.els[i],S.els[j])){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping.`,ids:[S.els[i].id,S.els[j].id]});S.els[i].hr=true;S.els[j].hr=true;}}}
-  if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.',ids:[]});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.',ids:[]});}
+  for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){if(ovlp(S.els[i],S.els[j])){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping`,ids:[S.els[i].id,S.els[j].id]});S.els[i].hr=true;S.els[j].hr=true;}}}
+  if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'ADA flooring required for a soft surface area. Draw ADA paths to mark accessible routes.',ids:[]});else warns.push({type:'info',msg:'You have designated an area as soft surface. You can use ADA Path tool under the Safety menu to designate accessible flooring paths.',ids:[]});}
   getZoneCapacities().forEach(z=>{
-    if(z.peakAtt&&z.peakAtt>z.cap){warns.push({type:'soft',msg:`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds calculated capacity (~${z.cap.toLocaleString()}) — final occupancy is set by the fire marshal.`,ids:[]});}
+    if(z.peakAtt&&z.peakAtt>z.cap){warns.push({type:'soft',msg:`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated peak capacity (~${z.cap.toLocaleString()}). Consider removing some elements or altering your event boundaries.`,ids:[]});}
   });
   if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.',ids:[]});S.lastWarns=warns;
   document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
@@ -1298,52 +1298,51 @@ function buildPlanningGuide(){
   // ── Phase 1: Define the Site ─────────────────────────────────────────────
   const searchVal=((document.getElementById('map-search')||{}).value||'').trim();
   const atDefault=S.mapCenter.lat===36.8508&&S.mapCenter.lng===-76.2858;
-  if(!searchVal&&atDefault)add(1,'todo','No venue searched yet — search an address or venue name to set your event location.',{type:'topbar',target:'map-search'});
+  if(!searchVal&&atDefault)add(1,'todo','Use the search bar to look up an address or venue, or choose from My Events folder to bring up your event site',{type:'topbar',target:'map-search'});
   const borders=getClosedBorders();
-  if(borders.length===0&&S.els.length>0)add(1,'todo','No site border drawn — use Define Site to draw a venue border.',{type:'topbar',target:'define-drop',value:'border'});
-  if(borders.some(b=>b.hasDesignatedIngress===undefined))add(1,'todo','A zone border has no entrance/exit answer — click the zone to confirm whether it has a designated entry point.',{type:'sidebarPanel',panel:'precheck-panel'});
-  getZoneCapacities().filter(z=>!z.placeholder).forEach(z=>{if(z.sqFt<500)add(1,'soft',`${z.label||'A zone'} is under 500 sq ft — confirm this boundary is intentional.`,{type:'sidebarPanel',panel:'cap-panel'});});
-  if(borders.length>1&&borders.every(b=>!b.label||!b.label.trim()))add(1,'todo','Multiple zone borders exist but none are labeled — add names in the Capacity panel to distinguish zones.',{type:'sidebarPanel',panel:'cap-panel'});
-  if(S.zonePolys.some(z=>z.type==='restrict'&&!z.open)&&borders.length===0)add(1,'soft','Restricted area drawn but no site border exists — draw a venue border to define the full site.',{type:'topbar',target:'define-drop'});
+  if(borders.length===0&&S.els.length>0)add(1,'todo','Use Define Site to draw a venue border around your event site',{type:'topbar',target:'define-drop',value:'border'});
+  if(borders.some(b=>b.hasDesignatedIngress===undefined))add(1,'todo','Click the zone to set designated entrances and exits',{type:'sidebarPanel',panel:'precheck-panel'});
+  if(borders.length>1&&borders.every(b=>!b.label||!b.label.trim()))add(1,'info','You can add zone names in the Capacity sidebar panel',{type:'sidebarPanel',panel:'cap-panel'});
+  if(S.zonePolys.some(z=>z.type==='restrict'&&!z.open)&&borders.length===0)add(1,'soft','You added a restricted area, but no site border exists. Draw a venue border of the full site by using Define Site tool.',{type:'topbar',target:'define-drop'});
   // ── Phase 2: Place Activations ───────────────────────────────────────────
   const hasContent=S.els.length>0;
   if(!hasContent){
-    add(2,'todo','No elements placed — use Add Elements to start placing activations on your site.',{type:'topbar',target:'el-drop'});
+    add(2,'todo','Use Add Elements to start placing your event activations.',{type:'topbar',target:'el-drop'});
   } else {
     const tents=S.els.filter(e=>['tent10','tent20','custom','customtent'].includes(e.type));
     const trucks=S.els.filter(e=>e.type==='truck');
     const stages=S.els.filter(e=>e.type==='stage');
     const customs=S.els.filter(e=>e.type==='custom'||e.type==='customtent');
-    if(tents.length>0&&tents.every(t=>!t.tentType))add(2,'todo','Tents placed but none have a use type set — click each tent to assign a type (vendor, activity, cooking, etc.).',{type:'sidebarPanel',panel:'vnd-panel'});
-    if(tents.length>0&&tents.every(t=>!t.vendorName))add(2,'todo','Tents placed but none have vendor names — add names so they appear correctly on the exported PDF.',{type:'sidebarPanel',panel:'vnd-panel'});
-    if(trucks.length>0&&trucks.every(t=>!t.vendorName))add(2,'todo','Food trucks placed but none have vendor names — add names so they appear correctly on the exported PDF.',{type:'sidebarPanel',panel:'vnd-panel'});
-    if(trucks.length>0&&trucks.every(t=>t.wFt===20&&t.hFt===8))add(2,'todo','Food truck dimensions are still at default (20×8 ft) — confirm or update to match actual vehicle sizes.',{type:'sidebarPanel',panel:'vnd-panel'});
-    if(stages.length>0&&stages.some(s=>!s.heightFt||s.heightFt<=2))add(2,'todo','Stage height is at default (2 ft) — enter the actual stage height so permit thresholds can be checked.',{type:'sidebarPanel',panel:'vnd-panel'});
-    if(customs.length>0&&customs.some(e=>!e.vendorName))add(2,'todo','A custom element has no name — add a label so it appears correctly on the exported PDF.',{type:'sidebarPanel',panel:'vnd-panel'});
-    if(S.dims.length===0)add(2,'info','No measurement lines drawn — use Measure Distance to document key distances on your site.',{type:'topbar',target:'vi-drop'});
+    if(tents.length>0&&tents.every(t=>!t.tentType))add(2,'todo','Click each tent or use sidebar (activations & vendors) to assign usage details (vendor, activity, production, or cooking)',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(tents.length>0&&tents.every(t=>!t.vendorName))add(2,'todo','Click each tent or use sidebar (activations & vendors) to add names',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(trucks.length>0&&trucks.every(t=>!t.vendorName))add(2,'todo','Click each food truck or use sidebar (activations & vendors) to add names',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(trucks.length>0&&trucks.every(t=>t.wFt===20&&t.hFt===8))add(2,'info','You can change dimensions on your placed food truck by clicking the food truck or using sidebar (activations & vendors). Default dimensions are 20ft x 8ft',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(stages.length>0&&stages.some(s=>!s.heightFt||s.heightFt<=2))add(2,'info','You can change dimensions on your placed stage by clicking the stage or using sidebar (activations & vendors). Default stage height is 2ft',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(customs.length>0&&customs.some(e=>!e.vendorName))add(2,'todo','Click each custom element or use sidebar (activations & vendors) to add names',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(S.dims.length===0)add(2,'info','You can use Measure Distance to show key distances on your event site',{type:'topbar',target:'vi-drop'});
   }
   // ── Phase 3: Safety & Compliance ─────────────────────────────────────────
   if(S.lastWarns){
     S.lastWarns.forEach(w=>{
       if(w.type==='ok')return;
       if(typeof w.msg==='string'&&w.msg.includes('peak attendance'))return;
-      const sev=w.type==='hard'?'flag':w.type==='soft'?'soft':'info';
+      const sev=w.pgSev||(w.type==='hard'?'flag':w.type==='soft'?'soft':'info');
       const action=w.action?w.action:(w.ids&&w.ids.length?{type:'highlightElements',ids:w.ids}:{type:'sidebarPanel',panel:'precheck-panel'});
       add(3,sev,w.msg,action);
     });
   }
-  if(hasContent&&S.firstAids.length===0)add(3,'todo','No event contacts added — add a contact for your event.',{type:'topbar',target:'sc-drop',value:'eventcontact'});
+  if(hasContent&&S.firstAids.length===0)add(3,'info','You can add important event contacts to your plan',{type:'topbar',target:'sc-drop',value:'eventcontact'});
   getZoneCapacities().filter(z=>!z.placeholder).forEach(z=>{
-    if(z.peakAtt&&z.peakAtt>z.cap)add(3,'soft',`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated capacity (~${z.cap.toLocaleString()}).`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
-    if(!z.peakAtt)add(3,'info',`${z.label||'Zone'}: set peak attendance for capacity planning.`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
+    if(z.peakAtt&&z.peakAtt>z.cap)add(3,'soft',`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated peak capacity (~${z.cap.toLocaleString()}). Consider removing some elements or altering your event boundaries.`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
+    if(!z.peakAtt)add(3,'info',`You can set peak attendance for ${z.label||'Zone'} for capacity planning.`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
   });
   // ── Phase 4: Ready to Submit ──────────────────────────────────────────────
   const evtName=((document.getElementById('evt-name')||{}).value||'').trim();
   const evtDate=(document.getElementById('evt-date')||{}).value||'';
-  if(!evtName)add(4,'todo','Add an event name — shown on the exported PDF.',{type:'sidebarField',target:'evt-name',panel:'event-details-panel'});
-  if(!evtDate)add(4,'todo','Set the event date so it appears on exported documents.',{type:'sidebarField',target:'evt-date',panel:'event-details-panel'});
-  if(!S.eventNotes||!S.eventNotes.trim())add(4,'info','No notes entered — add notes or instructions for your event team.',{type:'sidebarField',target:'evt-notes',panel:'event-details-panel'});
-  if(!S.currentEventId)add(4,'todo','Event not saved — save your event to preserve your work.',{type:'topbar',target:'bsave-evt'});
+  if(!evtName)add(4,'todo','Name your event',{type:'sidebarField',target:'evt-name',panel:'event-details-panel'});
+  if(!evtDate)add(4,'todo','Set your event date',{type:'sidebarField',target:'evt-date',panel:'event-details-panel'});
+  if(!S.eventNotes||!S.eventNotes.trim())add(4,'info','You can add notes to your event team that will appear on the plan export',{type:'sidebarField',target:'evt-notes',panel:'event-details-panel'});
+  if(!S.currentEventId)add(4,'todo','Save your event to preserve your work or collaborate with your event team',{type:'topbar',target:'bsave-evt'});
   // Filter session-dismissed soft/info items
   items=items.filter(x=>!((x.severity==='soft'||x.severity==='info')&&S.pgDismissed.has(x.text)));
   // Sort: phase asc, then severity
@@ -1352,8 +1351,8 @@ function buildPlanningGuide(){
   // Summary items — appended after sort, always appear last in phase 4
   const hasFlag=items.some(x=>x.severity==='flag');
   const hasBlocker=items.some(x=>x.severity==='flag'||x.severity==='todo');
-  if(hasFlag)items.push({phase:4,severity:'flag',text:'Your plan may not meet safety standards — review all flags before exporting.',action:{type:'sidebarPanel',panel:'precheck-panel'}});
-  if(!hasBlocker)items.push({phase:4,severity:'ok',text:'Your plan looks good — ready to export!',action:null});
+  if(hasFlag)items.push({phase:4,severity:'flag',text:'You still have active flags and alerts',action:{type:'sidebarPanel',panel:'precheck-panel'}});
+  if(!hasBlocker)items.push({phase:4,severity:'ok',text:'All flags and alerts clear! Save or export your event',action:null});
   return items;
 }
 
