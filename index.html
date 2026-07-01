@@ -1148,16 +1148,18 @@ function runRules(){
   const warns=[];
   const trucks=S.els.filter(e=>e.type==='truck'),tents=S.els.filter(e=>['tent10','tent20','custom','customtent'].includes(e.type));
   const gens=S.els.filter(e=>e.type==='gen'),ins=S.els.filter(e=>e.type==='ingress'),stages=S.els.filter(e=>e.type==='stage');
+  const restrooms=S.els.filter(e=>e.type==='restroom');
   S.els.forEach(e=>{e.hr=false;e.sr=false;});
   trucks.forEach(t=>{
     tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)} — 20ft required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
+    restrooms.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)} — 20ft required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
     trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} within 10ft of each other — 10ft required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[t.id,o.id]});t.hr=true;o.hr=true;}});
     const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} in restricted zone.`,ids:[t.id]});t.hr=true;}
   });
   // Cooking tent must be 20ft from other activations (non-cooking tents)
   const cookingTents=tents.filter(t=>getTentCat(t)==='cooking');
   const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
-  cookingTents.forEach(c=>{[...nonCookingTents,...trucks].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — 20ft separation required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[c.id,o.id]});c.hr=true;o.hr=true;}});});
+  cookingTents.forEach(c=>{[...nonCookingTents,...trucks,...restrooms].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — 20ft separation required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[c.id,o.id]});c.hr=true;o.hr=true;}});});
   gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`,ids:[g.id]});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`,ids:[g.id]});});
   {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0&&closedBordersList.length>0)warns.push({type:'hard',msg:`No entrance/exit placed${zoneDesc}.`,ids:[],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 entrance/exit${zoneDesc} — minimum 2 required. 3 recommended.`,ids:[ins[0].id],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===2)warns.push({type:'soft',msg:`2 entrances/exits${zoneDesc} — a 3rd is recommended.`,ids:ins.map(ii=>ii.id)});}}
   ins.forEach(i=>{
@@ -1451,6 +1453,9 @@ function renderEls(){
       }else if(el.type==='security'){
         icon.style.cssText=`width:${d}px;height:${d}px;background:#7c3aed;border:2px solid #6d28d9;border-radius:50%;display:flex;align-items:center;justify-content:center;`;
         icon.innerHTML=`<span style="color:white;font-weight:800;font-size:${Math.round(d*0.52)+4}px;line-height:1;font-family:var(--font),sans-serif">S</span>`;
+      }else if(el.type==='restroom'){
+        icon.style.cssText=`width:${d}px;height:${d}px;background:#1e3a5f;border:2px solid #162d4a;display:flex;align-items:center;justify-content:center;`;
+        icon.innerHTML=`<span style="color:white;font-weight:800;font-size:${Math.round(d*0.52)+4}px;line-height:1;font-family:var(--font),sans-serif">P</span>`;
       }else{
         icon.style.cssText=`width:${d}px;height:${d}px;background:${t.color};border:2px solid ${t.color};border-radius:50%;`;
       }
@@ -3173,6 +3178,14 @@ async function exportPDF(capture){
         const dP=dN.map(([dx,dy])=>{const x2=dx*hw,y2=dy*hh;return{x:center.x+x2*cos2-y2*sin2,y:center.y+x2*sin2+y2*cos2};});
         pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.15);
         pdf.lines(dP.slice(1).map((p,i)=>[p.x-dP[i].x,p.y-dP[i].y]),dP[0].x,dP[0].y,[1,1],'FD',true);
+      }else if(el.type==='restroom'){
+        const hw=wMm/2,hh=hMm/2;
+        const corners=[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([dx,dy])=>({x:center.x+dx*cos2-dy*sin2,y:center.y+dx*sin2+dy*cos2}));
+        pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
+        pdf.lines(corners.slice(1).map((p,i)=>[p.x-corners[i].x,p.y-corners[i].y]),corners[0].x,corners[0].y,[1,1],'FD',true);
+        const pFs=fitFontSize('P',Math.min(wMm,hMm)*0.6,3,16);
+        pdf.setFont('helvetica','bold');pdf.setFontSize(pFs);pdf.setTextColor(255,255,255);
+        pdf.text('P',center.x,center.y+pFs*0.353*0.45,{align:'center'});
       }else{
         const r=Math.min(wMm,hMm)/2;
         pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
@@ -3289,6 +3302,11 @@ async function exportPDF(capture){
       pdf.setFillColor(r,g,b);pdf.circle(bx,by,sz,'F');
       pdf.setFont('helvetica','bold');pdf.setFontSize(sz*2.8);pdf.setTextColor(255,255,255);
       const sw=pdf.getTextWidth('S');pdf.text('S',bx-sw/2,by+sz*0.35);
+    }else if(type==='restroom'){
+      pdf.setFillColor(30,58,95);pdf.setDrawColor(22,45,74);pdf.setLineWidth(0.2);
+      pdf.rect(bx-sz,by-sz,sz*2,sz*2,'FD');
+      pdf.setFont('helvetica','bold');pdf.setFontSize(sz*2.8);pdf.setTextColor(255,255,255);
+      const pw=pdf.getTextWidth('P');pdf.text('P',bx-pw/2,by+sz*0.35);
     }else if(type==='zone'){
       const[kr,kg,kb]=opts.rgb||[251,189,47];
       pdf.setDrawColor(kr,kg,kb);pdf.setLineWidth(0.5);
@@ -3369,9 +3387,9 @@ async function exportPDF(capture){
     c1y+=2;
   }
 
-  const p2SmTypes=['electric','water','trash','extinguisher'];
-  const p2SmUtility=new Set(['electric','water','trash']);
-  const p2SmLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',extinguisher:'Fire Extinguisher'};
+  const p2SmTypes=['electric','water','trash','restroom','extinguisher'];
+  const p2SmUtility=new Set(['electric','water','trash','restroom']);
+  const p2SmLabels={electric:'Electric Source',water:'Water Source',trash:'Trash Bin',restroom:'Portable Restroom',extinguisher:'Fire Extinguisher'};
   const p2SmCounts={};p2SmTypes.forEach(tp=>{
     if(S.hideUtils&&p2SmUtility.has(tp))return;
     const c=S.els.filter(e=>e.type===tp).length;if(c)p2SmCounts[tp]=c;
@@ -3386,6 +3404,7 @@ async function exportPDF(capture){
       else if(tp==='water')pdfIcon('water',p2C1X+iconSz,c1y-iconSz);
       else if(tp==='extinguisher')pdfIcon('circle',p2C1X+iconSz,c1y-iconSz,{rgb:[240,82,82]});
       else if(tp==='trash')pdfIcon('circle',p2C1X+iconSz,c1y-iconSz,{rgb:[139,147,168]});
+      else if(tp==='restroom')pdfIcon('restroom',p2C1X+iconSz,c1y-iconSz);
       pdf.setFont('helvetica','normal');pdf.setFontSize(11);pdf.setTextColor(28,27,46);
       pdf.text(`${p2SmLabels[tp]} (${p2SmCounts[tp]})`,p2C1X+txtOff,c1y);c1y+=p2LH;
     });
