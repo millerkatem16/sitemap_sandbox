@@ -1316,15 +1316,21 @@ function openPlanningGuide(){
     html=`<div class="pg-ok-state"><i class="ti ti-circle-check"></i><span>${pgItems[0].text}</span></div>`;
   } else {
     const nonOk=pgItems.filter(x=>x.severity!=='ok');
-    const visible=nonOk.slice(0,3);
-    html+=`<div class="pg-phase-hdr" style="padding-top:2px">Recommended Next Steps</div>`;
-    visible.forEach(item=>{
+    const renderItem=item=>{
       const idx=pgItems.indexOf(item);
       const hasAction=!!item.action;
       const arrow=hasAction?`<i class="ti ti-chevron-right pg-arrow"></i>`:'';
       const dismissBtn=(item.severity==='soft'||item.severity==='info')?`<button class="pg-dismiss" data-pg-dismiss="${idx}" title="Dismiss">×</button>`:'';
-      html+=`<div class="pg-item pg-sev-${item.severity}"${hasAction?` data-pg-idx="${idx}"`:''}><i class="ti ${PG_SEV_ICON[item.severity]||'ti-info-circle'} pg-icon"></i><span class="pg-text">${item.text}</span>${arrow}${dismissBtn}</div>`;
-    });
+      return `<div class="pg-item pg-sev-${item.severity}"${hasAction?` data-pg-idx="${idx}"`:''}><i class="ti ${PG_SEV_ICON[item.severity]||'ti-info-circle'} pg-icon"></i><span class="pg-text">${item.text}</span>${arrow}${dismissBtn}</div>`;
+    };
+    const top=nonOk.slice(0,3);
+    const rest=nonOk.slice(3);
+    html+=`<div class="pg-phase-hdr" style="padding-top:2px">Recommended Next Steps</div>`;
+    top.forEach(item=>{html+=renderItem(item);});
+    if(rest.length){
+      html+=`<div class="pg-phase-hdr">Additional Actions</div>`;
+      rest.forEach(item=>{html+=renderItem(item);});
+    }
   }
   modal('Planning Guide','',html,null,'Close',{wide:460,noCancel:true});
 }
