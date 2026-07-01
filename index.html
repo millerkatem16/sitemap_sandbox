@@ -312,6 +312,41 @@ canvas{position:absolute;inset:0;pointer-events:none}
 @keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes toast-out{from{opacity:1}to{opacity:0}}
 .toast.leaving{animation:toast-out .2s ease-in forwards}
+/* ── Planning Guide ─────────────────────────────────────────────────────── */
+#bpg{position:relative}
+#bpg-badge{position:absolute;top:-5px;right:-6px;min-width:16px;height:16px;border-radius:8px;font-size:10px;font-weight:700;font-family:var(--mono);display:none;align-items:center;justify-content:center;padding:0 4px;line-height:1;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,0.25)}
+#bpg-badge.pg-flag,#bpg-badge.pg-todo,#bpg-badge.pg-ok{display:flex}
+#bpg-badge.pg-flag{background:var(--red);color:#fff}
+#bpg-badge.pg-todo{background:var(--amb);color:#1a1000}
+#bpg-badge.pg-ok{background:var(--grn);color:#fff;min-width:16px;width:16px;padding:0}
+.pg-phase-hdr{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);padding:14px 0 6px;border-bottom:1px solid var(--brd);margin-bottom:8px}
+.pg-phase-hdr:first-child{padding-top:2px}
+.pg-item{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;transition:background .12s;border:1px solid transparent;margin-bottom:3px}
+.pg-item .pg-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+.pg-item .pg-text{flex:1;font-size:12.5px;line-height:1.5}
+.pg-item .pg-arrow{font-size:12px;color:var(--tx3);flex-shrink:0;margin-top:2px;opacity:.5}
+.pg-item.pg-sev-flag{background:rgba(224,53,53,0.05);border-color:rgba(224,53,53,0.18)}
+.pg-item.pg-sev-flag .pg-icon,.pg-item.pg-sev-flag .pg-text{color:#9e1a1a}
+.pg-item.pg-sev-flag:hover{background:rgba(224,53,53,0.1)}
+.pg-item.pg-sev-todo{background:rgba(42,95,100,0.06);border-color:rgba(42,95,100,0.16)}
+.pg-item.pg-sev-todo .pg-icon,.pg-item.pg-sev-todo .pg-text{color:var(--slate)}
+.pg-item.pg-sev-todo:hover{background:rgba(42,95,100,0.11)}
+.pg-item.pg-sev-soft{background:rgba(251,189,47,0.07);border-color:rgba(251,189,47,0.28)}
+.pg-item.pg-sev-soft .pg-icon,.pg-item.pg-sev-soft .pg-text{color:#7a5200}
+.pg-item.pg-sev-soft:hover{background:rgba(251,189,47,0.13)}
+.pg-item.pg-sev-info{background:rgba(42,95,100,0.05);border-color:rgba(42,95,100,0.12)}
+.pg-item.pg-sev-info .pg-icon,.pg-item.pg-sev-info .pg-text{color:var(--slate)}
+.pg-item.pg-sev-info:hover{background:rgba(42,95,100,0.09)}
+.pg-item.pg-sev-ok{background:rgba(45,212,160,0.07);border-color:rgba(45,212,160,0.22);cursor:default}
+.pg-item.pg-sev-ok .pg-icon,.pg-item.pg-sev-ok .pg-text{color:#14705a}
+.pg-ok-state{display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 0 20px;text-align:center}
+.pg-ok-state i{font-size:40px;color:var(--grn)}
+.pg-ok-state span{font-size:14px;font-weight:600;color:var(--tx);max-width:280px;line-height:1.55}
+@keyframes pg-pulse{0%,100%{box-shadow:0 0 0 2.5px var(--amb),0 0 8px rgba(251,189,47,0.3)}50%{box-shadow:0 0 0 3.5px var(--amb),0 0 18px rgba(251,189,47,0.55)}}
+.pg-highlight .ei{animation:pg-pulse 1.4s ease-in-out infinite!important}
+.pg-highlight-field{outline:2px solid var(--amb)!important;outline-offset:2px}
+.pg-highlight-row{background:rgba(251,189,47,0.14)!important;border-radius:var(--r);transition:background .3s}
+.pg-highlight-panel{box-shadow:inset 0 0 0 2px var(--amb)!important;transition:box-shadow .3s}
 </style>
 </head>
 <body>
@@ -379,6 +414,9 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <button class="tb" id="bhideutil"><i class="ti ti-eye-off"></i><span id="bhideutil-lbl">Safety Review Ready Map</span></button>
   </div>
   <div class="spacer"></div>
+  <div class="tg">
+    <button class="tb" id="bpg"><i class="ti ti-list-check"></i>Planning Guide<span id="bpg-badge"></span></button>
+  </div>
   <div class="tg">
     <button class="tb save" id="bsave-evt"><i class="ti ti-device-floppy"></i>Save Event</button>
     <button class="tb exp" id="bpdf" style="display:none"><i class="ti ti-file-type-pdf"></i>Export PDF</button>
@@ -1119,7 +1157,7 @@ function runRules(){
   if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.',ids:[]});S.lastWarns=warns;
   document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
   const precheckPanel=document.getElementById('precheck-panel');if(precheckPanel)precheckPanel.classList.toggle('has-content',S.els.length>0||S.zonePolys.length>0);
-  renderEls();updateCap();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();
+  renderEls();updateCap();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();updatePlanningGuideBadge();
 }
 
 // ── Planning Guide ─────────────────────────────────────────────────────────
@@ -1184,6 +1222,82 @@ function buildPlanningGuide(){
   if(hasFlag)items.push({phase:4,severity:'flag',text:'Your plan may not meet safety standards — review all flags before exporting.',action:{type:'sidebarPanel',panel:'precheck-panel'}});
   if(!hasBlocker)items.push({phase:4,severity:'ok',text:'Your plan looks good — ready to export!',action:null});
   return items;
+}
+
+// ── Planning Guide UI ─────────────────────────────────────────────────────
+let pgItems=[];
+let pgClearTimer=null;
+const PG_PHASE_LABELS={1:'Phase 1 — Define the Site',2:'Phase 2 — Place Activations',3:'Phase 3 — Safety & Compliance',4:'Phase 4 — Ready to Submit'};
+const PG_SEV_ICON={flag:'ti-alert-circle',todo:'ti-checkbox',soft:'ti-alert-triangle',info:'ti-info-circle',ok:'ti-circle-check'};
+function clearPgHighlights(){
+  clearTimeout(pgClearTimer);pgClearTimer=null;
+  document.querySelectorAll('.pg-highlight').forEach(el=>el.classList.remove('pg-highlight'));
+  document.querySelectorAll('.pg-highlight-field').forEach(el=>el.classList.remove('pg-highlight-field'));
+  document.querySelectorAll('.pg-highlight-row').forEach(el=>el.classList.remove('pg-highlight-row'));
+  document.querySelectorAll('.pg-highlight-panel').forEach(el=>el.classList.remove('pg-highlight-panel'));
+}
+function glowEl(id,ms=3000){
+  const el=document.getElementById(id);if(!el)return;
+  el.classList.add('onboard-glow');
+  clearTimeout(el._pgGlowTimer);
+  el._pgGlowTimer=setTimeout(()=>el.classList.remove('onboard-glow'),ms);
+}
+function dispatchPgAction(action){
+  if(!action)return;
+  clearPgHighlights();
+  if(action.type==='topbar'){
+    glowEl(action.target);
+  } else if(action.type==='highlightElements'){
+    action.ids.forEach(id=>{const div=document.querySelector(`#el [data-id="${id}"]`);if(div)div.classList.add('pg-highlight');});
+    pgClearTimer=setTimeout(clearPgHighlights,4000);
+  } else if(action.type==='sidebarField'){
+    const body=document.getElementById('event-details-body');
+    const wasClosed=body&&body.style.display==='none';
+    if(wasClosed)document.getElementById('event-details-toggle').click();
+    setTimeout(()=>{const f=document.getElementById(action.target);if(f){f.focus();f.classList.add('pg-highlight-field');}pgClearTimer=setTimeout(clearPgHighlights,4000);},wasClosed?120:0);
+  } else if(action.type==='sidebarRow'){
+    const panelEl=document.getElementById(action.panel);
+    if(panelEl)panelEl.scrollIntoView({behavior:'smooth',block:'nearest'});
+    const row=panelEl&&action.rowSelector?panelEl.querySelector(action.rowSelector):null;
+    if(row)row.classList.add('pg-highlight-row');
+    pgClearTimer=setTimeout(clearPgHighlights,4000);
+  } else if(action.type==='sidebarPanel'){
+    const panelEl=document.getElementById(action.panel);
+    if(panelEl){panelEl.scrollIntoView({behavior:'smooth',block:'nearest'});panelEl.classList.add('pg-highlight-panel');}
+    pgClearTimer=setTimeout(clearPgHighlights,4000);
+  } else if(action.type==='modal'){
+    if(typeof window[action.fn]==='function')window[action.fn]();
+  }
+}
+function openPlanningGuide(){
+  pgItems=buildPlanningGuide();
+  let html='';
+  if(pgItems.length===1&&pgItems[0].severity==='ok'){
+    html=`<div class="pg-ok-state"><i class="ti ti-circle-check"></i><span>${pgItems[0].text}</span></div>`;
+  } else {
+    [1,2,3,4].forEach(ph=>{
+      const phItems=pgItems.filter(x=>x.phase===ph);
+      if(!phItems.length)return;
+      html+=`<div class="pg-phase-hdr">${PG_PHASE_LABELS[ph]}</div>`;
+      phItems.forEach(item=>{
+        const idx=pgItems.indexOf(item);
+        const hasAction=!!item.action;
+        const arrow=hasAction?`<i class="ti ti-chevron-right pg-arrow"></i>`:'';
+        html+=`<div class="pg-item pg-sev-${item.severity}"${hasAction?` data-pg-idx="${idx}"`:''}><i class="ti ${PG_SEV_ICON[item.severity]||'ti-info-circle'} pg-icon"></i><span class="pg-text">${item.text}</span>${arrow}</div>`;
+      });
+    });
+  }
+  modal('Planning Guide','',html,null,'Close',{wide:460,noCancel:true});
+}
+function updatePlanningGuideBadge(){
+  const badge=document.getElementById('bpg-badge');if(!badge)return;
+  const items=buildPlanningGuide();
+  const flags=items.filter(x=>x.severity==='flag').length;
+  const todos=items.filter(x=>x.severity==='todo').length;
+  badge.className='';
+  if(flags>0){badge.textContent=flags;badge.className='pg-flag';}
+  else if(todos>0){badge.textContent=todos;badge.className='pg-todo';}
+  else{badge.textContent='✓';badge.className='pg-ok';}
 }
 
 // ── Render Elements ────────────────────────────────────────────────────────
@@ -2272,6 +2386,9 @@ async function openEvents(){
 }
 
 document.getElementById('bsave-evt').addEventListener('click',()=>requireLogin(saveEvent));
+document.getElementById('bpg').addEventListener('click',openPlanningGuide);
+document.getElementById('mb').addEventListener('click',ev=>{const item=ev.target.closest('.pg-item[data-pg-idx]');if(!item)return;const idx=parseInt(item.dataset.pgIdx);const pgItem=pgItems[idx];if(!pgItem||!pgItem.action)return;closeModal();dispatchPgAction(pgItem.action);});
+document.getElementById('cw').addEventListener('mousedown',clearPgHighlights);
 document.getElementById('evt-notes').addEventListener('input',function(){S.eventNotes=this.value;});
 document.getElementById('event-details-toggle').addEventListener('click',()=>{
   const body=document.getElementById('event-details-body');
