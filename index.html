@@ -547,7 +547,7 @@ const S={
   activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[],
   eventNotes:'',
   colorTags:[{id:'pink',hex:'#f9a8d4',name:null},{id:'lpurple',hex:'#c4b5fd',name:null},{id:'lblue',hex:'#93c5fd',name:null},{id:'dblue',hex:'#1e40af',name:null},{id:'green',hex:'#4ade80',name:null},{id:'gray',hex:'#9ca3af',name:null},{id:'orange',hex:'#fb923c',name:null},{id:'teal',hex:'#0d9488',name:null}],
-  currentUser:null,currentEventId:null,currentEventMeta:null,isAdmin:false,adminEmail:null
+  currentUser:null,currentEventId:null,currentEventMeta:null,isAdmin:false,adminEmail:null,lastWarns:null
 };
 
 let gmap=null,mapsApiKey='';
@@ -1074,19 +1074,19 @@ function runRules(){
   const gens=S.els.filter(e=>e.type==='gen'),ins=S.els.filter(e=>e.type==='ingress'),stages=S.els.filter(e=>e.type==='stage');
   S.els.forEach(e=>{e.hr=false;e.sr=false;});
   trucks.forEach(t=>{
-    tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)} — 20ft required for Fire Code compliance (~${Math.round(clr)}ft).`});t.hr=true;n.hr=true;}});
-    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} within 10ft of each other — 10ft required for Fire Code compliance (~${Math.round(clr)}ft).`});t.hr=true;o.hr=true;}});
-    const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} in restricted zone.`});t.hr=true;}
+    tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)} — 20ft required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
+    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} within 10ft of each other — 10ft required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[t.id,o.id]});t.hr=true;o.hr=true;}});
+    const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} in restricted zone.`,ids:[t.id]});t.hr=true;}
   });
   // Cooking tent must be 20ft from other activations (non-cooking tents)
   const cookingTents=tents.filter(t=>getTentCat(t)==='cooking');
   const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
-  cookingTents.forEach(c=>{[...nonCookingTents,...trucks].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — 20ft separation required for Fire Code compliance (~${Math.round(clr)}ft).`});c.hr=true;o.hr=true;}});});
-  gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`});});
-  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:`No ingress/egress placed${zoneDesc}.`});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 ingress/egress${zoneDesc} — minimum 2 required. 3 recommended.`});else if(ins.length===2)warns.push({type:'soft',msg:`2 ingress/egress${zoneDesc} — a 3rd is recommended.`});}}
+  cookingTents.forEach(c=>{[...nonCookingTents,...trucks].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — 20ft separation required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[c.id,o.id]});c.hr=true;o.hr=true;}});});
+  gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`,ids:[g.id]});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`,ids:[g.id]});});
+  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:`No ingress/egress placed${zoneDesc}.`,ids:[]});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 ingress/egress${zoneDesc} — minimum 2 required. 3 recommended.`,ids:[ins[0].id]});else if(ins.length===2)warns.push({type:'soft',msg:`2 ingress/egress${zoneDesc} — a 3rd is recommended.`,ids:ins.map(ii=>ii.id)});}}
   ins.forEach(i=>{
-    if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is under 10ft wide — ADA minimum not met.`});i.hr=true;}
-    const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`});i.hr=true;blocked.forEach(b=>b.hr=true);}
+    if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is under 10ft wide — ADA minimum not met.`,ids:[i.id]});i.hr=true;}
+    const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`,ids:[i.id,...blocked.map(b=>b.id)]});i.hr=true;blocked.forEach(b=>b.hr=true);}
   });
   // G2.2: flag elements within 10ft of ingress arrow tips
   ins.forEach(i=>{
@@ -1094,7 +1094,7 @@ function runRules(){
     const tips=[{x:icx+hw*Math.cos(rad2),y:icy+hw*Math.sin(rad2)},{x:icx-hw*Math.cos(rad2),y:icy-hw*Math.sin(rad2)}];
     S.els.filter(e=>e.type!=='ingress'&&e.type!=='security').forEach(el=>{
       let flagged=false;const bx1=elX(el),by1=elY(el),bx2=bx1+elW(el),by2=by1+elH(el);
-      tips.forEach(tip=>{if(flagged)return;const nx=Math.max(bx1,Math.min(tip.x,bx2)),ny=Math.max(by1,Math.min(tip.y,by2));const dist=Math.sqrt((tip.x-nx)**2+(tip.y-ny)**2)/S.scale;if(dist<10){const nEl=el.vendorName||elCode(el,getTypeNums());const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:nEl+' within 10ft of '+nIn+' gate tip — keep opening clear.'});el.hr=true;i.hr=true;flagged=true;}});
+      tips.forEach(tip=>{if(flagged)return;const nx=Math.max(bx1,Math.min(tip.x,bx2)),ny=Math.max(by1,Math.min(tip.y,by2));const dist=Math.sqrt((tip.x-nx)**2+(tip.y-ny)**2)/S.scale;if(dist<10){const nEl=el.vendorName||elCode(el,getTypeNums());const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:nEl+' within 10ft of '+nIn+' gate tip — keep opening clear.',ids:[el.id,i.id]});el.hr=true;i.hr=true;flagged=true;}});
     });
   });
   // G2.3: flag fencing within 12ft of any ingress center
@@ -1104,22 +1104,60 @@ function runRules(){
     let fFlagged=false;
     ins.forEach(i=>{
       if(fFlagged)return;const cx=ecx(i),cy=ecy(i);
-      for(let fi=0;fi<fPx.length-1&&!fFlagged;fi++){const dsq=segDSq(cx,cy,fPx[fi].x,fPx[fi].y,fPx[fi+1].x,fPx[fi+1].y);if(Math.sqrt(dsq)/S.scale<12){const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:'Fencing within 12ft of '+nIn+' gate — potential crowd flow conflict.'});i.hr=true;fFlagged=true;}}
+      for(let fi=0;fi<fPx.length-1&&!fFlagged;fi++){const dsq=segDSq(cx,cy,fPx[fi].x,fPx[fi].y,fPx[fi+1].x,fPx[fi+1].y);if(Math.sqrt(dsq)/S.scale<12){const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:'Fencing within 12ft of '+nIn+' gate — potential crowd flow conflict.',ids:[i.id]});i.hr=true;fFlagged=true;}}
     });
   });  const vis=new Set();
-  tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft — over 900 sq ft may need a building permit.`});grp.forEach(e=>e.sr=true);}});
-  stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft) — over 256 sq ft may need a building permit.`});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft — over 3ft may need a building permit.`});s.sr=true;}});
-  S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||(_t2.tent&&(e.tentType==='event'||e.tentType==='production'));if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone.`});e.hr=true;}});
+  tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft — over 900 sq ft may need a building permit.`,ids:grp.map(e=>e.id)});grp.forEach(e=>e.sr=true);}});
+  stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft) — over 256 sq ft may need a building permit.`,ids:[s.id]});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft — over 3ft may need a building permit.`,ids:[s.id]});s.sr=true;}});
+  S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||(_t2.tent&&(e.tentType==='event'||e.tentType==='production'));if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone.`,ids:[e.id]});e.hr=true;}});
   // Overlap check — no two elements may occupy the same space
-  for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){if(ovlp(S.els[i],S.els[j])){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping.`});S.els[i].hr=true;S.els[j].hr=true;}}}
-  if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.'});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.'});}
+  for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){if(ovlp(S.els[i],S.els[j])){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping.`,ids:[S.els[i].id,S.els[j].id]});S.els[i].hr=true;S.els[j].hr=true;}}}
+  if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'Soft surface venue — ADA flooring required. Draw ADA paths to mark accessible routes.',ids:[]});else warns.push({type:'info',msg:'Soft surface: ensure ADA paths use accessible flooring.',ids:[]});}
   getZoneCapacities().forEach(z=>{
-    if(z.peakAtt&&z.peakAtt>z.cap){warns.push({type:'soft',msg:`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds calculated capacity (~${z.cap.toLocaleString()}) — final occupancy is set by the fire marshal.`});}
+    if(z.peakAtt&&z.peakAtt>z.cap){warns.push({type:'soft',msg:`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds calculated capacity (~${z.cap.toLocaleString()}) — final occupancy is set by the fire marshal.`,ids:[]});}
   });
-  if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.'});
+  if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.',ids:[]});S.lastWarns=warns;
   document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
   const precheckPanel=document.getElementById('precheck-panel');if(precheckPanel)precheckPanel.classList.toggle('has-content',S.els.length>0||S.zonePolys.length>0);
   renderEls();updateCap();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();
+}
+
+// ── Planning Guide ─────────────────────────────────────────────────────────
+function buildPlanningGuide(){
+  const items=[];
+  const add=(phase,severity,msg,action)=>items.push({phase,severity,msg,action});
+  const evtName=((document.getElementById('evt-name')||{}).value||'').trim();
+  const evtDate=(document.getElementById('evt-date')||{}).value||'';
+  if(!evtName)add(1,'todo','Add an event name — shown on the exported PDF.',{type:'sidebarField',target:'evt-name',panel:'event-details-panel'});
+  if(!evtDate)add(1,'todo','Set the event date so it appears on exported documents.',{type:'sidebarField',target:'evt-date',panel:'event-details-panel'});
+  const hasContent=S.els.length>0||S.zonePolys.length>0;
+  if(!hasContent){
+    add(2,'todo','Start building your site layout — search your event venue or address to begin.',{type:'topbar',target:'map-search'});
+  } else {
+    if(!S.zonePolys.length)add(2,'info','No zone borders drawn — add zones to enable capacity calculations.',{type:'sidebarPanel',panel:'cap-panel'});
+  }
+  if(S.lastWarns){
+    S.lastWarns.forEach(w=>{
+      if(w.type==='ok')return;
+      if(typeof w.msg==='string'&&w.msg.includes('peak attendance'))return;
+      const sev=w.type==='hard'?'flag':w.type==='soft'?'soft':'info';
+      const action=w.ids&&w.ids.length?{type:'highlightElements',ids:w.ids}:{type:'sidebarPanel',panel:'precheck-panel'};
+      add(3,sev,w.msg,action);
+    });
+  }
+  const zoneCaps=getZoneCapacities().filter(z=>!z.placeholder);
+  if(zoneCaps.length){
+    zoneCaps.forEach(z=>{
+      if(!z.label)add(4,'todo','An unnamed zone needs a label — open Capacity to add one.',{type:'sidebarPanel',panel:'cap-panel'});
+      if(z.peakAtt&&z.peakAtt>z.cap)add(4,'soft',`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated capacity (~${z.cap.toLocaleString()}).`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
+      if(!z.peakAtt)add(4,'info',`${z.label||'Zone'}: set peak attendance for capacity planning.`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
+    });
+  } else if(hasContent){
+    add(4,'info','Draw zone borders to calculate venue capacity.',{type:'sidebarPanel',panel:'cap-panel'});
+  }
+  const sevOrd={flag:0,todo:1,soft:2,info:3,ok:4};
+  items.sort((a,b)=>a.phase!==b.phase?a.phase-b.phase:((sevOrd[a.severity]??5)-(sevOrd[b.severity]??5)));
+  return items;
 }
 
 // ── Render Elements ────────────────────────────────────────────────────────
