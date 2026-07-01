@@ -606,7 +606,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div class="m-title" id="mtt"></div>
   <div class="m-desc" id="mdesc"></div>
   <div id="mb"></div>
-  <div class="mbtns"><button class="mbtn" id="mcan">Cancel</button><button class="mbtn p" id="mok">Place</button></div>
+  <div class="mbtns"><button class="vbtn del" id="mdel" style="margin-right:auto;display:none">Delete</button><button class="mbtn" id="mcan">Cancel</button><button class="mbtn p" id="mok">Place</button></div>
 </div></div>
 
 <script>
@@ -1435,7 +1435,7 @@ function renderEls(){
       div.addEventListener('mouseleave',()=>{if(S.selId!==el.id){db.style.display='none';rb.style.display='none';}});
       div.appendChild(inner);
       makeDrag(div,el);
-      div.addEventListener('click',ev=>{if(ev.target===db||ev.target===rb)return;S.selId=S.selId===el.id?null:el.id;renderEls();});
+      div.addEventListener('click',ev=>{if(ev.target===db||ev.target===rb)return;if(div._dragMoved)return;S.selId=el.id;renderEls();editEl(el);});
       elDiv.appendChild(div);
       return;
     }
@@ -1539,7 +1539,9 @@ function renderEls(){
     makeDrag(div,el);
     div.addEventListener('click',ev=>{
       if(ev.target.classList.contains('rbtn')||ev.target.classList.contains('el-lbl'))return;
-      S.selId=S.selId===el.id?null:el.id;renderEls();
+      if(div._dragMoved)return;
+      S.selId=el.id;renderEls();
+      if(el.type==='ingress')openIngressDetails(el.id);else editEl(el);
     });
     elDiv.appendChild(div);
   });
@@ -1556,10 +1558,10 @@ function makeDrag(div,el){
     const xy=elXY(el);
     startCx=xy.x+elW(el)/2;startCy=xy.y+elH(el)/2;
     startLat=el.lat;startLng=el.lng;
-    moved=false;didPushUndo=false;
+    moved=false;didPushUndo=false;div._dragMoved=false;
     const onM=mv=>{
       if(!didPushUndo){pushUndo();didPushUndo=true;}
-      moved=true;
+      moved=true;div._dragMoved=true;
       const dx=mv.clientX-sx,dy=mv.clientY-sy;
       const newCx=startCx+dx,newCy=startCy+dy;
       const ll=pixelToLatLng(newCx,newCy);
@@ -1630,12 +1632,13 @@ function addEventContact(){
 const addFirstAidContact=addEventContact;
 function openIngressDetails(elId){
   const el=S.els.find(e=>e.id===elId);if(!el)return;
-  const opts=[{v:'entrance',t:'Entrance'},{v:'exit',t:'Exit'},{v:'both',t:'Both (Entrance & Exit)'}];
-  const selHtml=`<div class="mf"><label>Designation</label><select id="ingress-access">${opts.map(o=>`<option value="${o.v}"${el.access===o.v?' selected':''}>  ${o.t}</option>`).join('')}</select></div>`;
+  const doDelete=()=>{pushUndo();S.els=S.els.filter(x=>x.id!==elId);if(S.selId===elId)S.selId=null;renderVendorList();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();};
+  const desgOpts=[{v:'entrance',t:'Entrance'},{v:'exit',t:'Exit'},{v:'both',t:'Both (Entrance & Exit)'}];
+  const selHtml=`<div class="mf"><label>Designation</label><select id="ingress-access">${desgOpts.map(o=>`<option value="${o.v}"${el.access===o.v?' selected':''}>  ${o.t}</option>`).join('')}</select></div>`;
   modal('Entrance / Exit Details','Set the role for this gate.',selHtml,()=>{
     el.access=document.getElementById('ingress-access').value||undefined;
     renderSafetyCompliance();runRules();
-  },'Save');
+  },'Save',{onDelete:doDelete});
 }
 // ── Safety & Compliance sidebar ────────────────────────────────────────────
 function renderSafetyCompliance(){
@@ -1749,19 +1752,21 @@ function openManageModal(bucketKey){
 }
 
 // ── Modal ──────────────────────────────────────────────────────────────────
-let mCb=null;let mOnClose=null;let mNoCancel=false;
+let mCb=null;let mOnClose=null;let mNoCancel=false;let mDelCb=null;
 function modal(title,desc,body,cb,okLabel='Place',opts={}){
   document.getElementById('mtt').textContent=title;document.getElementById('mdesc').textContent=desc;
   document.getElementById('mb').innerHTML=body;document.getElementById('mok').textContent=okLabel;
   document.getElementById('md').style.maxWidth=(opts.wide||360)+'px';
   document.getElementById('mcan').style.display=opts.noCancel?'none':'';
+  const _mdel=document.getElementById('mdel');_mdel.style.display=opts.onDelete?'':'none';mDelCb=opts.onDelete||null;
   document.getElementById('mo').style.display='flex';mCb=cb;mNoCancel=!!(opts&&opts.noCancel);
   setTimeout(()=>{const f=document.querySelector('#mb input,#mb select');if(f)f.focus();},80);
 }
-function closeModal(){const fn=mOnClose;mOnClose=null;mNoCancel=false;if(fn)fn();document.getElementById('mo').style.display='none';document.getElementById('md').style.maxWidth='360px';document.getElementById('mcan').style.display='';}
+function closeModal(){const fn=mOnClose;mOnClose=null;mNoCancel=false;mDelCb=null;if(fn)fn();document.getElementById('mo').style.display='none';document.getElementById('md').style.maxWidth='360px';document.getElementById('mcan').style.display='';}
 function showToast(msg,isError=false){const c=document.getElementById('toast-container');if(!c)return;const t=document.createElement('div');t.className='toast'+(isError?' error':'');t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.classList.add('leaving');setTimeout(()=>t.remove(),200);},3500);}
 document.getElementById('mcan').addEventListener('click',closeModal);
 document.getElementById('mok').addEventListener('click',()=>{closeModal();if(mCb)mCb();});
+document.getElementById('mdel').addEventListener('click',()=>{if(mDelCb)mDelCb();closeModal();});
 document.getElementById('mo').addEventListener('click',e=>{if(e.target===document.getElementById('mo')&&!mNoCancel)closeModal();});
 document.getElementById('mb').addEventListener('click',ev=>{
   const card=ev.target.closest('.export-opt-card');
@@ -1949,12 +1954,13 @@ function place(type,x,y){
 
 function editEl(el){
   const t=TYPES[el.type]||TYPES.custom;
+  const doDelete=()=>{pushUndo();if(el.type==='firstaid')S.firstAids=S.firstAids.filter(c=>c.eid!==el.id);S.els=S.els.filter(x=>x.id!==el.id);if(S.selId===el.id)S.selId=null;renderVendorList();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();};
   if(el.type==='tent10'||el.type==='tent20'){
     modal(`Edit ${t.lbl}`,'Update this tent\'s label, use type, or color tag.',mf('Tent Label','tlbl','text',el.vendorName||el.label||'','e.g. Artisan Crafts')+msel('Tent Use','tent-type',[{v:'',t:'— Unassigned —'},{v:'vendor',t:'Vendor'},{v:'activity',t:'Activity'},{v:'production',t:'Production'},{v:'cooking',t:'Cooking'}])+colorTagPickerHtml(el.colorTag||''),()=>{
       pushUndo();const lbl=document.getElementById('tlbl').value.trim()||(el.vendorName||el.label||t.lbl);const tentType=document.getElementById('tent-type').value||null;const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
       el.label=lbl;el.vendorName=lbl;el.tentType=tentType;el.colorTag=colorTag;
       renderVendorList();renderEls();renderColorKey();runRules();
-    },'Save');
+    },'Save',{onDelete:doDelete});
     document.getElementById('tent-type').value=el.tentType||'';
     wireTagPicker();
     document.getElementById('tent-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
@@ -1964,7 +1970,7 @@ function editEl(el){
       pushUndo();const lbl=document.getElementById('cust-lbl').value.trim()||'Custom';const shape=document.getElementById('cust-shape').value||'square';const isCircle=shape==='circle';const sz=Math.max(1,parseFloat(document.getElementById('cust-sz').value)||10);const wFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-w').value)||10);const hFt=isCircle?sz:Math.max(1,parseFloat(document.getElementById('cust-d').value)||10);const colorTag=document.getElementById('tag-sel-id').value||(S.colorTags[0]&&S.colorTags[0].id)||null;
       el.label=lbl;el.vendorName=lbl;el.shape=shape;el.wFt=wFt;el.hFt=hFt;el.colorTag=colorTag;
       renderVendorList();renderEls();runRules();
-    },'Save');
+    },'Save',{onDelete:doDelete});
     document.getElementById('cust-shape').value=el.shape||'square';
     document.getElementById('cust-shape').addEventListener('change',function(){const c=this.value==='circle';document.getElementById('cust-dims-sq').style.display=c?'none':'';document.getElementById('cust-dims-ci').style.display=c?'':'none';});
     wireTagPicker();
@@ -1973,7 +1979,7 @@ function editEl(el){
       pushUndo();const lbl=document.getElementById('ctlbl').value.trim()||'Custom Tent';const wFt=Math.max(1,parseFloat(document.getElementById('ctw').value)||20);const hFt=Math.max(1,parseFloat(document.getElementById('ctl').value)||40);const tentType=document.getElementById('ct-type').value||null;const colorTag=tentType==='cooking'?null:(document.getElementById('tag-sel-id').value||null);
       el.label=lbl;el.vendorName=lbl;el.wFt=wFt;el.hFt=hFt;el.tentType=tentType;el.colorTag=colorTag;
       renderVendorList();renderEls();runRules();
-    },'Save');
+    },'Save',{onDelete:doDelete});
     document.getElementById('ct-type').value=el.tentType||'';
     wireTagPicker();
     document.getElementById('ct-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
@@ -1982,13 +1988,27 @@ function editEl(el){
       pushUndo();const wFt=Math.max(1,parseFloat(document.getElementById('tkl').value)||20);const hFt=Math.max(1,parseFloat(document.getElementById('tkw').value)||8);
       el.wFt=wFt;el.hFt=hFt;
       renderVendorList();renderEls();runRules();
-    },'Save');
+    },'Save',{onDelete:doDelete});
   }else if(el.type==='stage'){
     modal('Edit Stage',"Stages over 256 sq ft or 3ft tall may require a building permit.",mf('Stage Name','stlbl','text',el.vendorName||el.label||'Stage','e.g. Main Stage')+mr(mf('Width (ft)','stw','number',String(el.wFt||20)),mf('Depth (ft)','std','number',String(el.hFt||16)),mf('Height (ft)','sth','number',String(el.heightFt||2))),()=>{
       pushUndo();const lbl=document.getElementById('stlbl').value.trim()||'Stage';const wFt=parseFloat(document.getElementById('stw').value)||20;const hFt=parseFloat(document.getElementById('std').value)||16;const heightFt=parseFloat(document.getElementById('sth').value)||2;
       el.label=lbl;el.vendorName=lbl;el.wFt=wFt;el.hFt=hFt;el.heightFt=heightFt;
       renderVendorList();renderEls();runRules();
-    },'Save');
+    },'Save',{onDelete:doDelete});
+  }else if(el.type==='label'){
+    modal('Edit Label','Update the annotation text.',mf('Label Text','lbl-edit-txt','text',el.labelText||'','e.g. Parking entrance this way'),()=>{
+      const txt=document.getElementById('lbl-edit-txt').value.trim();
+      if(txt){el.labelText=txt;el.wFt=Math.max(20,Math.ceil(txt.length*2.8+5));}
+      renderEls();runRules();
+    },'Save',{onDelete:doDelete});
+  }else if(el.type==='mix'){
+    modal('Edit Mix Platform','Update this platform\'s label.',mf('Platform Name','mix-lbl','text',el.vendorName||'','e.g. FOH, Monitor World'),()=>{
+      pushUndo();const lbl=document.getElementById('mix-lbl').value.trim()||'Mix Platform';
+      el.label=lbl;el.vendorName=lbl;
+      renderEls();runRules();
+    },'Save',{onDelete:doDelete});
+  }else{
+    modal(t.lbl,'Placed as a '+t.lbl+' marker. No additional configuration available.','',(()=>{}),'Close',{noCancel:true,onDelete:doDelete});
   }
 }
 
