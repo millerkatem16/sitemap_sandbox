@@ -377,6 +377,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <option value="border">Draw Venue Border</option>
       <option value="subzone">Draw Sub Zone</option>
       <option value="restrict">Restrict Areas</option>
+      <option value="ingress">Entrance/Exit</option>
       <option value="dim">Measure</option>
       <option value="erase">Erase Zones</option>
     </select>
@@ -408,7 +409,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div class="tg">
     <select class="el-drop" id="sc-drop">
       <option value="" disabled selected>Add Safety</option>
-      <option value="ingress">Ingress/Egress</option>
       <option value="firstaid">First Aid Contact</option>
       <option value="security">Security Post</option>
       <option value="extinguisher">Fire Extinguisher</option>
@@ -645,7 +645,7 @@ const TYPES={
   stage:{lbl:'Stage',color:'#a78bfa',wFt:20,hFt:16,icon:'🎪',sqft:null,rot:true},
   truck:{lbl:'Food Truck',color:'#ef4444',wFt:20,hFt:8,sqft:0,rot:true},
   gen:{lbl:'Generator',color:'#fbbf24',wFt:6,hFt:6,icon:'⚡',sqft:0,rot:true},
-  ingress:{lbl:'Ingress/Egress',color:'#22c55e',wFt:16,hFt:10,sqft:0,rot:true,crowdMgmt:true},
+  ingress:{lbl:'Entrance/Exit',color:'#22c55e',wFt:16,hFt:10,sqft:0,rot:true,crowdMgmt:true},
   firstaid:{lbl:'First Aid',color:'#f05252',wFt:10,hFt:10,sqft:0,noRender:true},
   extinguisher:{lbl:'Fire Ext.',color:'#f05252',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
   mix:{lbl:'Mix Platform',color:'#c084fc',wFt:10,hFt:8,icon:'🎛',sqft:0,rot:true},
@@ -1157,8 +1157,7 @@ function runRules(){
   const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
   cookingTents.forEach(c=>{[...nonCookingTents,...trucks].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} within 20ft of ${N(o)} — 20ft separation required for Fire Code compliance (~${Math.round(clr)}ft).`,ids:[c.id,o.id]});c.hr=true;o.hr=true;}});});
   gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides.`,ids:[g.id]});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed — ensure it is secured and inaccessible to the public.`,ids:[g.id]});});
-  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}// TODO: change target to 'define-drop' once ingress/egress is relocated from sc-drop
-if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:`No ingress/egress placed${zoneDesc}.`,ids:[],action:{type:'topbar',target:'sc-drop',value:'ingress'}});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 ingress/egress${zoneDesc} — minimum 2 required. 3 recommended.`,ids:[ins[0].id],action:{type:'topbar',target:'sc-drop',value:'ingress'}});else if(ins.length===2)warns.push({type:'soft',msg:`2 ingress/egress${zoneDesc} — a 3rd is recommended.`,ids:ins.map(ii=>ii.id)});}}
+  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0&&closedBordersList.length>0)warns.push({type:'hard',msg:`No entrance/exit placed${zoneDesc}.`,ids:[],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 entrance/exit${zoneDesc} — minimum 2 required. 3 recommended.`,ids:[ins[0].id],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===2)warns.push({type:'soft',msg:`2 entrances/exits${zoneDesc} — a 3rd is recommended.`,ids:ins.map(ii=>ii.id)});}}
   ins.forEach(i=>{
     if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is under 10ft wide — ADA minimum not met.`,ids:[i.id]});i.hr=true;}
     const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path blocked by ${N(blocked[0])}.`,ids:[i.id,...blocked.map(b=>b.id)]});i.hr=true;blocked.forEach(b=>b.hr=true);}
@@ -1181,7 +1180,21 @@ if(ins.length===0&&S.els.length>0)warns.push({type:'hard',msg:`No ingress/egress
       if(fFlagged)return;const cx=ecx(i),cy=ecy(i);
       for(let fi=0;fi<fPx.length-1&&!fFlagged;fi++){const dsq=segDSq(cx,cy,fPx[fi].x,fPx[fi].y,fPx[fi+1].x,fPx[fi+1].y);if(Math.sqrt(dsq)/S.scale<12){const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:'Fencing within 12ft of '+nIn+' gate — potential crowd flow conflict.',ids:[i.id]});i.hr=true;fFlagged=true;}}
     });
-  });  const vis=new Set();
+  });
+  // G2.4: entrance/exit designation checks
+  if(ins.length>0){
+    const entsD=ins.filter(i=>i.access==='entrance'||i.access==='both');
+    const extsD=ins.filter(i=>i.access==='exit'||i.access==='both');
+    const allUndesignated=ins.every(i=>!i.access);
+    if(allUndesignated){
+      warns.push({type:'info',msg:'No entrance/exit designated yet — open Details on each to assign.',ids:ins.map(i=>i.id)});
+    } else {
+      if(entsD.length===0)warns.push({type:'hard',msg:'Place a designated Entrance.',ids:ins.map(i=>i.id)});
+      if(extsD.length===0)warns.push({type:'hard',msg:'Place a designated Exit.',ids:ins.map(i=>i.id)});
+      if(entsD.length>=1&&extsD.length===1)warns.push({type:'soft',msg:'Recommended 2 exits — consider placing another (or emergency) exit.',ids:extsD.map(i=>i.id)});
+    }
+  }
+  const vis=new Set();
   tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft — over 900 sq ft may need a building permit.`,ids:grp.map(e=>e.id)});grp.forEach(e=>e.sr=true);}});
   stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft) — over 256 sq ft may need a building permit.`,ids:[s.id]});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft — over 3ft may need a building permit.`,ids:[s.id]});s.sr=true;}});
   S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||(_t2.tent&&(e.tentType==='event'||e.tentType==='production'));if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone.`,ids:[e.id]});e.hr=true;}});
@@ -1207,7 +1220,7 @@ function buildPlanningGuide(){
   if(!searchVal&&atDefault)add(1,'todo','No venue searched yet — search an address or venue name to set your event location.',{type:'topbar',target:'map-search'});
   const borders=getClosedBorders();
   if(borders.length===0&&S.els.length>0)add(1,'todo','No site border drawn — use Define Site to draw a venue border.',{type:'topbar',target:'define-drop',value:'border'});
-  if(borders.some(b=>b.hasDesignatedIngress===undefined))add(1,'todo','A zone border has no ingress/egress answer — click the zone to confirm whether it has a designated entry point.',{type:'sidebarPanel',panel:'precheck-panel'});
+  if(borders.some(b=>b.hasDesignatedIngress===undefined))add(1,'todo','A zone border has no entrance/exit answer — click the zone to confirm whether it has a designated entry point.',{type:'sidebarPanel',panel:'precheck-panel'});
   getZoneCapacities().filter(z=>!z.placeholder).forEach(z=>{if(z.sqFt<500)add(1,'soft',`${z.label||'A zone'} is under 500 sq ft — confirm this boundary is intentional.`,{type:'sidebarPanel',panel:'cap-panel'});});
   if(borders.length>1&&borders.every(b=>!b.label||!b.label.trim()))add(1,'todo','Multiple zone borders exist but none are labeled — add names in the Capacity panel to distinguish zones.',{type:'sidebarPanel',panel:'cap-panel'});
   if(S.zonePolys.some(z=>z.type==='restrict'&&!z.open)&&borders.length===0)add(1,'soft','Restricted area drawn but no site border exists — draw a venue border to define the full site.',{type:'topbar',target:'define-drop'});
@@ -1583,6 +1596,15 @@ function addFirstAidContact(){
       S.firstAids.push({name,cert});renderSafetyCompliance();
     },'Add Contact');
 }
+function openIngressDetails(elId){
+  const el=S.els.find(e=>e.id===elId);if(!el)return;
+  const opts=[{v:'entrance',t:'Entrance'},{v:'exit',t:'Exit'},{v:'both',t:'Both (Entrance & Exit)'}];
+  const selHtml=`<div class="mf"><label>Designation</label><select id="ingress-access">${opts.map(o=>`<option value="${o.v}"${el.access===o.v?' selected':''}>  ${o.t}</option>`).join('')}</select></div>`;
+  modal('Entrance / Exit Details','Set the role for this gate.',selHtml,()=>{
+    el.access=document.getElementById('ingress-access').value||undefined;
+    renderSafetyCompliance();runRules();
+  },'Save');
+}
 // ── Safety & Compliance sidebar ────────────────────────────────────────────
 function renderSafetyCompliance(){
   const d=document.getElementById('sml');if(!d)return;
@@ -1606,8 +1628,9 @@ function renderSafetyCompliance(){
     });
   }
   if(ingressEls.length){
-    html+='<div class="plabel-sub" style="margin-top:10px">Ingress / Egress</div>';
-    html+=ingressEls.map(el=>`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMap[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.vendorName||el.label||'Gate'}</span><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove gate">×</button></div>`).join('');
+    const _aLbl={entrance:'Entrance',exit:'Exit',both:'Both'};
+    html+='<div class="plabel-sub" style="margin-top:10px">Entrances / Exits</div>';
+    html+=ingressEls.map(el=>{const desig=el.access?_aLbl[el.access]:'Undesignated';return`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMap[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.vendorName||el.label||'Gate'}<span style="color:var(--tx3);margin-left:4px">— ${desig}</span></span><button class="vl-det sm-ingress-det" data-id="${el.id}" style="background:none;border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:10px;padding:2px 6px;cursor:pointer;flex-shrink:0;margin-right:4px">Details</button><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove">×</button></div>`;}).join('');
   }
   d.innerHTML=html;
   const scPanel=document.getElementById('sc-panel');if(scPanel)scPanel.classList.toggle('has-content',!!html);
@@ -1618,6 +1641,12 @@ function renderSafetyCompliance(){
       pushUndo();S.els=S.els.filter(x=>x.id!==id);
       if(S.selId===id)S.selId=null;
       renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
+    });
+  });
+  d.querySelectorAll('.sm-ingress-det').forEach(btn=>{
+    btn.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      openIngressDetails(parseInt(ev.currentTarget.dataset.id));
     });
   });
 }
@@ -1936,7 +1965,7 @@ function setTool(id){
   cw.style.pointerEvents=id==='select'?'none':'auto';
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'||id==='fence'?'crosshair':'default';
   // Per-tool guidance copy — kept for future onboarding/empty-state UI, not currently shown
-  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an ingress/egress gate',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment',label:'Click to place a text label on the map',customtent:'Click to place your custom tent'}; // eslint-disable-line no-unused-vars
+  const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an entrance/exit',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment',label:'Click to place a text label on the map',customtent:'Click to place your custom tent'}; // eslint-disable-line no-unused-vars
   const _tt=document.getElementById('tool-tip');if(_tt){const tts={border:'Click to add points · Double-click to close the boundary',fence:'Click to add fence points · Double-click to end the fence run'};if(tts[id]){_tt.textContent=tts[id];_tt.style.display='block';}else{_tt.textContent='';_tt.style.display='none';}}
   if(!ZONE_TOOLS.includes(id))activePoly=null;if(id!=='dim')dimStart=null;if(id!=='fence')fenceCur=[];
 }
@@ -2686,7 +2715,7 @@ function renderColorKey(){
   if(S.els.some(e=>e.type==='stage'))
     rows.push({type:'swatch',bg:'#a78bfa25',bord:'#a78bfa',lbl:'Stage',dim:'20×16 ft (default)'});
   if(S.els.some(e=>e.type==='ingress'))
-    rows.push({type:'swatch',bg:'rgba(34,197,94,0.2)',bord:'#22c55e',lbl:'Ingress / Egress',dim:'10+ ft wide'});
+    rows.push({type:'swatch',bg:'rgba(34,197,94,0.2)',bord:'#22c55e',lbl:'Entrance / Exit',dim:'10+ ft wide'});
   if(S.els.some(e=>e.type==='extinguisher'))
     rows.push({type:'circle',color:'#f05252',lbl:'Fire Extinguisher',dim:'Utility marker'});
   if(S.els.some(e=>e.type==='security'))
@@ -3368,7 +3397,7 @@ async function exportPDF(capture){
       if(p2SecCount>0||S.firstAids.length>0)c1y+=1;
       pdfIcon('ingress',p2C1X+iconSz,c1y-iconSz);
       pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(28,27,46);
-      pdf.text(`Ingress / Egress (${p2IngressEls.length})`,p2C1X+txtOff,c1y);c1y+=p2LH;
+      pdf.text(`Entrance / Exit (${p2IngressEls.length})`,p2C1X+txtOff,c1y);c1y+=p2LH;
       p2IngressEls.forEach(el=>{
         if(c1y>=p2MaxY)return;
         pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(244,81,64);
@@ -3526,7 +3555,7 @@ async function exportPDF(capture){
     if(grp.kind==='std'&&grp.type==='ingress'){
       pdfIcon('ingress',icoX,icoY);
       pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
-      pdf.text(`Ingress / Egress (${cnt})`,acX+txtOff,c2y);
+      pdf.text(`Entrance / Exit (${cnt})`,acX+txtOff,c2y);
     }else if(grp.kind==='custom'){
       const[cr,cg,cb]=hexRgb(grp.color);pdfIcon('rect',icoX,icoY,{rgb:[cr,cg,cb]});
       pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(28,27,46);
