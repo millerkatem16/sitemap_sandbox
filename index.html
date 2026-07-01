@@ -1125,17 +1125,35 @@ function runRules(){
 // ── Planning Guide ─────────────────────────────────────────────────────────
 function buildPlanningGuide(){
   const items=[];
-  const add=(phase,severity,msg,action)=>items.push({phase,severity,msg,action});
-  const evtName=((document.getElementById('evt-name')||{}).value||'').trim();
-  const evtDate=(document.getElementById('evt-date')||{}).value||'';
-  if(!evtName)add(1,'todo','Add an event name — shown on the exported PDF.',{type:'sidebarField',target:'evt-name',panel:'event-details-panel'});
-  if(!evtDate)add(1,'todo','Set the event date so it appears on exported documents.',{type:'sidebarField',target:'evt-date',panel:'event-details-panel'});
+  const add=(phase,severity,text,action)=>items.push({phase,severity,text,action});
+  // ── Phase 1: Define the Site ─────────────────────────────────────────────
+  const searchVal=((document.getElementById('map-search')||{}).value||'').trim();
+  const atDefault=S.mapCenter.lat===36.8508&&S.mapCenter.lng===-76.2858;
+  if(!searchVal&&atDefault)add(1,'todo','No venue searched yet — search an address or venue name to set your event location.',{type:'topbar',target:'map-search'});
+  const borders=getClosedBorders();
+  if(borders.length===0&&S.els.length>0)add(1,'todo','No site border drawn — use Define Site to draw a venue border.',{type:'topbar',target:'define-drop'});
+  if(borders.some(b=>b.hasDesignatedIngress===undefined))add(1,'todo','A zone border has no ingress/egress answer — click the zone to confirm whether it has a designated entry point.',{type:'sidebarPanel',panel:'precheck-panel'});
+  getZoneCapacities().filter(z=>!z.placeholder).forEach(z=>{if(z.sqFt<500)add(1,'soft',`${z.label||'A zone'} is under 500 sq ft — confirm this boundary is intentional.`,{type:'sidebarPanel',panel:'cap-panel'});});
+  if(borders.length>1&&borders.every(b=>!b.label||!b.label.trim()))add(1,'todo','Multiple zone borders exist but none are labeled — add names in the Capacity panel to distinguish zones.',{type:'sidebarPanel',panel:'cap-panel'});
+  if(S.zonePolys.some(z=>z.type==='restrict'&&!z.open)&&borders.length===0)add(1,'soft','Restricted area drawn but no site border exists — draw a venue border to define the full site.',{type:'topbar',target:'define-drop'});
+  // ── Phase 2: Place Activations ───────────────────────────────────────────
   const hasContent=S.els.length>0||S.zonePolys.length>0;
   if(!hasContent){
-    add(2,'todo','Start building your site layout — search your event venue or address to begin.',{type:'topbar',target:'map-search'});
+    add(2,'todo','No elements placed — use Add Elements to start placing activations on your site.',{type:'topbar',target:'el-drop'});
   } else {
-    if(!S.zonePolys.length)add(2,'info','No zone borders drawn — add zones to enable capacity calculations.',{type:'sidebarPanel',panel:'cap-panel'});
+    const tents=S.els.filter(e=>['tent10','tent20','custom','customtent'].includes(e.type));
+    const trucks=S.els.filter(e=>e.type==='truck');
+    const stages=S.els.filter(e=>e.type==='stage');
+    const customs=S.els.filter(e=>e.type==='custom'||e.type==='customtent');
+    if(tents.length>0&&tents.every(t=>!t.tentType))add(2,'todo','Tents placed but none have a use type set — click each tent to assign a type (vendor, activity, cooking, etc.).',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(tents.length>0&&tents.every(t=>!t.vendorName))add(2,'todo','Tents placed but none have vendor names — add names so they appear correctly on the exported PDF.',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(trucks.length>0&&trucks.every(t=>!t.vendorName))add(2,'todo','Food trucks placed but none have vendor names — add names so they appear correctly on the exported PDF.',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(trucks.length>0&&trucks.every(t=>t.wFt===20&&t.hFt===8))add(2,'todo','Food truck dimensions are still at default (20×8 ft) — confirm or update to match actual vehicle sizes.',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(stages.length>0&&stages.some(s=>!s.heightFt||s.heightFt<=2))add(2,'todo','Stage height is at default (2 ft) — enter the actual stage height so permit thresholds can be checked.',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(customs.length>0&&customs.some(e=>!e.vendorName))add(2,'todo','A custom element has no name — add a label so it appears correctly on the exported PDF.',{type:'sidebarPanel',panel:'vnd-panel'});
+    if(S.dims.length===0)add(2,'info','No measurement lines drawn — use Measure Distance to document key distances on your site.',{type:'topbar',target:'vi-drop'});
   }
+  // ── Phase 3: Safety & Compliance ─────────────────────────────────────────
   if(S.lastWarns){
     S.lastWarns.forEach(w=>{
       if(w.type==='ok')return;
@@ -1145,18 +1163,26 @@ function buildPlanningGuide(){
       add(3,sev,w.msg,action);
     });
   }
-  const zoneCaps=getZoneCapacities().filter(z=>!z.placeholder);
-  if(zoneCaps.length){
-    zoneCaps.forEach(z=>{
-      if(!z.label)add(4,'todo','An unnamed zone needs a label — open Capacity to add one.',{type:'sidebarPanel',panel:'cap-panel'});
-      if(z.peakAtt&&z.peakAtt>z.cap)add(4,'soft',`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated capacity (~${z.cap.toLocaleString()}).`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
-      if(!z.peakAtt)add(4,'info',`${z.label||'Zone'}: set peak attendance for capacity planning.`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
-    });
-  } else if(hasContent){
-    add(4,'info','Draw zone borders to calculate venue capacity.',{type:'sidebarPanel',panel:'cap-panel'});
-  }
+  if(hasContent&&S.firstAids.length===0)add(3,'todo','No first aid contact added — add a first aid contact for your event.',{type:'modal',fn:'addFirstAidContact'});
+  getZoneCapacities().filter(z=>!z.placeholder).forEach(z=>{
+    if(z.peakAtt&&z.peakAtt>z.cap)add(3,'soft',`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated capacity (~${z.cap.toLocaleString()}).`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
+    if(!z.peakAtt)add(3,'info',`${z.label||'Zone'}: set peak attendance for capacity planning.`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
+  });
+  // ── Phase 4: Ready to Submit ──────────────────────────────────────────────
+  const evtName=((document.getElementById('evt-name')||{}).value||'').trim();
+  const evtDate=(document.getElementById('evt-date')||{}).value||'';
+  if(!evtName)add(4,'todo','Add an event name — shown on the exported PDF.',{type:'sidebarField',target:'evt-name',panel:'event-details-panel'});
+  if(!evtDate)add(4,'todo','Set the event date so it appears on exported documents.',{type:'sidebarField',target:'evt-date',panel:'event-details-panel'});
+  if(!S.eventNotes||!S.eventNotes.trim())add(4,'info','No notes entered — add notes or instructions for your event team.',{type:'sidebarField',target:'evt-notes',panel:'event-details-panel'});
+  if(!S.currentEventId)add(4,'todo','Event not saved — save your event to preserve your work.',{type:'topbar',target:'bsave-evt'});
+  // Sort: phase asc, then severity
   const sevOrd={flag:0,todo:1,soft:2,info:3,ok:4};
   items.sort((a,b)=>a.phase!==b.phase?a.phase-b.phase:((sevOrd[a.severity]??5)-(sevOrd[b.severity]??5)));
+  // Summary items — appended after sort, always appear last in phase 4
+  const hasFlag=items.some(x=>x.severity==='flag');
+  const hasBlocker=items.some(x=>x.severity==='flag'||x.severity==='todo');
+  if(hasFlag)items.push({phase:4,severity:'flag',text:'Your plan may not meet safety standards — review all flags before exporting.',action:{type:'sidebarPanel',panel:'precheck-panel'}});
+  if(!hasBlocker)items.push({phase:4,severity:'ok',text:'Your plan looks good — ready to export!',action:null});
   return items;
 }
 
