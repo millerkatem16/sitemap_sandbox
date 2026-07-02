@@ -1322,6 +1322,7 @@ function buildPlanningGuide(){
     if(S.dims.length===0)add(2,'info','You can use Measure Distance to show key distances on your event site',{type:'topbar',target:'vi-drop'});
     const utilEls=S.els.filter(e=>['electric','water','trash','restroom','gen'].includes(e.type));
     if(utilEls.length===0&&S.fences.length===0)add(2,'info','You can add utilities to your event site using the Site Utilities menu',{type:'topbar',target:'vi-drop'});
+    if(S.els.some(e=>e.colorTag))add(2,'info','You can name your color tags for organization by changing the name in the sidebar color key',{type:'sidebarPanel',panel:'ckey-panel'});
   }
   // ── Phase 3: Safety & Compliance ─────────────────────────────────────────
   if(S.lastWarns){
@@ -1334,6 +1335,7 @@ function buildPlanningGuide(){
     });
   }
   if(hasContent&&S.firstAids.length===0)add(3,'info','You can add important event contacts to your plan',{type:'topbar',target:'sc-drop',value:'eventcontact'});
+  if(hasContent&&!S.els.some(e=>e.type==='security'||e.type==='extinguisher')&&S.fences.length===0&&S.firstAids.length===0)add(3,'info','You can add safety elements to your event plan by clicking on the Add Safety menu in the top bar',{type:'topbar',target:'sc-drop'});
   getZoneCapacities().filter(z=>!z.placeholder).forEach(z=>{
     if(z.peakAtt&&z.peakAtt>z.cap)add(3,'soft',`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated peak capacity (~${z.cap.toLocaleString()}). Consider removing some elements or altering your event boundaries.`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
     if(!z.peakAtt)add(3,'info',`You can set peak attendance for ${z.label||'Zone'} for capacity planning.`,{type:'sidebarRow',panel:'cap-panel',rowSelector:`[data-zid="${z.zid}"]`});
@@ -1921,7 +1923,7 @@ const COLOR_TAG_FALLBACK_LABEL={pink:'Pink',lpurple:'Light Purple',lblue:'Light 
 function colorTagLabel(tagId){const tag=S.colorTags.find(t=>t.id===tagId);if(!tag)return'';return tag.name||COLOR_TAG_FALLBACK_LABEL[tag.id]||'Custom Color';}
 function renameColorTag(tagId){const tag=S.colorTags.find(t=>t.id===tagId);if(!tag)return;modal('Rename Color Tag','Update the name for this color tag. This updates everywhere this tag is used.',mf('Tag Name','rename-tag-input','text',tag.name||COLOR_TAG_FALLBACK_LABEL[tag.id]||'',''),()=>{const val=document.getElementById('rename-tag-input').value.trim();if(val){tag.name=val;renderColorKey();}},'Save Name');}
 function promptNameColorTag(tagId,afterFn){const tag=S.colorTags.find(t=>t.id===tagId);if(!tag){if(afterFn)afterFn();return;}if(tag.name!==null){if(afterFn)afterFn();return;}modal('Name This Color Tag','This color hasn\'t been labeled yet. Give it a name so it\'s easy to recognize in the legend (e.g. "Historical Activity"). You can rename it later.',mf('Tag Name','tagname-input','text','','e.g. Historical Activity'),()=>{const val=document.getElementById('tagname-input').value.trim();if(val)tag.name=val;if(afterFn)afterFn();},'Save Name');}
-function colorTagPickerHtml(selectedId){const swatches=S.colorTags.map(t=>`<div class="tag-swatch${t.id===selectedId?' selected':''}" data-tagid="${t.id}" style="background:${t.hex}" title="${t.name||COLOR_TAG_FALLBACK_LABEL[t.id]||t.id}"></div>`).join('');return`<div class="mf"><label>Color Tag</label><div class="tag-picker-row">${swatches}<div class="tag-swatch tag-custom-btn" title="Pick Your Own">+</div></div><input type="color" id="tag-custom-input" style="display:none"><input type="hidden" id="tag-sel-id" value="${selectedId||''}"></div>`;}
+function colorTagPickerHtml(selectedId){const whiteSwatch=`<div class="tag-swatch${!selectedId?' selected':''}" data-tagid="" style="background:#fff;border:2px solid var(--brd2)" title="White (Default)"></div>`;const swatches=S.colorTags.map(t=>`<div class="tag-swatch${t.id===selectedId?' selected':''}" data-tagid="${t.id}" style="background:${t.hex}" title="${t.name||COLOR_TAG_FALLBACK_LABEL[t.id]||t.id}"></div>`).join('');return`<div class="mf"><label>Color Tag</label><div class="tag-picker-row">${whiteSwatch}${swatches}<div class="tag-swatch tag-custom-btn" title="Pick Your Own">+</div></div><input type="color" id="tag-custom-input" style="display:none"><input type="hidden" id="tag-sel-id" value="${selectedId||''}"></div>`;}
 function wireTagPicker(){const row=document.querySelector('.tag-picker-row');if(!row)return;const hidInp=document.getElementById('tag-sel-id');const colInp=document.getElementById('tag-custom-input');row.querySelectorAll('.tag-swatch[data-tagid]').forEach(sw=>{sw.addEventListener('click',()=>{row.querySelectorAll('.tag-swatch').forEach(s=>s.classList.remove('selected'));sw.classList.add('selected');hidInp.value=sw.dataset.tagid;});});const cb=row.querySelector('.tag-custom-btn');if(cb)cb.addEventListener('click',()=>colInp.click());if(colInp)colInp.addEventListener('change',()=>{const hex=colInp.value;let tag=S.colorTags.find(t=>t.hex.toLowerCase()===hex.toLowerCase());if(!tag){tag={id:'custom-'+Date.now(),hex,name:null};S.colorTags.push(tag);}row.querySelectorAll('.tag-swatch').forEach(s=>s.classList.remove('selected'));hidInp.value=tag.id;if(tag.name===null)promptNameColorTag(tag.id);});}
 
 // ── Venue mode toolbar ─────────────────────────────────────────────────────
@@ -2053,9 +2055,9 @@ function editEl(el){
     wireTagPicker();
     document.getElementById('ct-type').addEventListener('change',function(){const pkrMf=document.querySelector('.tag-picker-row')&&document.querySelector('.tag-picker-row').closest('.mf');if(pkrMf)pkrMf.style.opacity=this.value==='cooking'?'0.3':'1';pkrMf&&(pkrMf.style.pointerEvents=this.value==='cooking'?'none':'');});
   }else if(el.type==='truck'){
-    modal('Edit Food Truck','Update this truck\'s dimensions.',mr(mf('Length (ft)','tkl','number',String(el.wFt||20)),mf('Width (ft)','tkw','number',String(el.hFt||8))),()=>{
-      pushUndo();const wFt=Math.max(1,parseFloat(document.getElementById('tkl').value)||20);const hFt=Math.max(1,parseFloat(document.getElementById('tkw').value)||8);
-      el.wFt=wFt;el.hFt=hFt;
+    modal('Edit Food Truck','Update this truck\'s name and dimensions.',mf('Truck Name','tklbl','text',el.vendorName||el.label||'','e.g. Rosa\'s Tacos')+mr(mf('Length (ft)','tkl','number',String(el.wFt||20)),mf('Width (ft)','tkw','number',String(el.hFt||8))),()=>{
+      pushUndo();const lbl=document.getElementById('tklbl').value.trim()||(el.vendorName||el.label||'Food Truck');const wFt=Math.max(1,parseFloat(document.getElementById('tkl').value)||20);const hFt=Math.max(1,parseFloat(document.getElementById('tkw').value)||8);
+      el.label=lbl;el.vendorName=lbl;el.wFt=wFt;el.hFt=hFt;
       renderVendorList();renderEls();runRules();
     },'Save',{onDelete:doDelete});
   }else if(el.type==='stage'){
@@ -3525,7 +3527,7 @@ async function exportPDF(capture){
   const p2SecCount=S.els.filter(e=>e.type==='security').length;
   const hasCrowd=p2SecCount>0||S.firstAids.length>0||p2IngressEls.length>0;
   if(hasCrowd&&c1y<p2MaxY-10){
-    c1y=secHdr('CROWD MANAGEMENT',p2C1X,p2C1W,c1y);
+    c1y=secHdr('CONTACTS AND CROWD FLOW',p2C1X,p2C1W,c1y);
     if(p2SecCount>0&&c1y<p2MaxY){
       pdfIcon('security',p2C1X+iconSz,c1y-iconSz,{rgb:[124,58,237]});
       pdf.setFont('helvetica','normal');pdf.setFontSize(11);pdf.setTextColor(28,27,46);
@@ -3663,6 +3665,7 @@ async function exportPDF(capture){
   const cookTents=actAll.filter(el=>{const t=TYPES[el.type]||TYPES.custom;return t.tent&&(el.tentType==='cooking'||el.tentType==='food');});
   if(cookTents.length){
     if(c2y>=p2MaxY)advanceAct();
+    pdfIcon('rect',acX+iconSz,c2y-iconSz,{rgb:[250,204,21]});
     pdf.setFont('helvetica','bold');pdf.setFontSize(11.5);pdf.setTextColor(42,95,100);
     pdf.text('Cooking Tents ('+cookTents.length+')',acX+txtOff,c2y);c2y+=p2LH;
     const cookBuckets=new Map();
