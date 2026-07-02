@@ -332,24 +332,24 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .pg-item.pg-sev-soft{background:rgba(251,189,47,0.07);border-color:rgba(251,189,47,0.28)}
 .pg-item.pg-sev-soft .pg-icon,.pg-item.pg-sev-soft .pg-text{color:#7a5200}
 .pg-item.pg-sev-soft:hover{background:rgba(251,189,47,0.13)}
-.pg-item.pg-sev-info{background:rgba(42,95,100,0.05);border-color:rgba(42,95,100,0.12)}
-.pg-item.pg-sev-info .pg-icon,.pg-item.pg-sev-info .pg-text{color:var(--slate)}
-.pg-item.pg-sev-info:hover{background:rgba(42,95,100,0.09)}
+.pg-item.pg-sev-info{background:rgba(147,51,234,0.06);border-color:rgba(147,51,234,0.22)}
+.pg-item.pg-sev-info .pg-icon,.pg-item.pg-sev-info .pg-text{color:#6b21a8}
+.pg-item.pg-sev-info:hover{background:rgba(147,51,234,0.12)}
 .pg-item.pg-sev-ok{background:rgba(45,212,160,0.07);border-color:rgba(45,212,160,0.22);cursor:default}
 .pg-item.pg-sev-ok .pg-icon,.pg-item.pg-sev-ok .pg-text{color:#14705a}
 .pg-ok-state{display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 0 20px;text-align:center}
 .pg-ok-state i{font-size:40px;color:var(--grn)}
 .pg-ok-state span{font-size:14px;font-weight:600;color:var(--tx);max-width:280px;line-height:1.55}
-@keyframes pg-pulse{0%,100%{box-shadow:0 0 0 2.5px var(--amb),0 0 8px rgba(251,189,47,0.3)}50%{box-shadow:0 0 0 3.5px var(--amb),0 0 18px rgba(251,189,47,0.55)}}
+@keyframes pg-pulse{0%,100%{box-shadow:0 0 0 2.5px var(--grn),0 0 8px rgba(45,212,160,0.3)}50%{box-shadow:0 0 0 3.5px var(--grn),0 0 18px rgba(45,212,160,0.55)}}
 .pg-highlight .ei{animation:pg-pulse 1.4s ease-in-out infinite!important}
-.pg-highlight-field{outline:2px solid var(--amb)!important;outline-offset:2px}
-.pg-highlight-row{background:rgba(251,189,47,0.14)!important;border-radius:var(--r);transition:background .3s}
-.pg-highlight-panel{box-shadow:inset 0 0 0 2px var(--amb)!important;transition:box-shadow .3s}
+.pg-highlight-field{outline:2px solid var(--grn)!important;outline-offset:2px}
+.pg-highlight-row{background:rgba(45,212,160,0.14)!important;border-radius:var(--r);transition:background .3s}
+.pg-highlight-panel{box-shadow:inset 0 0 0 2px var(--grn)!important;transition:box-shadow .3s}
 .pg-dismiss{background:none;border:none;cursor:pointer;color:var(--tx3);font-size:20px;line-height:1;padding:0 0 0 6px;flex-shrink:0;opacity:.55;margin-top:1px;transition:opacity .12s}
 .pg-dismiss:hover{opacity:1}
 @keyframes pg-check-pop{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.2)}100%{opacity:0;transform:scale(1)}}
-#bpg-check{position:absolute;top:-8px;right:-8px;font-size:16px;color:var(--grn);pointer-events:none;opacity:0}
-#bpg-check.pg-check-animate{animation:pg-check-pop .7s ease-out forwards}
+#bpg-check{position:absolute;top:-12px;right:-12px;font-size:26px;color:var(--grn);pointer-events:none;opacity:0}
+#bpg-check.pg-check-animate{animation:pg-check-pop 1.8s ease-out forwards}
 </style>
 </head>
 <body>
@@ -653,7 +653,7 @@ const TYPES={
   electric:{lbl:'Electric Source',color:'#FBBD2F',wFt:6,hFt:6,sqft:0,circle:true,rot:false,utility:true},
   water:{lbl:'Water Source',color:'#3B82F6',wFt:6,hFt:6,sqft:0,circle:true,rot:false,utility:true},
   trash:{lbl:'Trash Bin',color:'#8b93a8',wFt:4,hFt:4,sqft:0,circle:true,rot:false,utility:true},
-  restroom:{lbl:'Portable Restroom',color:'#1e3a5f',wFt:4,hFt:4,sqft:0,circle:true,rot:true,utility:true},
+  restroom:{lbl:'Portable Restroom',color:'#1e3a5f',wFt:4,hFt:4,sqft:16,circle:true,rot:true,utility:true},
   security:{lbl:'Security',color:'#7c3aed',wFt:6,hFt:6,sqft:0,circle:true,rot:false},
   label:{lbl:'Label',color:'transparent',wFt:10,hFt:2,sqft:0,rot:true,isLabel:true}
 };
@@ -1272,7 +1272,7 @@ function runRules(){
     } else {
       if(entsD.length===0)warns.push({type:'hard',pgSev:'todo',msg:'Place a designated Entrance.',ids:ins.map(i=>i.id)});
       if(extsD.length===0)warns.push({type:'hard',pgSev:'todo',msg:'Place a designated Exit.',ids:ins.map(i=>i.id)});
-      if(entsD.length>=1&&extsD.length===1)warns.push({type:'soft',msg:'You have placed 2 exits. It\'s recommended to place a 3rd (emergency) exit',ids:extsD.map(i=>i.id)});
+      if(ins.length<3&&entsD.length>=1&&extsD.length===1)warns.push({type:'soft',msg:'You have placed 2 exits. It\'s recommended to place a 3rd (emergency) exit',ids:extsD.map(i=>i.id)});
     }
   }
   const vis=new Set();
@@ -1286,7 +1286,7 @@ function runRules(){
     if(z.peakAtt&&z.peakAtt>z.cap){warns.push({type:'soft',msg:`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated peak capacity (~${z.cap.toLocaleString()}). Consider removing some elements or altering your event boundaries.`,ids:[]});}
   });
   if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.',ids:[]});S.lastWarns=warns;
-  document.getElementById('wl').innerHTML=warns.map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
+  document.getElementById('wl').innerHTML=warns.filter(w=>!(S.pgDismissed.has(w.msg)&&(w.type==='soft'||w.type==='info'))).map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
   const precheckPanel=document.getElementById('precheck-panel');if(precheckPanel)precheckPanel.classList.toggle('has-content',S.els.length>0||S.zonePolys.length>0);
   renderEls();updateCap();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();updatePlanningGuideBadge();
 }
@@ -1320,6 +1320,8 @@ function buildPlanningGuide(){
     if(stages.length>0&&stages.some(s=>!s.heightFt||s.heightFt<=2))add(2,'info','You can change dimensions on your placed stage by clicking the stage or using sidebar (activations & vendors). Default stage height is 2ft',{type:'sidebarPanel',panel:'vnd-panel'});
     if(customs.length>0&&customs.some(e=>!e.vendorName))add(2,'todo','Click each custom element or use sidebar (activations & vendors) to add names',{type:'sidebarPanel',panel:'vnd-panel'});
     if(S.dims.length===0)add(2,'info','You can use Measure Distance to show key distances on your event site',{type:'topbar',target:'vi-drop'});
+    const utilEls=S.els.filter(e=>['electric','water','trash','restroom','gen'].includes(e.type));
+    if(utilEls.length===0&&S.fences.length===0)add(2,'info','You can add utilities to your event site using the Site Utilities menu',{type:'topbar',target:'vi-drop'});
   }
   // ── Phase 3: Safety & Compliance ─────────────────────────────────────────
   if(S.lastWarns){
@@ -1341,7 +1343,7 @@ function buildPlanningGuide(){
   const evtDate=(document.getElementById('evt-date')||{}).value||'';
   if(!evtName)add(4,'todo','Name your event',{type:'sidebarField',target:'evt-name',panel:'event-details-panel'});
   if(!evtDate)add(4,'todo','Set your event date',{type:'sidebarField',target:'evt-date',panel:'event-details-panel'});
-  if(!S.eventNotes||!S.eventNotes.trim())add(4,'info','You can add notes to your event team that will appear on the plan export',{type:'sidebarField',target:'evt-notes',panel:'event-details-panel'});
+  if(!S.eventNotes||!S.eventNotes.trim())add(4,'info','You can add notes to your event team in the Event Details section of the sidebar. These notes appear on the plan export',{type:'sidebarField',target:'evt-notes',panel:'event-details-panel'});
   if(!S.currentEventId)add(4,'todo','Save your event to preserve your work or collaborate with your event team',{type:'topbar',target:'bsave-evt'});
   // Filter session-dismissed soft/info items
   items=items.filter(x=>!((x.severity==='soft'||x.severity==='info')&&S.pgDismissed.has(x.text)));
@@ -1413,7 +1415,7 @@ function openPlanningGuide(){
       const idx=pgItems.indexOf(item);
       const hasAction=!!item.action;
       const arrow=hasAction?`<i class="ti ti-chevron-right pg-arrow"></i>`:'';
-      const dismissBtn=(item.severity==='soft'||item.severity==='info')?`<button class="pg-dismiss" data-pg-dismiss="${idx}" title="Dismiss">×</button>`:'';
+      const dismissBtn=(item.severity==='soft'||item.severity==='info')?`<button class="pg-dismiss" data-pg-dismiss="${idx}" title="Got it"><i class="ti ti-check"></i></button>`:'';
       return `<div class="pg-item pg-sev-${item.severity}"${hasAction?` data-pg-idx="${idx}"`:''}><i class="ti ${PG_SEV_ICON[item.severity]||'ti-info-circle'} pg-icon"></i><span class="pg-text">${item.text}</span>${arrow}${dismissBtn}</div>`;
     };
     const infoItems=nonOk.filter(x=>x.severity==='info');
@@ -1699,11 +1701,13 @@ function openIngressDetails(elId){
   const el=S.els.find(e=>e.id===elId);if(!el)return;
   const doDelete=()=>{pushUndo();S.els=S.els.filter(x=>x.id!==elId);if(S.selId===elId)S.selId=null;renderVendorList();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();};
   const desgOpts=[{v:'entrance',t:'Entrance'},{v:'exit',t:'Exit'},{v:'both',t:'Both (Entrance & Exit)'}];
-  const selHtml=`<div class="mf"><label>Designation</label><select id="ingress-access">${desgOpts.map(o=>`<option value="${o.v}"${el.access===o.v?' selected':''}>  ${o.t}</option>`).join('')}</select></div>`;
+  const selHtml=mf('Name (optional)','gate-name','text',el.gateName||'','e.g. Main Entrance, Emergency Exit')+`<div class="mf"><label>Designation</label><select id="ingress-access">${desgOpts.map(o=>`<option value="${o.v}"${el.access===o.v?' selected':''}>  ${o.t}</option>`).join('')}</select></div>`;
   modal('Entrance / Exit Details','Set the role for this gate.',selHtml,()=>{
+    el.gateName=document.getElementById('gate-name').value.trim()||undefined;
     el.access=document.getElementById('ingress-access').value||undefined;
     renderSafetyCompliance();runRules();
   },'Save',{onDelete:doDelete});
+  mOnClose=()=>{S.selId=null;renderEls();};
 }
 // ── Safety & Compliance sidebar ────────────────────────────────────────────
 function renderSafetyCompliance(){
@@ -1719,9 +1723,9 @@ function renderSafetyCompliance(){
     html+='<div class="plabel-sub" style="margin-top:0">Event Contacts</div>';
     html+=S.firstAids.map((c,i)=>{
       const role=c.role||'First Aid';
-      const phone=c.phone?`<span>${c.phone}</span>`:'';
-      const cert=c.cert?`<span>${c.cert}</span>`:'';
-      return`<div class="fa-item" style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px"><div><strong>${c.name}</strong><span>${role}</span>${phone}${cert}</div><button class="fa-del" data-idx="${i}" style="background:none;border:none;cursor:pointer;color:var(--tx3);font-size:14px;padding:0;flex-shrink:0;line-height:1;margin-top:2px" title="Remove">×</button></div>`;
+      const phone=c.phone?`<div style="font-size:11px;color:var(--tx3)">${c.phone}</div>`:'';
+      const cert=c.cert?`<div style="font-size:11px;color:var(--tx3)">${c.cert}</div>`:'';
+      return`<div class="fa-item" style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px"><div><div style="font-weight:600;font-size:12px">${c.name}</div><div style="font-size:11px;color:var(--tx2)">${role}</div>${phone}${cert}</div><button class="fa-del" data-idx="${i}" style="background:none;border:none;cursor:pointer;color:var(--tx3);font-size:14px;padding:0;flex-shrink:0;line-height:1;margin-top:2px" title="Remove">×</button></div>`;
     }).join('');
   }
   const countKeys=Object.keys(counts);
@@ -1735,7 +1739,7 @@ function renderSafetyCompliance(){
   if(ingressEls.length){
     const _aLbl={entrance:'Entrance',exit:'Exit',both:'Both'};
     html+='<div class="plabel-sub" style="margin-top:10px">Entrances / Exits</div>';
-    html+=ingressEls.map(el=>{const desig=el.access?_aLbl[el.access]:'Undesignated';return`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMap[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.vendorName||el.label||'Gate'}<span style="color:var(--tx3);margin-left:4px">— ${desig}</span></span><button class="vl-det sm-ingress-det" data-id="${el.id}" style="background:none;border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:10px;padding:2px 6px;cursor:pointer;flex-shrink:0;margin-right:4px">Details</button><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove">×</button></div>`;}).join('');
+    html+=ingressEls.map(el=>{const desig=el.access?_aLbl[el.access]:'Undesignated';return`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMap[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.gateName||el.vendorName||el.label||'Gate'}<span style="color:var(--tx3);margin-left:4px">— ${desig}</span></span><button class="vl-det sm-ingress-det" data-id="${el.id}" style="background:none;border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:10px;padding:2px 6px;cursor:pointer;flex-shrink:0;margin-right:4px">Details</button><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove">×</button></div>`;}).join('');
   }
   d.innerHTML=html;
   const scPanel=document.getElementById('sc-panel');if(scPanel)scPanel.classList.toggle('has-content',!!html);
@@ -2075,6 +2079,7 @@ function editEl(el){
   }else{
     modal(t.lbl,'Placed as a '+t.lbl+' marker. No additional configuration available.','',(()=>{}),'Close',{noCancel:true,onDelete:doDelete});
   }
+  mOnClose=()=>{S.selId=null;renderEls();};
 }
 
 // ── Tool management ────────────────────────────────────────────────────────
@@ -2604,7 +2609,7 @@ document.getElementById('bsave-evt').addEventListener('click',()=>requireLogin(s
 document.getElementById('bpg').addEventListener('click',openPlanningGuide);
 document.getElementById('mb').addEventListener('click',ev=>{const item=ev.target.closest('.pg-item[data-pg-idx]');if(!item)return;const btn=ev.target.closest('.pg-dismiss');if(btn)return;const idx=parseInt(item.dataset.pgIdx);const pgItem=pgItems[idx];if(!pgItem||!pgItem.action)return;closeModal();dispatchPgAction(pgItem.action);});
 document.getElementById('mb').addEventListener('click',ev=>{const btn=ev.target.closest('.pg-dismiss[data-pg-dismiss]');if(!btn)return;ev.stopPropagation();const idx=parseInt(btn.dataset.pgDismiss);const pgItem=pgItems[idx];if(!pgItem)return;S.pgDismissed.add(pgItem.text);btn.closest('.pg-item').remove();});
-document.getElementById('cw').addEventListener('mousedown',clearPgHighlights);
+document.addEventListener('mousedown',clearPgHighlights,true);
 document.getElementById('evt-notes').addEventListener('input',function(){S.eventNotes=this.value;});
 ['event-details','precheck-panel','vnd-panel','vi-panel','sc-panel','cap-panel','ckey-panel'].forEach(id=>{
   const tog=document.getElementById(id+'-toggle');if(!tog)return;
