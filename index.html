@@ -448,6 +448,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <div id="canvas-action-ctrl">
       <button class="ctc-btn" id="bselect"><i class="ti ti-cursor-text"></i><span>Select</span></button>
       <button class="ctc-btn" id="bundo"><i class="ti ti-corner-up-left"></i><span>Undo</span></button>
+      <button class="ctc-btn" id="bmsel" title="Multi-Select: click elements to toggle, drag to box-select"><i class="ti ti-select"></i><span>Multi-Select</span></button>
       <button class="ctc-btn" id="balign" style="display:none" title="Align / Distribute selected elements"><i class="ti ti-layout-align-left"></i><span>Align</span></button>
       <button class="ctc-btn" id="bclr" style="color:#F45140"><i class="ti ti-trash"></i><span>Clear</span></button>
     </div>
@@ -463,19 +464,19 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div id="marquee-rect" style="position:absolute;display:none;border:1.5px dashed rgba(244,81,64,0.65);background:rgba(244,81,64,0.07);pointer-events:none;z-index:800;box-sizing:border-box;"></div>
     </div>
   </div>
-  <div id="align-pop" style="display:none;position:fixed;z-index:9100;background:#1e1b35;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px 16px;min-width:230px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:var(--font);color:#e2e8f0;">
+  <div id="align-pop" style="display:none;position:fixed;z-index:9100;background:#1e1b35;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px 16px;width:340px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:var(--font);color:#e2e8f0;box-sizing:border-box;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8">Align &amp; Distribute</span>
       <button id="ap-close" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;line-height:1;padding:0 2px">×</button>
     </div>
     <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Align Edges</div>
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-bottom:12px">
-      <button class="ap-btn" id="ap-al" title="Align Left edges">⇤L</button>
-      <button class="ap-btn" id="ap-ac" title="Align horizontal Centers">⬝C</button>
-      <button class="ap-btn" id="ap-ar" title="Align Right edges">R⇥</button>
-      <button class="ap-btn" id="ap-at" title="Align Top edges">⇡T</button>
-      <button class="ap-btn" id="ap-am" title="Align vertical Middles">M⬝</button>
-      <button class="ap-btn" id="ap-ab" title="Align Bottom edges">B⇣</button>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:12px">
+      <button class="ap-btn" id="ap-al">⇤ Left</button>
+      <button class="ap-btn" id="ap-ac">↔ Center</button>
+      <button class="ap-btn" id="ap-ar">Right ⇥</button>
+      <button class="ap-btn" id="ap-at">⇡ Top</button>
+      <button class="ap-btn" id="ap-am">↕ Middle</button>
+      <button class="ap-btn" id="ap-ab">Bottom ⇣</button>
     </div>
     <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Distribute Evenly <span id="ap-dist-note" style="color:#475569;font-weight:400;text-transform:none;letter-spacing:0">(need 3+)</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
@@ -780,6 +781,7 @@ function undo(){
 }
 document.getElementById('bselect').addEventListener('click',()=>setTool('select'));
 document.getElementById('bundo').addEventListener('click',undo);
+document.getElementById('bmsel').addEventListener('click',()=>setTool('multiselect'));
 
 // ── Multi-select helpers ───────────────────────────────────────────────────
 function updateAlignBtn(){
@@ -793,7 +795,7 @@ function updateAlignBtn(){
   const mq=document.getElementById('marquee-rect');
   let active=false,sx=0,sy=0,shiftStart=false;
   document.addEventListener('mousedown',ev=>{
-    if(ev.button!==0||S.tool!=='select')return;
+    if(ev.button!==0||S.tool!=='multiselect')return;
     if(ev.target.closest('.el'))return;
     const cwEl=document.getElementById('cw');if(!cwEl)return;
     const r=cwEl.getBoundingClientRect();
@@ -837,9 +839,9 @@ function updateAlignBtn(){
 
   function openPop(){
     if(!btn||!pop)return;
-    const r=btn.getBoundingClientRect();
-    pop.style.left=Math.max(4,r.left)+'px';
-    pop.style.top=(r.bottom+6)+'px';
+    pop.style.left='50%';
+    pop.style.top='50%';
+    pop.style.transform='translate(-50%,-50%)';
     pop.style.display='block';
     // disable distribute if <3 selected
     const n=S.selIds.size;
@@ -1701,8 +1703,10 @@ function renderEls(){
         const ox=elXY(el).x+elW(el)/2,oy=elXY(el).y+elH(el)/2;
         const cwR=cw.getBoundingClientRect();
         const baseAng=Math.atan2(ev.clientY-cwR.top-oy,ev.clientX-cwR.left-ox)*(180/Math.PI),baseRot=el.rot||0;
-        let rotating=false;
-        const onM=mv=>{const dx=mv.clientX-startX,dy=mv.clientY-startY;if(!rotating){if(dx*dx+dy*dy<25)return;rotating=true;S.isRotating=true;}el.rot=baseRot+(Math.atan2(mv.clientY-cwR.top-oy,mv.clientX-cwR.left-ox)*(180/Math.PI)-baseAng);div.style.transform='rotate('+el.rot+'deg)';};
+        const _isGrp=S.selIds.size>=2&&S.selIds.has(el.id);
+        const _grpBases=_isGrp?S.els.filter(e=>S.selIds.has(e.id)&&e.id!==el.id).map(e=>({el:e,base:e.rot||0})):[];
+        let rotating=false,_didUndo=false;
+        const onM=mv=>{const dx=mv.clientX-startX,dy=mv.clientY-startY;if(!rotating){if(dx*dx+dy*dy<25)return;rotating=true;S.isRotating=true;}if(!_didUndo){pushUndo();_didUndo=true;}const dR=Math.atan2(mv.clientY-cwR.top-oy,mv.clientX-cwR.left-ox)*(180/Math.PI)-baseAng;el.rot=baseRot+dR;div.style.transform='rotate('+el.rot+'deg)';if(_isGrp)_grpBases.forEach(({el:e,base:b})=>{e.rot=b+dR;const d2=document.querySelector('#el [data-id="'+e.id+'"]');if(d2)d2.style.transform='rotate('+e.rot+'deg)';});};
         const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);if(rotating){S.isRotating=false;runRules();}else{S.selId=el.id;S.selIds=new Set([el.id]);renderEls();editEl(el);}};
         document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
       });
@@ -1712,7 +1716,7 @@ function renderEls(){
       div.addEventListener('mouseleave',()=>{if(!S.selIds.has(el.id)){db.style.display='none';rb.style.display='none';}});
       div.appendChild(inner);
       makeDrag(div,el);
-      div.addEventListener('click',ev=>{if(ev.target===db||ev.target===rb)return;if(div._dragMoved)return;if(ev.shiftKey){if(S.selIds.has(el.id)){S.selIds.delete(el.id);S.selId=S.selIds.size?[...S.selIds][S.selIds.size-1]:null;}else{S.selIds.add(el.id);S.selId=el.id;}renderEls();updateAlignBtn();return;}S.selId=el.id;S.selIds=new Set([el.id]);renderEls();updateAlignBtn();editEl(el);});
+      div.addEventListener('click',ev=>{if(ev.target===db||ev.target===rb)return;if(div._dragMoved)return;if(ev.shiftKey||S.tool==='multiselect'){if(S.selIds.has(el.id)){S.selIds.delete(el.id);S.selId=S.selIds.size?[...S.selIds][S.selIds.size-1]:null;}else{S.selIds.add(el.id);S.selId=el.id;}renderEls();updateAlignBtn();return;}S.selId=el.id;S.selIds=new Set([el.id]);renderEls();updateAlignBtn();editEl(el);});
       elDiv.appendChild(div);
       return;
     }
@@ -1790,8 +1794,10 @@ function renderEls(){
         const ox=elXY(el).x+elW(el)/2,oy=elXY(el).y+elH(el)/2;
         const cwR=cw.getBoundingClientRect();
         const baseAng=Math.atan2(ev.clientY-cwR.top-oy,ev.clientX-cwR.left-ox)*(180/Math.PI),baseRot=el.rot||0;
-        let rotating=false;
-        const onM=mv=>{const dx=mv.clientX-startX,dy=mv.clientY-startY;if(!rotating){if(dx*dx+dy*dy<25)return;rotating=true;S.isRotating=true;}el.rot=baseRot+(Math.atan2(mv.clientY-cwR.top-oy,mv.clientX-cwR.left-ox)*(180/Math.PI)-baseAng);div.style.transform=`rotate(${el.rot}deg)`;};
+        const _isGrp=S.selIds.size>=2&&S.selIds.has(el.id);
+        const _grpBases=_isGrp?S.els.filter(e=>S.selIds.has(e.id)&&e.id!==el.id).map(e=>({el:e,base:e.rot||0})):[];
+        let rotating=false,_didUndo=false;
+        const onM=mv=>{const dx=mv.clientX-startX,dy=mv.clientY-startY;if(!rotating){if(dx*dx+dy*dy<25)return;rotating=true;S.isRotating=true;}if(!_didUndo){pushUndo();_didUndo=true;}const dR=Math.atan2(mv.clientY-cwR.top-oy,mv.clientX-cwR.left-ox)*(180/Math.PI)-baseAng;el.rot=baseRot+dR;div.style.transform=`rotate(${el.rot}deg)`;if(_isGrp)_grpBases.forEach(({el:e,base:b})=>{e.rot=b+dR;const d2=document.querySelector('#el [data-id="'+e.id+'"]');if(d2)d2.style.transform='rotate('+e.rot+'deg)';});};
         const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);if(rotating){S.isRotating=false;runRules();}else{S.selId=el.id;S.selIds=new Set([el.id]);updateAlignBtn();renderEls();if(el.type==='ingress')openIngressDetails(el.id);else editEl(el);}};
         document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
       });
@@ -1822,7 +1828,7 @@ function renderEls(){
     div.addEventListener('click',ev=>{
       if(ev.target.classList.contains('rbtn'))return;
       if(div._dragMoved)return;
-      if(ev.shiftKey){if(S.selIds.has(el.id)){S.selIds.delete(el.id);S.selId=S.selIds.size?[...S.selIds][S.selIds.size-1]:null;}else{S.selIds.add(el.id);S.selId=el.id;}renderEls();updateAlignBtn();return;}
+      if(ev.shiftKey||S.tool==='multiselect'){if(S.selIds.has(el.id)){S.selIds.delete(el.id);S.selId=S.selIds.size?[...S.selIds][S.selIds.size-1]:null;}else{S.selIds.add(el.id);S.selId=el.id;}renderEls();updateAlignBtn();return;}
       if(el.type==='restroom'||el.type==='security'||el.type==='extinguisher'){S.selId=el.id;S.selIds=new Set([el.id]);updateAlignBtn();renderEls();return;}
       S.selId=el.id;S.selIds=new Set([el.id]);updateAlignBtn();renderEls();
       if(el.type==='ingress')openIngressDetails(el.id);else editEl(el);
@@ -2401,14 +2407,17 @@ const DRAWING_TOOLS=[...ZONE_TOOLS,'ada','dim','fence'];
 
 function setTool(id){
   clearTimeout(overlapWarnTimeout);overlapWarnTimeout=null;
+  const _prevTool=S.tool;
   S.tool=id;
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.ctc-btn').forEach(b=>b.classList.remove('active'));
   ['ba','bfence'].forEach(bid=>{const _b=document.getElementById(bid);if(_b)_b.classList.remove('active');});
-  const m={select:'ctc-select',ada:'ba',dim:'ctc-measure',fence:'bfence',restrict:'zr',border:'zbrd',erase:'ze'};
+  const m={select:'ctc-select',ada:'ba',dim:'ctc-measure',fence:'bfence',restrict:'zr',border:'zbrd',erase:'ze',multiselect:'bmsel'};
   const btn=document.getElementById(m[id]);if(btn)btn.classList.add('active');
   // Select passes clicks through to map; every other tool needs canvas input
   cw.style.pointerEvents=id==='select'?'none':'auto';
+  if(_prevTool==='multiselect'&&id!=='multiselect'&&gmap)gmap.setOptions({draggable:true,gestureHandling:'greedy'});
+  if(id==='multiselect'&&gmap)gmap.setOptions({draggable:false,gestureHandling:'none'});
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'||id==='fence'?'crosshair':'default';
   // Per-tool guidance copy — kept for future onboarding/empty-state UI, not currently shown
   const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an entrance/exit',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment',label:'Click to place a text label on the map',customtent:'Click to place your custom tent'}; // eslint-disable-line no-unused-vars
