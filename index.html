@@ -189,7 +189,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .el{position:absolute;cursor:grab;user-select:none;pointer-events:auto}
 .el:active{cursor:grabbing;z-index:900}
 .eiwrap{position:relative}
-.ei{display:flex;align-items:center;justify-content:center;border-radius:4px;border:2px solid;transition:box-shadow .1s}
+.ei{display:flex;align-items:center;justify-content:center;border-radius:4px;border:2px solid;transition:box-shadow .1s;box-sizing:border-box}
 .el.selected .ei{box-shadow:0 0 0 2.5px var(--acc),0 0 18px rgba(244,81,64,0.4)}
 .el.hr .ei{box-shadow:0 0 0 2.5px var(--red),0 0 10px rgba(224,53,53,0.35)}
 .el.sr .ei{box-shadow:0 0 0 2.5px var(--amb),0 0 10px rgba(251,189,47,0.35)}
@@ -231,9 +231,9 @@ canvas{position:absolute;inset:0;pointer-events:none}
 /* ── PDF Capture Overlay ─────────────────────────────────────────────────── */
 #pdf-sel-ov{position:fixed;inset:0;z-index:10000;cursor:crosshair;user-select:none;display:none}
 #pdf-sel-cv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-#pdf-instr-card{position:absolute;top:28px;left:50%;transform:translateX(-50%);background:var(--surf);border-radius:16px;padding:20px 32px;box-shadow:0 16px 64px rgba(0,0,0,0.5),0 4px 16px rgba(0,0,0,0.2);text-align:center;z-index:2;min-width:320px;border:1px solid rgba(255,255,255,0.08)}
-#pdf-instr-card h3{font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px;letter-spacing:-.02em}
-#pdf-instr-card p{font-size:12px;color:var(--tx2);margin-bottom:16px;line-height:1.6;max-width:260px}
+#pdf-instr-card{position:absolute;top:28px;left:50%;transform:translateX(-50%);background:var(--surf);border-radius:16px;padding:10px 16px;box-shadow:0 16px 64px rgba(0,0,0,0.5),0 4px 16px rgba(0,0,0,0.2);text-align:center;z-index:2;min-width:320px;border:1px solid rgba(255,255,255,0.08)}
+#pdf-instr-card h3{font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px;letter-spacing:-.02em}
+#pdf-instr-card p{font-size:11px;color:var(--tx2);margin-bottom:16px;line-height:1.6;max-width:260px}
 #pdf-esc-btn{pointer-events:auto;padding:7px 18px;background:rgba(244,81,64,0.08);border:1px solid rgba(244,81,64,0.25);border-radius:9px;color:var(--acc);font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;transition:all .12s}
 #pdf-esc-btn:hover{background:rgba(244,81,64,0.16);border-color:rgba(244,81,64,0.45)}
 #pdf-prev-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surf);border-radius:18px;padding:24px 28px;box-shadow:0 24px 72px rgba(0,0,0,0.48),0 4px 16px rgba(0,0,0,0.16);z-index:2;display:none;width:380px;border:1px solid var(--brd)}
@@ -442,6 +442,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <button class="ctc-btn active" id="ctc-select" title="Pan and adjust the map"><i class="ti ti-map-2"></i><span>Adjust Map</span></button>
     </div>
     <div id="canvas-action-ctrl">
+      <button class="ctc-btn" id="bselect"><i class="ti ti-cursor-text"></i><span>Select</span></button>
       <button class="ctc-btn" id="bundo"><i class="ti ti-corner-up-left"></i><span>Undo</span></button>
       <button class="ctc-btn" id="bclr" style="color:#F45140"><i class="ti ti-trash"></i><span>Clear</span></button>
     </div>
@@ -587,7 +588,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
   <div id="pdf-instr-card">
     <h3>Capture Map Area</h3>
     <p>Click and drag to draw a box around your venue map to include it in the PDF</p>
-    <button id="pdf-esc-btn">✕ Cancel</button>
+    <button id="pdf-esc-btn">✕ Exit Capture Mode</button>
   </div>
   <div id="pdf-prev-wrap">
     <h3>Preview</h3>
@@ -737,6 +738,7 @@ function undo(){
   if(snap.colorTags)S.colorTags=snap.colorTags;
   renderEls();renderColorKey();redrawZones();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
 }
+document.getElementById('bselect').addEventListener('click',()=>setTool('select'));
 document.getElementById('bundo').addEventListener('click',undo);
 
 // ── Map opacity overlay ────────────────────────────────────────────────────
@@ -781,11 +783,12 @@ function renderAll(){
 
 // ── Zones ──────────────────────────────────────────────────────────────────
 const ZD={
-  restrict:{stroke:'#f05252',fill:'rgba(240,82,82,0.05)',lbl:'RESTRICTED'},
-  border:{stroke:'#FBBD2F',fill:'rgba(251,189,47,0.05)',lbl:'BOUNDARY'}
+  restrict:{stroke:'rgba(240,82,82,0.5)',fill:'rgba(240,82,82,0.05)',lbl:'RESTRICTED'},
+  border:{stroke:'rgba(251,189,47,0.5)',fill:'rgba(251,189,47,0.05)',lbl:'BOUNDARY'}
 };
 const ZD_SUBZONE={stroke:'#2dd4a0',fill:'rgba(45,212,160,0.08)',lbl:'SUB-ZONE'};
-let activePoly=null;
+const ZONE_COLORS={green:{stroke:'rgba(45,212,160,0.5)',fill:'rgba(45,212,160,0.05)'},blue:{stroke:'rgba(59,130,246,0.5)',fill:'rgba(59,130,246,0.05)'},purple:{stroke:'rgba(168,85,247,0.5)',fill:'rgba(168,85,247,0.05)'}};
+let activePoly=null;let _zoneSnapped=false;
 
 function ptsToPixels(pts){
   return pts.map(p=>p.lat!=null?latLngToPixel(p.lat,p.lng):{x:p.x||0,y:p.y||0});
@@ -803,7 +806,7 @@ function redrawZones(){
   });
   S.zonePolys.forEach(z=>{
     if(z.pts.length<2)return;
-    const baseD=ZD[z.type]||(z.type==='border'?ZD.border:ZD.restrict);
+    const baseD=(z.type==='restrict'&&z.color&&ZONE_COLORS[z.color])?ZONE_COLORS[z.color]:(ZD[z.type]||(z.type==='border'?ZD.border:ZD.restrict));
     const d=(z.type==='border'&&subzoneSet.has(z))?ZD_SUBZONE:baseD;
     const px=ptsToPixels(z.pts);
     zcx.save();
@@ -1279,8 +1282,8 @@ function runRules(){
   tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft. Large clusters over 900 sq ft may need a building permit. You can create a 7ft gap to break up the cluster.`,ids:grp.map(e=>e.id)});grp.forEach(e=>e.sr=true);}});
   stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft). Stages & platforms over 256 sq ft may need a building permit`,ids:[s.id]});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft. Stages & platforms taller than 3ft may need a building permit`,ids:[s.id]});s.sr=true;}});
   S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||e.type==='restroom'||(_t2.tent&&(e.tentType==='event'||e.tentType==='production'));if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone`,ids:[e.id]});e.hr=true;}});
-  // Overlap check — no two elements may occupy the same space
-  for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){if(ovlp(S.els[i],S.els[j])){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping`,ids:[S.els[i].id,S.els[j].id]});S.els[i].hr=true;S.els[j].hr=true;}}}
+  // Overlap / proximity check
+  for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){const _clr=bboxClearFt(S.els[i],S.els[j]);if(_clr<=0){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping.`,ids:[S.els[i].id,S.els[j].id]});S.els[i].hr=true;S.els[j].hr=true;}else if(_clr<1){warns.push({type:'soft',msg:`${N(S.els[i])} and ${N(S.els[j])} are less than 1ft apart.`,ids:[S.els[i].id,S.els[j].id]});S.els[i].sr=true;S.els[j].sr=true;}}}
   if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'ADA flooring required for a soft surface area. Draw ADA paths to mark accessible routes.',ids:[]});else warns.push({type:'info',msg:'You have designated an area as soft surface. You can use ADA Path tool under the Safety menu to designate accessible flooring paths.',ids:[]});}
   getZoneCapacities().forEach(z=>{
     if(z.peakAtt&&z.peakAtt>z.cap){warns.push({type:'soft',msg:`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated peak capacity (~${z.cap.toLocaleString()}). Consider removing some elements or altering your event boundaries.`,ids:[]});}
@@ -1575,7 +1578,7 @@ function renderEls(){
       wrap.appendChild(db);
     }else{
       const rb=document.createElement('button');rb.className='rbtn';
-      rb.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:${btnOff}px;left:${btnOff}px;font-size:${btnSz-6}px;`;
+      rb.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:${-(btnSz+4)}px;left:${-(btnSz+4)}px;font-size:${btnSz-6}px;`;
       rb.innerHTML='↻';
       rb.addEventListener('mousedown',ev=>{
         ev.stopPropagation();ev.preventDefault();
@@ -1703,9 +1706,9 @@ function openIngressDetails(elId){
   const el=S.els.find(e=>e.id===elId);if(!el)return;
   const doDelete=()=>{pushUndo();S.els=S.els.filter(x=>x.id!==elId);if(S.selId===elId)S.selId=null;renderVendorList();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();};
   const desgOpts=[{v:'entrance',t:'Entrance'},{v:'exit',t:'Exit'},{v:'both',t:'Both (Entrance & Exit)'}];
-  const selHtml=mf('Name (optional)','gate-name','text',el.gateName||'','e.g. Main Entrance, Emergency Exit')+`<div class="mf"><label>Designation</label><select id="ingress-access">${desgOpts.map(o=>`<option value="${o.v}"${el.access===o.v?' selected':''}>  ${o.t}</option>`).join('')}</select></div>`;
+  const selHtml=mf('Name (optional)','gate-name','text',el.vendorName||el.gateName||'','e.g. Main Entrance, Emergency Exit')+`<div class="mf"><label>Designation</label><select id="ingress-access">${desgOpts.map(o=>`<option value="${o.v}"${el.access===o.v?' selected':''}>  ${o.t}</option>`).join('')}</select></div>`;
   modal('Entrance / Exit Details','Set the role for this gate.',selHtml,()=>{
-    el.gateName=document.getElementById('gate-name').value.trim()||undefined;
+    el.vendorName=document.getElementById('gate-name').value.trim()||undefined;
     el.access=document.getElementById('ingress-access').value||undefined;
     renderSafetyCompliance();runRules();
   },'Save',{onDelete:doDelete});
@@ -1741,7 +1744,7 @@ function renderSafetyCompliance(){
   if(ingressEls.length){
     const _aLbl={entrance:'Entrance',exit:'Exit',both:'Both'};
     html+='<div class="plabel-sub" style="margin-top:10px">Entrances / Exits</div>';
-    html+=ingressEls.map(el=>{const desig=el.access?_aLbl[el.access]:'Undesignated';return`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMap[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.gateName||el.vendorName||el.label||'Gate'}<span style="color:var(--tx3);margin-left:4px">— ${desig}</span></span><button class="vl-det sm-ingress-det" data-id="${el.id}" style="background:none;border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:10px;padding:2px 6px;cursor:pointer;flex-shrink:0;margin-right:4px">Details</button><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove">×</button></div>`;}).join('');
+    html+=ingressEls.map(el=>{const desig=el.access?_aLbl[el.access]:'Undesignated';return`<div class="vl-row"><span class="vl-num">${TYPE_PRE.ingress}${tnMap[el.id]}</span><span style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${el.vendorName||el.label||'Gate'}<span style="color:var(--tx3);margin-left:4px">— ${desig}</span></span><button class="vl-det sm-ingress-det" data-id="${el.id}" style="background:none;border:1px solid var(--brd2);border-radius:var(--r);color:var(--tx);font-size:10px;padding:2px 6px;cursor:pointer;flex-shrink:0;margin-right:4px">Details</button><button class="vl-del sm-ingress-del" data-id="${el.id}" title="Remove">×</button></div>`;}).join('');
   }
   d.innerHTML=html;
   const scPanel=document.getElementById('sc-panel');if(scPanel)scPanel.classList.toggle('has-content',!!html);
@@ -1838,7 +1841,7 @@ function showToast(msg,isError=false){const c=document.getElementById('toast-con
 document.getElementById('mcan').addEventListener('click',closeModal);
 document.getElementById('mok').addEventListener('click',()=>{closeModal();if(mCb)mCb();});
 document.getElementById('mdel').addEventListener('click',()=>{if(mDelCb)mDelCb();closeModal();});
-document.getElementById('mo').addEventListener('click',e=>{if(e.target===document.getElementById('mo')&&!mNoCancel)closeModal();});
+document.getElementById('mo').addEventListener('click',e=>{});
 document.getElementById('mb').addEventListener('click',ev=>{
   const card=ev.target.closest('.export-opt-card');
   if(!card)return;
@@ -2103,9 +2106,10 @@ function setTool(id){
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'||id==='fence'?'crosshair':'default';
   // Per-tool guidance copy — kept for future onboarding/empty-state UI, not currently shown
   const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an entrance/exit',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment',label:'Click to place a text label on the map',customtent:'Click to place your custom tent'}; // eslint-disable-line no-unused-vars
-  const _tt=document.getElementById('tool-tip');if(_tt){const tts={border:'Click to add points · Double-click to close the boundary',fence:'Click to add fence points · Double-click to end the fence run'};if(tts[id]){_tt.textContent=tts[id];_tt.style.display='block';}else{_tt.textContent='';_tt.style.display='none';}}
-  if(!ZONE_TOOLS.includes(id))activePoly=null;if(id!=='dim')dimStart=null;if(id!=='fence')fenceCur=[];
+  const _tt=document.getElementById('tool-tip');if(_tt){const tts={border:'Click to add points · Approach start point to snap-close',fence:'Click to add fence points · Double-click to end the fence run'};if(tts[id]){_tt.textContent=tts[id];_tt.style.display='block';}else{_tt.textContent='';_tt.style.display='none';}}
+  if(activePoly&&activePoly.open){S.zonePolys=S.zonePolys.filter(z=>z!==activePoly);redrawZones();}activePoly=null;_zoneSnapped=false;if(id!=='dim')dimStart=null;if(id!=='fence')fenceCur=[];
 }
+function startRestrict(){modal('Restricted Area','Mark an area on your site as restricted. Choose a color, then click to place points.',msel('Zone Color','rz-color',[{v:'green',t:'Green'},{v:'blue',t:'Blue'},{v:'purple',t:'Light Purple'}]),()=>{S._pendingZoneColor=document.getElementById('rz-color').value||'green';setTool('restrict');},'Start Drawing');}
 
 // ── Canvas interaction ─────────────────────────────────────────────────────
 cw.addEventListener('mousedown',e=>{
@@ -2123,22 +2127,22 @@ cw.addEventListener('mousedown',e=>{
   }
   if(ZONE_TOOLS.includes(S.tool)){
     if(S.tool==='erase'){pushUndo();eraseZoneAt(x,y);runRules();return;}
-    if(e.detail===2){
-      if(activePoly&&activePoly.pts.length>=3){
-        pushUndo();activePoly.open=false;
-        if(S._pendingZoneLabel){activePoly.label=S._pendingZoneLabel;S._pendingZoneLabel=null;}
-        const closedZone=activePoly;activePoly=null;
-        redrawZones();runRules();
-        if(closedZone.type==='border'){
-          modal('Entrances & Exits','Does this area have designated entrances and exits?',
-            msel('Do you have designated entrances and exits for this area?','zone-ingress',[{v:'yes',t:'Yes — specific gates/entrances'},{v:'no',t:'No — open access, no designated points'}]),
-            ()=>{closedZone.hasDesignatedIngress=document.getElementById('zone-ingress').value==='yes';runRules();},'Save');
-        }
+    const doClose=activePoly&&activePoly.pts.length>=3&&(e.detail===2||_zoneSnapped);
+    if(doClose){
+      pushUndo();activePoly.open=false;
+      if(S._pendingZoneLabel){activePoly.label=S._pendingZoneLabel;S._pendingZoneLabel=null;}
+      const closedZone=activePoly;activePoly=null;_zoneSnapped=false;
+      redrawZones();runRules();
+      if(closedZone.type==='border'){
+        modal('Entrances & Exits','Does this area have designated entrances and exits?',
+          msel('Do you have designated entrances and exits for this area?','zone-ingress',[{v:'yes',t:'Yes — specific gates/entrances'},{v:'no',t:'No — open access, no designated points'}]),
+          ()=>{closedZone.hasDesignatedIngress=document.getElementById('zone-ingress').value==='yes';runRules();},'Save');
       }
       const _btt=document.getElementById('tool-tip');if(_btt)_btt.style.display='none';return;
     }
+    if(e.detail===2){const _btt=document.getElementById('tool-tip');if(_btt)_btt.style.display='none';return;}
     const ll=pixelToLatLng(x,y);
-    if(!activePoly){const z={type:S.tool,pts:[{lat:ll.lat,lng:ll.lng}],open:true,zid:S.idCtr++};S.zonePolys.push(z);activePoly=z;}
+    if(!activePoly){const z={type:S.tool,pts:[{lat:ll.lat,lng:ll.lng}],open:true,zid:S.idCtr++};if(S.tool==='restrict'&&S._pendingZoneColor){z.color=S._pendingZoneColor;S._pendingZoneColor=null;}S.zonePolys.push(z);activePoly=z;}
     else activePoly.pts.push({lat:ll.lat,lng:ll.lng});
     redrawZones();return;
   }
@@ -2152,12 +2156,18 @@ cw.addEventListener('mousemove',e=>{
   if(S.tool==='dim'&&dimStart){drawDims();drawDimArrow(dcx,dimStart.x,dimStart.y,x,y,true);}
   if(S.tool==='fence'&&fenceCur.length>0){drawDims();const flp=latLngToPixel(fenceCur[fenceCur.length-1].lat,fenceCur[fenceCur.length-1].lng);drawFenceSeg(dcx,flp.x,flp.y,x,y,true,null);}
   if(ZONE_TOOLS.includes(S.tool)&&activePoly&&activePoly.open){
-    redrawZones();
-    const d=ZD[activePoly.type]||ZD.border;
+    const d=(activePoly.type==='restrict'&&activePoly.color&&ZONE_COLORS[activePoly.color])?ZONE_COLORS[activePoly.color]:(ZD[activePoly.type]||ZD.border);
     const px=ptsToPixels(activePoly.pts);
-    zcx.save();zcx.strokeStyle=d.stroke;zcx.lineWidth=2;zcx.setLineDash([5,4]);zcx.globalAlpha=.45;
-    zcx.beginPath();zcx.moveTo(px[0].x,px[0].y);px.forEach(p=>zcx.lineTo(p.x,p.y));zcx.lineTo(x,y);
-    zcx.stroke();zcx.restore();
+    const canSnap=activePoly.pts.length>=3;
+    const _sdx=x-px[0].x,_sdy=y-px[0].y;
+    _zoneSnapped=canSnap&&Math.sqrt(_sdx*_sdx+_sdy*_sdy)<=13;
+    const tx=_zoneSnapped?px[0].x:x,ty=_zoneSnapped?px[0].y:y;
+    redrawZones();
+    zcx.save();zcx.strokeStyle=d.stroke;zcx.lineWidth=2;zcx.setLineDash([5,4]);zcx.globalAlpha=.55;
+    zcx.beginPath();zcx.moveTo(px[0].x,px[0].y);px.forEach(p=>zcx.lineTo(p.x,p.y));zcx.lineTo(tx,ty);
+    zcx.stroke();zcx.setLineDash([]);
+    if(_zoneSnapped){zcx.beginPath();zcx.arc(px[0].x,px[0].y,9,0,Math.PI*2);zcx.fillStyle=d.stroke;zcx.globalAlpha=0.5;zcx.fill();zcx.globalAlpha=1.0;zcx.strokeStyle=d.stroke;zcx.lineWidth=2;zcx.stroke();}
+    zcx.restore();
   }
 });
 
@@ -2178,7 +2188,7 @@ cw.addEventListener('mouseup',e=>{
 document.addEventListener('mouseup',()=>{if(S.tool==='dim')dimStart=null;});
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeModal();return;}
+  if(e.key==='Escape'){if(document.getElementById('mo').style.display!=='none'){closeModal();return;}if(S.tool!=='select')setTool('select');return;}
   const tag=document.activeElement&&document.activeElement.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
   if(e.key==='Delete'||e.key==='Backspace'){
     if(S.selId!==null){
@@ -2204,9 +2214,10 @@ document.getElementById('zbrd-vip').addEventListener('click',()=>{
 });
 
 // ── Tool buttons ───────────────────────────────────────────────────────────
-[['bsel','select'],['zr','restrict'],['ze','erase'],['bdim','dim']].forEach(([id,tool])=>{
+[['bsel','select'],['ze','erase'],['bdim','dim']].forEach(([id,tool])=>{
   const b=document.getElementById(id);if(b)b.addEventListener('click',()=>setTool(tool));
 });
+const _zrb=document.getElementById('zr');if(_zrb)_zrb.addEventListener('click',startRestrict);
 document.getElementById('ctc-measure').addEventListener('click',()=>setTool('dim'));
 document.getElementById('ctc-select').addEventListener('click',()=>setTool('select'));
 (document.getElementById('ba')||document.createElement('span')).addEventListener('click',()=>{
@@ -2216,7 +2227,7 @@ document.getElementById('ctc-select').addEventListener('click',()=>setTool('sele
     ()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');
 });
 document.getElementById('el-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
-document.getElementById('define-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}setTool(val);});
+document.getElementById('define-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}if(val==='restrict'){startRestrict();return;}setTool(val);});
 document.getElementById('vi-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
 document.getElementById('sc-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='eventcontact'){addEventContact();return;}if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}setTool(val);});
 document.getElementById('export-trigger').addEventListener('click',()=>{
@@ -3044,6 +3055,7 @@ function startMapCapture(){
     function cleanup(){
       cancelAnimationFrame(rafId);
       ov.style.display='none';
+      ['canvas-tool-ctrl','canvas-action-ctrl','opacity-ctrl'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.visibility='';});
       ov.removeEventListener('mousedown',onDown);
       window.removeEventListener('mousemove',onMove);
       window.removeEventListener('mouseup',onUp);
@@ -3089,6 +3101,7 @@ function startMapCapture(){
     document.addEventListener('keydown',onKey);
 
     ov.style.display='block';
+    ['canvas-tool-ctrl','canvas-action-ctrl','opacity-ctrl'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.visibility='hidden';});
     showInstructions();
     rafId=requestAnimationFrame(animate);
   });
