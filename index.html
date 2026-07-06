@@ -1638,18 +1638,79 @@ function makeDrag(div,el){
     startCx=xy.x+elW(el)/2;startCy=xy.y+elH(el)/2;
     startLat=el.lat;startLng=el.lng;
     moved=false;didPushUndo=false;div._dragMoved=false;
+    // Alignment aid — floating distance readout label
+    const lbl=document.createElement('div');
+    lbl.style.cssText='position:fixed;pointer-events:none;z-index:9998;font-size:11px;font-weight:700;font-family:var(--font);background:rgba(20,18,40,0.85);color:#fff;padding:3px 7px;border-radius:6px;white-space:nowrap;border:1px solid rgba(255,255,255,0.12);display:none;';
+    document.body.appendChild(lbl);
+    // Compute established spacing G from static same-type peers (nearest-neighbor pairs)
+    let G=null;
+    const _stPeers=S.els.filter(e=>e.type===el.type&&e.id!==el.id);
+    if(_stPeers.length>=2){
+      const _gaps=[];
+      _stPeers.forEach(a=>{
+        let mn=Infinity;
+        _stPeers.forEach(b=>{if(b.id===a.id)return;const g=bboxClearFt(a,b);if(g<mn)mn=g;});
+        if(isFinite(mn)&&mn>0)_gaps.push(Math.round(mn*2)/2);
+      });
+      const _cnt={};_gaps.forEach(g=>{_cnt[g]=(_cnt[g]||0)+1;});
+      let _bv=null,_bc=0;
+      Object.entries(_cnt).forEach(([k,v])=>{if(v>=2&&v>_bc){_bc=v;_bv=parseFloat(k);}});
+      if(_bv!==null)G=_bv;
+    }
     const onM=mv=>{
       if(!didPushUndo){pushUndo();didPushUndo=true;}
       moved=true;div._dragMoved=true;
       const dx=mv.clientX-sx,dy=mv.clientY-sy;
-      const newCx=startCx+dx,newCy=startCy+dy;
-      const ll=pixelToLatLng(newCx,newCy);
-      el.lat=ll.lat;el.lng=ll.lng;
+      let newCx=startCx+dx,newCy=startCy+dy;
+      // Tentatively place el at cursor position so bboxClearFt reads correctly
+      const tmpLl=pixelToLatLng(newCx,newCy);
+      el.lat=tmpLl.lat;el.lng=tmpLl.lng;
+      // Find nearest same-type element
+      let nearClr=Infinity,nearEl=null;
+      for(const o of _stPeers){const c=bboxClearFt(el,o);if(c<nearClr){nearClr=c;nearEl=o;}}
+      // Feature 2: pattern-match snap to established spacing G
+      let snapped=false;
+      if(G!==null&&nearEl!==null&&Math.abs(nearClr-G)<=1.5){
+        const ax1=elX(el),ay1=elY(el),ax2=ax1+elW(el),ay2=ay1+elH(el);
+        const bx1=elX(nearEl),by1=elY(nearEl),bx2=bx1+elW(nearEl),by2=by1+elH(nearEl);
+        const gx=Math.max(0,Math.max(ax1,bx1)-Math.min(ax2,bx2));
+        const gy=Math.max(0,Math.max(ay1,by1)-Math.min(ay2,by2));
+        const G_px=G*S.scale;
+        if(gx>=gy){
+          if(ax1>=bx2)newCx=bx2+G_px+elW(el)/2;
+          else if(ax2<=bx1)newCx=bx1-G_px-elW(el)/2;
+        }else{
+          if(ay1>=by2)newCy=by2+G_px+elH(el)/2;
+          else if(ay2<=by1)newCy=by1-G_px-elH(el)/2;
+        }
+        const snapLl=pixelToLatLng(newCx,newCy);
+        el.lat=snapLl.lat;el.lng=snapLl.lng;
+        nearClr=G;snapped=true;
+      }
+      // Feature 1: floating distance readout
+      if(nearEl!==null){
+        lbl.textContent=nearClr.toFixed(1)+'ft';
+        lbl.style.color=snapped?'#2dd4a0':'#fff';
+        lbl.style.left=(mv.clientX+14)+'px';
+        lbl.style.top=(mv.clientY-20)+'px';
+        lbl.style.display='block';
+      }else{
+        lbl.style.display='none';
+      }
+      // Guide line on dimension canvas when snapped
+      drawDims();
+      if(snapped&&nearEl!==null){
+        const nCx=elX(nearEl)+elW(nearEl)/2,nCy=elY(nearEl)+elH(nearEl)/2;
+        dcx.save();dcx.strokeStyle='rgba(45,212,160,0.65)';dcx.lineWidth=1.5;dcx.setLineDash([5,4]);
+        dcx.beginPath();dcx.moveTo(newCx,newCy);dcx.lineTo(nCx,nCy);dcx.stroke();
+        dcx.setLineDash([]);dcx.restore();
+      }
       div.style.left=(newCx-elW(el)/2)+'px';
       div.style.top=(newCy-elH(el)/2)+'px';
     };
     const onU=()=>{
       document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);
+      lbl.remove();drawDims();
       if(moved){runRules();}
     };
     document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
