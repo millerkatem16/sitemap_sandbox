@@ -659,6 +659,7 @@ const TYPES={
   label:{lbl:'Label',color:'transparent',wFt:10,hFt:2,sqft:0,rot:true,isLabel:true}
 };
 const TYPE_PRE={tent10:'T',tent20:'T',stage:'S',truck:'F',gen:'G',ingress:'E',firstaid:'FA',extinguisher:'EX',mix:'M',custom:'X',customtent:'T',electric:'EL',water:'WS',trash:'BIN',restroom:'PJ',security:'SEC',label:'LBL'};
+const ALIGN_GROUP=new Set(['custom','tent10','tent20','customtent','truck','stage','restroom']);
 const VENUE_EL_TYPES=new Set(['electric','water','trash','restroom','ingress','extinguisher','security','stage','truck','gen','mix','custom','label','fence']);
 function isVenueEl(el){return VENUE_EL_TYPES.has(el.type)||(TYPES[el.type]&&TYPES[el.type].utility);}
 
@@ -1642,9 +1643,9 @@ function makeDrag(div,el){
     const lbl=document.createElement('div');
     lbl.style.cssText='position:fixed;pointer-events:none;z-index:9998;font-size:11px;font-weight:700;font-family:var(--font);background:rgba(20,18,40,0.85);color:#fff;padding:3px 7px;border-radius:6px;white-space:nowrap;border:1px solid rgba(255,255,255,0.12);display:none;';
     document.body.appendChild(lbl);
-    // Compute established spacing G from static same-type peers (nearest-neighbor pairs)
+    // Compute established spacing G from static align-group peers (nearest-neighbor pairs)
     let G=null;
-    const _stPeers=S.els.filter(e=>e.type===el.type&&e.id!==el.id);
+    const _stPeers=ALIGN_GROUP.has(el.type)?S.els.filter(e=>ALIGN_GROUP.has(e.type)&&e.id!==el.id):[];
     if(_stPeers.length>=2){
       const _gaps=[];
       _stPeers.forEach(a=>{
@@ -1697,11 +1698,13 @@ function makeDrag(div,el){
       }else{
         lbl.style.display='none';
       }
-      // Guide line on dimension canvas when snapped
+      // Guide line on dimension canvas (always when measuring, styled by snap state)
       drawDims();
-      if(snapped&&nearEl!==null){
+      if(nearEl!==null){
         const nCx=elX(nearEl)+elW(nearEl)/2,nCy=elY(nearEl)+elH(nearEl)/2;
-        dcx.save();dcx.strokeStyle='rgba(45,212,160,0.65)';dcx.lineWidth=1.5;dcx.setLineDash([5,4]);
+        dcx.save();
+        if(snapped){dcx.strokeStyle='rgba(45,212,160,0.65)';dcx.lineWidth=1.5;dcx.setLineDash([5,4]);}
+        else{dcx.strokeStyle='rgba(180,180,200,0.35)';dcx.lineWidth=1;dcx.setLineDash([4,5]);}
         dcx.beginPath();dcx.moveTo(newCx,newCy);dcx.lineTo(nCx,nCy);dcx.stroke();
         dcx.setLineDash([]);dcx.restore();
       }
