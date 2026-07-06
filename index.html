@@ -61,11 +61,21 @@ html,body{height:100vh;background:var(--bg);color:var(--tx);font-family:var(--fo
 #main{display:flex;flex:1;min-height:0;overflow:hidden}
 #cv-area{flex:1;position:relative;overflow:hidden;background:#1C2B2C}
 #map{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0}
-#cw{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;overflow:hidden;background:transparent;pointer-events:none}
+#cw{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;overflow:hidden;background:transparent;pointer-events:none;transform-origin:center center;}
 #grid{position:absolute;inset:0;pointer-events:none;opacity:.07;background-image:linear-gradient(rgba(255,255,255,0.4) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.4) 1px,transparent 1px);background-size:40px 40px}
 canvas{position:absolute;inset:0;pointer-events:none}
 #el{position:absolute;inset:0;pointer-events:none}
 #map-overlay{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;background:#000;opacity:0.25;pointer-events:none}
+#map-rot-wrap{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:center center;transform:rotate(0deg);}
+#compass-widget{position:absolute;bottom:140px;right:10px;z-index:9;display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:auto;}
+#compass-dial{width:44px;height:44px;border-radius:50%;background:rgba(20,32,33,0.88);border:1.5px solid rgba(255,255,255,0.18);cursor:grab;position:relative;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(0,0,0,0.5);}
+#compass-dial:active{cursor:grabbing;}
+#compass-needle{position:absolute;top:50%;left:50%;width:3px;height:17px;margin-top:-17px;margin-left:-1.5px;transform-origin:50% 100%;background:linear-gradient(to bottom,#ef4444 55%,rgba(200,200,210,0.5) 55%);border-radius:2px 2px 1px 1px;}
+#compass-n-lbl{position:absolute;top:3px;left:50%;transform:translateX(-50%);font-size:7px;font-weight:900;color:rgba(255,255,255,0.45);font-family:var(--font);pointer-events:none;}
+#compass-angle-btn{font-size:11px;font-weight:700;font-family:var(--mono);color:rgba(255,255,255,0.8);background:rgba(20,32,33,0.85);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:2px 7px;cursor:pointer;min-width:38px;text-align:center;}
+#compass-angle-inp{width:52px;font-size:11px;font-weight:700;font-family:var(--mono);color:#e2e8f0;background:#2d2a4a;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:2px 4px;text-align:center;display:none;}
+#compass-reset{font-size:11px;color:rgba(255,255,255,0.55);background:rgba(20,32,33,0.82);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:2px 8px;cursor:pointer;font-family:var(--font);font-weight:600;}
+#compass-reset:hover{color:#e2e8f0;}
 #opacity-ctrl{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:8px;padding:5px 14px 5px 12px;background:rgba(20,32,33,0.82);backdrop-filter:blur(8px);border-radius:20px;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;white-space:nowrap}
 #opacity-ctrl label{color:rgba(255,255,255,0.6);font-size:12px;font-family:var(--font);font-weight:600;cursor:default;user-select:none}
 #opacity-val-lbl{color:var(--gold);font-family:var(--mono);font-size:12px;min-width:28px;text-align:right}
@@ -438,8 +448,10 @@ canvas{position:absolute;inset:0;pointer-events:none}
 
 <div id="main">
   <div id="cv-area">
+    <div id="map-rot-wrap">
     <div id="map"></div>
     <div id="map-overlay"></div>
+    </div>
     <div id="onboard-card"><i class="ti ti-calendar-star" id="onboard-icon"></i><div id="onboard-heading">Let's Get Started!</div><div id="onboard-sub"><span>Search your event venue or address or choose from your saved events.</span><span id="onboard-sub2">Then begin placing elements on your event site!</span></div><button id="onboard-dismiss">Dismiss</button></div>
     <div id="canvas-tool-ctrl">
       <button class="ctc-btn" id="ctc-measure" title="Measure distance"><i class="ti ti-ruler-2"></i><span>Measure</span></button>
@@ -463,6 +475,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div id="el"></div>
       <div id="marquee-rect" style="position:absolute;display:none;border:1.5px dashed rgba(244,81,64,0.65);background:rgba(244,81,64,0.07);pointer-events:none;z-index:800;box-sizing:border-box;"></div>
     </div>
+  <div id="compass-widget">
+    <div id="compass-dial"><div id="compass-needle"></div><span id="compass-n-lbl">N</span></div>
+    <button id="compass-angle-btn" title="Click to enter exact angle">0°</button>
+    <input id="compass-angle-inp" type="number" min="-360" max="720" step="1">
+    <button id="compass-reset" title="Reset to North">⟳ North</button>
+  </div>
   </div>
   <div id="align-pop" style="display:none;position:fixed;z-index:9100;background:#1e1b35;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px 16px;width:340px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:var(--font);color:#e2e8f0;box-sizing:border-box;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -655,7 +673,7 @@ const S={
   zonePolys:[],firstAids:[],idCtr:1,selId:null,selIds:new Set(),
   venues:{},isRotating:false,
   hasSoftSurface:null,undoStack:[],
-  mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17,
+  mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17,mapRot:0,
   _pendingZoneLabel:null,hideUtils:false,
   activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[],
   eventNotes:'',
@@ -945,6 +963,89 @@ function updateAlignBtn(){
       moveTo(e,tx,ty);
     });
   }));
+})();
+
+// ── Map rotation ──────────────────────────────────────────────────────────
+function applyMapRot(deg,animate){
+  S.mapRot=((deg%360)+360)%360;
+  const t='rotate('+S.mapRot+'deg)';
+  const mrw=document.getElementById('map-rot-wrap');
+  const cwEl=document.getElementById('cw');
+  if(animate){
+    const tr='transform 0.3s ease';
+    if(mrw){mrw.style.transition=tr;mrw.style.transform=t;}
+    if(cwEl){cwEl.style.transition=tr;cwEl.style.transform=t;}
+    setTimeout(()=>{if(mrw)mrw.style.transition='';if(cwEl)cwEl.style.transition='';},350);
+  }else{
+    if(mrw){mrw.style.transition='';mrw.style.transform=t;}
+    if(cwEl){cwEl.style.transition='';cwEl.style.transform=t;}
+  }
+  const needle=document.getElementById('compass-needle');
+  if(needle)needle.style.transform='rotate('+(-S.mapRot)+'deg)';
+  const rdout=document.getElementById('compass-angle-btn');
+  if(rdout&&rdout.style.display!=='none')rdout.textContent=Math.round(S.mapRot)+'°';
+}
+
+// Compass widget interactions
+(()=>{
+  const dial=document.getElementById('compass-dial');
+  if(!dial)return;
+  let cdDrag=false,cdStartAng=0,cdStartRot=0;
+  function dialAngle(e){
+    const r=dial.getBoundingClientRect();
+    return Math.atan2(e.clientX-(r.left+r.width/2),-(e.clientY-(r.top+r.height/2)))*(180/Math.PI);
+  }
+  dial.addEventListener('mousedown',ev=>{
+    ev.preventDefault();ev.stopPropagation();
+    cdDrag=true;cdStartAng=dialAngle(ev);cdStartRot=S.mapRot;
+  });
+  document.addEventListener('mousemove',ev=>{
+    if(!cdDrag)return;
+    applyMapRot(cdStartRot+(dialAngle(ev)-cdStartAng));
+  });
+  document.addEventListener('mouseup',()=>{cdDrag=false;});
+  document.getElementById('compass-reset').addEventListener('click',()=>applyMapRot(0,true));
+  const angleBtn=document.getElementById('compass-angle-btn');
+  const angleInp=document.getElementById('compass-angle-inp');
+  angleBtn.addEventListener('click',()=>{
+    angleInp.value=Math.round(S.mapRot);
+    angleBtn.style.display='none';angleInp.style.display='block';
+    angleInp.focus();angleInp.select();
+  });
+  function commitAngle(){
+    const v=parseFloat(angleInp.value);
+    if(!isNaN(v))applyMapRot(v);
+    angleInp.style.display='none';angleBtn.style.display='';
+    angleBtn.textContent=Math.round(S.mapRot)+'°';
+  }
+  angleInp.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key==='Escape')commitAngle();});
+  angleInp.addEventListener('blur',commitAngle);
+})();
+
+// Shift+drag on map → rotation gesture (select mode only)
+(()=>{
+  let sdrActive=false,sdrX=0,sdrY=0,sdrStartRot=0,sdrCommitted=false;
+  document.addEventListener('mousedown',ev=>{
+    if(!ev.shiftKey||ev.button!==0||S.tool!=='select')return;
+    if(ev.target.closest('.el,#canvas-action-ctrl,#canvas-tool-ctrl,#opacity-ctrl,#compass-widget,#align-pop'))return;
+    const cvEl=document.getElementById('cv-area');
+    if(!cvEl||!cvEl.contains(ev.target))return;
+    ev.preventDefault();
+    sdrActive=true;sdrX=ev.clientX;sdrY=ev.clientY;sdrStartRot=S.mapRot;sdrCommitted=false;
+  },{capture:true});
+  document.addEventListener('mousemove',ev=>{
+    if(!sdrActive)return;
+    const dx=ev.clientX-sdrX,dy=ev.clientY-sdrY;
+    if(!sdrCommitted&&Math.sqrt(dx*dx+dy*dy)<5)return;
+    sdrCommitted=true;
+    const cvEl=document.getElementById('cv-area');if(!cvEl)return;
+    const r=cvEl.getBoundingClientRect();
+    const cx=r.left+r.width/2,cy=r.top+r.height/2;
+    const startAng=Math.atan2(sdrX-cx,-(sdrY-cy))*(180/Math.PI);
+    const curAng=Math.atan2(ev.clientX-cx,-(ev.clientY-cy))*(180/Math.PI);
+    applyMapRot(sdrStartRot+(curAng-startAng));
+  });
+  document.addEventListener('mouseup',()=>{sdrActive=false;sdrCommitted=false;});
 })();
 
 // ── Map opacity overlay ────────────────────────────────────────────────────
@@ -2813,7 +2914,7 @@ async function saveEvent(){
     firstAids:JSON.parse(JSON.stringify(S.firstAids)),
     evtName:document.getElementById('evt-name').value.trim(),
     evtDate:evtDateEl?evtDateEl.value:'',
-    mapCenter:S.mapCenter,mapZoom:S.mapZoom,
+    mapCenter:S.mapCenter,mapZoom:S.mapZoom,mapRot:S.mapRot||0,
     fences:JSON.parse(JSON.stringify(S.fences)),
     hasSoftSurface:S.hasSoftSurface,idCtr:S.idCtr,
     activeVenueId:S.activeVenueId||null,
@@ -2899,6 +3000,7 @@ async function openEvents(){
           S.eventNotes=state.eventNotes||'';
           const evtNotesEl=document.getElementById('evt-notes');if(evtNotesEl)evtNotesEl.value=S.eventNotes;
           if(gmap&&state.mapCenter&&state.mapZoom){gmap.setCenter(state.mapCenter);gmap.setZoom(state.mapZoom);}
+          S.mapRot=state.mapRot||0;applyMapRot(S.mapRot);
           S.activeVenueId=state.activeVenueId||null;
           S.loadedVenueSnapshot=null;
           redrawZones();renderEls();renderColorKey();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
