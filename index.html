@@ -61,7 +61,7 @@ html,body{height:100vh;background:var(--bg);color:var(--tx);font-family:var(--fo
 #main{display:flex;flex:1;min-height:0;overflow:hidden}
 #cv-area{flex:1;position:relative;overflow:hidden;background:#1C2B2C}
 #map{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0}
-#cw{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;overflow:hidden;background:transparent;pointer-events:none;transform-origin:center center;}
+#cw{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;overflow:hidden;background:transparent;pointer-events:none;}
 #grid{position:absolute;inset:0;pointer-events:none;opacity:.07;background-image:linear-gradient(rgba(255,255,255,0.4) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.4) 1px,transparent 1px);background-size:40px 40px}
 canvas{position:absolute;inset:0;pointer-events:none}
 #el{position:absolute;inset:0;pointer-events:none}
@@ -451,6 +451,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <div id="map-rot-wrap">
     <div id="map"></div>
     <div id="map-overlay"></div>
+    <div id="cw">
+      <div id="grid"></div>
+      <canvas id="zc"></canvas><canvas id="bc"></canvas><canvas id="dc"></canvas>
+      <div id="el"></div>
+      <div id="marquee-rect" style="position:absolute;display:none;border:1.5px dashed rgba(244,81,64,0.65);background:rgba(244,81,64,0.07);pointer-events:none;z-index:800;box-sizing:border-box;"></div>
+    </div>
     </div>
     <div id="onboard-card"><i class="ti ti-calendar-star" id="onboard-icon"></i><div id="onboard-heading">Let's Get Started!</div><div id="onboard-sub"><span>Search your event venue or address or choose from your saved events.</span><span id="onboard-sub2">Then begin placing elements on your event site!</span></div><button id="onboard-dismiss">Dismiss</button></div>
     <div id="canvas-tool-ctrl">
@@ -468,12 +474,6 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <label for="opacity-slider">Map Opacity</label>
       <input type="range" id="opacity-slider" min="0" max="50" value="25" step="1">
       <span id="opacity-val-lbl">25%</span>
-    </div>
-    <div id="cw">
-      <div id="grid"></div>
-      <canvas id="zc"></canvas><canvas id="bc"></canvas><canvas id="dc"></canvas>
-      <div id="el"></div>
-      <div id="marquee-rect" style="position:absolute;display:none;border:1.5px dashed rgba(244,81,64,0.65);background:rgba(244,81,64,0.07);pointer-events:none;z-index:800;box-sizing:border-box;"></div>
     </div>
   <div id="compass-widget">
     <div id="compass-dial"><div id="compass-needle"></div><span id="compass-n-lbl">N</span></div>
@@ -966,19 +966,31 @@ function updateAlignBtn(){
 })();
 
 // ── Map rotation ──────────────────────────────────────────────────────────
+function setupMapRotLayer(){
+  const cv=document.getElementById('cv-area');
+  const mrw=document.getElementById('map-rot-wrap');
+  if(!cv||!mrw)return;
+  const w=cv.clientWidth,h=cv.clientHeight;
+  const diag=Math.ceil(Math.sqrt(w*w+h*h)*1.5);
+  mrw.style.width=diag+'px';
+  mrw.style.height=diag+'px';
+  mrw.style.top='-'+Math.ceil((diag-h)/2)+'px';
+  mrw.style.left='-'+Math.ceil((diag-w)/2)+'px';
+  if(gmap){
+    const ctr=gmap.getCenter();
+    google.maps.event.trigger(gmap,'resize');
+    if(ctr)gmap.setCenter(ctr);
+  }
+}
 function applyMapRot(deg,animate){
   S.mapRot=((deg%360)+360)%360;
   const t='rotate('+S.mapRot+'deg)';
   const mrw=document.getElementById('map-rot-wrap');
-  const cwEl=document.getElementById('cw');
   if(animate){
-    const tr='transform 0.3s ease';
-    if(mrw){mrw.style.transition=tr;mrw.style.transform=t;}
-    if(cwEl){cwEl.style.transition=tr;cwEl.style.transform=t;}
-    setTimeout(()=>{if(mrw)mrw.style.transition='';if(cwEl)cwEl.style.transition='';},350);
+    if(mrw){mrw.style.transition='transform 0.3s ease';mrw.style.transform=t;}
+    setTimeout(()=>{if(mrw)mrw.style.transition='';},350);
   }else{
     if(mrw){mrw.style.transition='';mrw.style.transform=t;}
-    if(cwEl){cwEl.style.transition='';cwEl.style.transform=t;}
   }
   const needle=document.getElementById('compass-needle');
   if(needle)needle.style.transform='rotate('+(-S.mapRot)+'deg)';
@@ -1080,7 +1092,7 @@ function sz(){
   const w=cw.clientWidth,h=cw.clientHeight;
   [zc,bc,dc].forEach(c=>{c.width=w;c.height=h;c.style.width=w+'px';c.style.height=h+'px';});
 }
-window.addEventListener('resize',()=>{sz();renderAll();});
+window.addEventListener('resize',()=>{setupMapRotLayer();sz();renderAll();});
 
 // Full re-render (called on map idle)
 function renderAll(){
@@ -4290,6 +4302,8 @@ window.initMap=function(){
     }
   });
 
+  setupMapRotLayer();
+  applyMapRot(S.mapRot||0);
 };
 
 async function init(){
