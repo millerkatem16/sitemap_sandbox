@@ -1288,7 +1288,7 @@ function runRules(){
   getZoneCapacities().forEach(z=>{
     if(z.peakAtt&&z.peakAtt>z.cap){warns.push({type:'soft',msg:`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated peak capacity (~${z.cap.toLocaleString()}). Consider removing some elements or altering your event boundaries.`,ids:[]});}
   });
-  if(!warns.length)warns.push({type:'ok',msg:'No violations — layout looks good.',ids:[]});S.lastWarns=warns;
+  if(!warns.length)warns.push({type:'ok',msg:'No alerts or flags!',ids:[]});S.lastWarns=warns;
   document.getElementById('wl').innerHTML=warns.filter(w=>!(S.pgDismissed.has(w.msg)&&(w.type==='soft'||w.type==='info'))).map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
   const precheckPanel=document.getElementById('precheck-panel');if(precheckPanel)precheckPanel.classList.toggle('has-content',S.els.length>0||S.zonePolys.length>0);
   renderEls();updateCap();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();updatePlanningGuideBadge();
@@ -1592,6 +1592,13 @@ function renderEls(){
         document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
       });
       wrap.appendChild(rb);
+      let _rbHvTm=null;
+      const _rbShow=()=>{clearTimeout(_rbHvTm);rb.style.display='flex';};
+      const _rbHide=()=>{_rbHvTm=setTimeout(()=>{if(S.selId!==el.id)rb.style.display='none';},150);};
+      div.addEventListener('mouseenter',_rbShow);
+      div.addEventListener('mouseleave',_rbHide);
+      rb.addEventListener('mouseenter',_rbShow);
+      rb.addEventListener('mouseleave',_rbHide);
     }
 
     if(!t.circle){
