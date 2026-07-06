@@ -1688,17 +1688,36 @@ function makeDrag(div,el){
         el.lat=snapLl.lat;el.lng=snapLl.lng;
         nearClr=G;snapped=true;
       }
+      // Feature 3: edge/center alignment snap (runs on post-spacing-snap position)
+      const _aeW2=elW(el)/2,_aeH2=elH(el)/2;
+      const _eHRef=[newCy-_aeH2,newCy,newCy+_aeH2];
+      const _eVRef=[newCx-_aeW2,newCx,newCx+_aeW2];
+      const _eTol=Math.max(6,0.75*S.scale);
+      let _aY=null,_aX=null,_aYPeer=null,_aXPeer=null,_aYOff=Infinity,_aXOff=Infinity,_aYi=-1,_aXi=-1;
+      for(const o of _stPeers){
+        const oL=elX(o),oT=elY(o),oR=oL+elW(o),oB=oT+elH(o);
+        const oHR=[oT,oT+elH(o)/2,oB];const oVR=[oL,oL+elW(o)/2,oR];
+        for(let i=0;i<3;i++){for(let j=0;j<3;j++){
+          const dY=Math.abs(_eHRef[i]-oHR[j]);
+          if(dY<_eTol&&dY<_aYOff){_aYOff=dY;_aYi=i;_aY=i===0?oHR[j]+_aeH2:i===1?oHR[j]:oHR[j]-_aeH2;_aYPeer=o;}
+          const dX=Math.abs(_eVRef[i]-oVR[j]);
+          if(dX<_eTol&&dX<_aXOff){_aXOff=dX;_aXi=i;_aX=i===0?oVR[j]+_aeW2:i===1?oVR[j]:oVR[j]-_aeW2;_aXPeer=o;}
+        }}
+      }
+      if(_aY!==null)newCy=_aY;
+      if(_aX!==null)newCx=_aX;
+      if(_aX!==null||_aY!==null){const alLl=pixelToLatLng(newCx,newCy);el.lat=alLl.lat;el.lng=alLl.lng;}
       // Feature 1: floating distance readout
       if(nearEl!==null){
         lbl.textContent=nearClr.toFixed(1)+'ft';
-        lbl.style.color=snapped?'#2dd4a0':'#fff';
+        lbl.style.color=snapped?'#2dd4a0':(_aX!==null||_aY!==null)?'#63b3ed':'#fff';
         lbl.style.left=(mv.clientX+14)+'px';
         lbl.style.top=(mv.clientY-20)+'px';
         lbl.style.display='block';
       }else{
         lbl.style.display='none';
       }
-      // Guide line on dimension canvas (always when measuring, styled by snap state)
+      // Guide lines on dimension canvas
       drawDims();
       if(nearEl!==null){
         const nCx=elX(nearEl)+elW(nearEl)/2,nCy=elY(nearEl)+elH(nearEl)/2;
@@ -1707,6 +1726,18 @@ function makeDrag(div,el){
         else{dcx.strokeStyle='rgba(180,180,200,0.35)';dcx.lineWidth=1;dcx.setLineDash([4,5]);}
         dcx.beginPath();dcx.moveTo(newCx,newCy);dcx.lineTo(nCx,nCy);dcx.stroke();
         dcx.setLineDash([]);dcx.restore();
+      }
+      if(_aY!==null){
+        const gY=_aYi===0?newCy-_aeH2:_aYi===1?newCy:newCy+_aeH2;
+        const pL=elX(_aYPeer),pR=pL+elW(_aYPeer);
+        dcx.save();dcx.strokeStyle='rgba(99,179,237,0.75)';dcx.lineWidth=1;dcx.setLineDash([]);
+        dcx.beginPath();dcx.moveTo(Math.min(newCx-_aeW2,pL)-8,gY);dcx.lineTo(Math.max(newCx+_aeW2,pR)+8,gY);dcx.stroke();dcx.restore();
+      }
+      if(_aX!==null){
+        const gX=_aXi===0?newCx-_aeW2:_aXi===1?newCx:newCx+_aeW2;
+        const pT=elY(_aXPeer),pB=pT+elH(_aXPeer);
+        dcx.save();dcx.strokeStyle='rgba(99,179,237,0.75)';dcx.lineWidth=1;dcx.setLineDash([]);
+        dcx.beginPath();dcx.moveTo(gX,Math.min(newCy-_aeH2,pT)-8);dcx.lineTo(gX,Math.max(newCy+_aeH2,pB)+8);dcx.stroke();dcx.restore();
       }
       div.style.left=(newCx-elW(el)/2)+'px';
       div.style.top=(newCy-elH(el)/2)+'px';
