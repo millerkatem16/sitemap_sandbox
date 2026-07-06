@@ -86,6 +86,10 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .onboard-glow{animation:onboard-pulse 1.8s ease-in-out infinite!important;border-color:rgba(45,212,160,0.8)!important;transition:none!important}
 .tb.onboard-glow{box-shadow:0 0 0 2px rgba(45,212,160,0.75),0 0 14px rgba(45,212,160,0.45)!important;border-radius:9px}
 .ctc-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:transparent;border:1px solid transparent;color:rgba(255,255,255,0.62);font-size:12px;font-family:var(--font);font-weight:600;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.ap-btn{padding:5px 6px;border-radius:5px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:#e2e8f0;font-size:11px;font-family:var(--font);font-weight:600;cursor:pointer;transition:background .1s;text-align:center}
+.ap-btn:hover{background:rgba(255,255,255,0.14)}
+.ap-btn:disabled{opacity:0.35;cursor:not-allowed}
+.ap-btn-w{padding:5px 8px}
 .ctc-btn i{font-size:15px;line-height:1}
 .ctc-btn:hover{background:rgba(255,255,255,0.16);color:#fff;border-color:rgba(255,255,255,0.2)}
 .ctc-btn.active{background:rgba(255,255,255,0.22);color:#fff;border-color:rgba(255,255,255,0.38);box-shadow:0 1px 6px rgba(0,0,0,0.15) inset}
@@ -444,6 +448,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <div id="canvas-action-ctrl">
       <button class="ctc-btn" id="bselect"><i class="ti ti-cursor-text"></i><span>Select</span></button>
       <button class="ctc-btn" id="bundo"><i class="ti ti-corner-up-left"></i><span>Undo</span></button>
+      <button class="ctc-btn" id="balign" style="display:none" title="Align / Distribute selected elements"><i class="ti ti-layout-align-left"></i><span>Align</span></button>
       <button class="ctc-btn" id="bclr" style="color:#F45140"><i class="ti ti-trash"></i><span>Clear</span></button>
     </div>
     <div id="opacity-ctrl">
@@ -455,6 +460,40 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div id="grid"></div>
       <canvas id="zc"></canvas><canvas id="bc"></canvas><canvas id="dc"></canvas>
       <div id="el"></div>
+      <div id="marquee-rect" style="position:absolute;display:none;border:1.5px dashed rgba(244,81,64,0.65);background:rgba(244,81,64,0.07);pointer-events:none;z-index:800;box-sizing:border-box;"></div>
+    </div>
+  </div>
+  <div id="align-pop" style="display:none;position:fixed;z-index:9100;background:#1e1b35;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px 16px;min-width:230px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:var(--font);color:#e2e8f0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8">Align &amp; Distribute</span>
+      <button id="ap-close" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;line-height:1;padding:0 2px">×</button>
+    </div>
+    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Align Edges</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-bottom:12px">
+      <button class="ap-btn" id="ap-al" title="Align Left edges">⇤L</button>
+      <button class="ap-btn" id="ap-ac" title="Align horizontal Centers">⬝C</button>
+      <button class="ap-btn" id="ap-ar" title="Align Right edges">R⇥</button>
+      <button class="ap-btn" id="ap-at" title="Align Top edges">⇡T</button>
+      <button class="ap-btn" id="ap-am" title="Align vertical Middles">M⬝</button>
+      <button class="ap-btn" id="ap-ab" title="Align Bottom edges">B⇣</button>
+    </div>
+    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Distribute Evenly <span id="ap-dist-note" style="color:#475569;font-weight:400;text-transform:none;letter-spacing:0">(need 3+)</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+      <button class="ap-btn ap-btn-w" id="ap-dh">⇔ Horizontal</button>
+      <button class="ap-btn ap-btn-w" id="ap-dv">⇕ Vertical</button>
+    </div>
+    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Set Exact Spacing</div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:12px">
+      <input id="ap-sp-val" type="number" min="0" step="0.5" value="2" style="width:60px;padding:4px 6px;background:#2d2a4a;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e2e8f0;font-size:12px">
+      <span style="color:#94a3b8;font-size:12px">ft</span>
+      <button class="ap-btn ap-btn-w" id="ap-sp-apply" style="flex:1">Apply</button>
+    </div>
+    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Arrange as Grid</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:center">
+      <input id="ap-gr-rows" type="number" min="1" step="1" value="2" placeholder="rows" style="padding:4px 6px;background:#2d2a4a;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e2e8f0;font-size:12px">
+      <input id="ap-gr-cols" type="number" min="1" step="1" value="3" placeholder="cols" style="padding:4px 6px;background:#2d2a4a;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e2e8f0;font-size:12px">
+      <input id="ap-gr-gap" type="number" min="0" step="0.5" value="2" placeholder="ft gap" style="padding:4px 6px;background:#2d2a4a;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e2e8f0;font-size:12px">
+      <button class="ap-btn" id="ap-gr-apply">Go</button>
     </div>
   </div>
 
@@ -612,7 +651,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 const S={
   tool:'select',els:[],adaPaths:[],curAda:[],dims:[],
   scale:3,venueWidthFt:200,
-  zonePolys:[],firstAids:[],idCtr:1,selId:null,
+  zonePolys:[],firstAids:[],idCtr:1,selId:null,selIds:new Set(),
   venues:{},isRotating:false,
   hasSoftSurface:null,undoStack:[],
   mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17,
@@ -741,6 +780,170 @@ function undo(){
 }
 document.getElementById('bselect').addEventListener('click',()=>setTool('select'));
 document.getElementById('bundo').addEventListener('click',undo);
+
+// ── Multi-select helpers ───────────────────────────────────────────────────
+function updateAlignBtn(){
+  const b=document.getElementById('balign');if(!b)return;
+  const show=S.selIds.size>=2;
+  b.style.display=show?'flex':'none';
+}
+
+// ── Marquee (drag-box) selection ──────────────────────────────────────────
+(()=>{
+  const mq=document.getElementById('marquee-rect');
+  let active=false,sx=0,sy=0,shiftStart=false;
+  document.addEventListener('mousedown',ev=>{
+    if(ev.button!==0||S.tool!=='select')return;
+    if(ev.target.closest('.el'))return;
+    const cwEl=document.getElementById('cw');if(!cwEl)return;
+    const r=cwEl.getBoundingClientRect();
+    if(ev.clientX<r.left||ev.clientX>r.right||ev.clientY<r.top||ev.clientY>r.bottom)return;
+    active=true;sx=ev.clientX-r.left;sy=ev.clientY-r.top;shiftStart=ev.shiftKey;
+    mq.style.left=sx+'px';mq.style.top=sy+'px';mq.style.width='0';mq.style.height='0';mq.style.display='none';
+  });
+  document.addEventListener('mousemove',ev=>{
+    if(!active)return;
+    const cwEl=document.getElementById('cw');if(!cwEl)return;
+    const r=cwEl.getBoundingClientRect();
+    const cx=ev.clientX-r.left,cy=ev.clientY-r.top;
+    const dx=cx-sx,dy=cy-sy;
+    if(!mq.style.display||mq.style.display==='none'){if(Math.abs(dx)<4&&Math.abs(dy)<4)return;}
+    mq.style.display='block';
+    mq.style.left=Math.min(sx,cx)+'px';mq.style.top=Math.min(sy,cy)+'px';
+    mq.style.width=Math.abs(dx)+'px';mq.style.height=Math.abs(dy)+'px';
+  });
+  document.addEventListener('mouseup',ev=>{
+    if(!active)return;
+    const wasDrag=mq.style.display==='block';
+    mq.style.display='none';active=false;
+    if(!wasDrag)return;
+    const cwEl=document.getElementById('cw');if(!cwEl)return;
+    const r=cwEl.getBoundingClientRect();
+    const cx=ev.clientX-r.left,cy=ev.clientY-r.top;
+    const rx1=Math.min(sx,cx),ry1=Math.min(sy,cy),rx2=Math.max(sx,cx),ry2=Math.max(sy,cy);
+    if(!shiftStart){S.selIds=new Set();S.selId=null;}
+    S.els.forEach(el=>{
+      const ex=elX(el),ey=elY(el),ew=elW(el),eh=elH(el);
+      if(ex<rx2&&ex+ew>rx1&&ey<ry2&&ey+eh>ry1){S.selIds.add(el.id);S.selId=el.id;}
+    });
+    updateAlignBtn();renderEls();
+  });
+})();
+
+// ── Align popover ─────────────────────────────────────────────────────────
+(()=>{
+  const pop=document.getElementById('align-pop');
+  const btn=document.getElementById('balign');
+
+  function openPop(){
+    if(!btn||!pop)return;
+    const r=btn.getBoundingClientRect();
+    pop.style.left=Math.max(4,r.left)+'px';
+    pop.style.top=(r.bottom+6)+'px';
+    pop.style.display='block';
+    // disable distribute if <3 selected
+    const n=S.selIds.size;
+    document.getElementById('ap-dh').disabled=n<3;
+    document.getElementById('ap-dv').disabled=n<3;
+  }
+  function closePop(){if(pop)pop.style.display='none';}
+  btn.addEventListener('click',ev=>{ev.stopPropagation();pop.style.display==='block'?closePop():openPop();});
+  document.getElementById('ap-close').addEventListener('click',closePop);
+  document.addEventListener('mousedown',ev=>{if(pop.style.display==='block'&&!pop.contains(ev.target)&&ev.target!==btn)closePop();});
+
+  function selEls(){return S.els.filter(e=>S.selIds.has(e.id));}
+  function applyAndClose(fn){
+    pushUndo();fn();renderEls();runRules();closePop();
+  }
+  function moveTo(el,cx,cy){const ll=pixelToLatLng(cx,cy);el.lat=ll.lat;el.lng=ll.lng;}
+
+  // Align edges
+  document.getElementById('ap-al').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls();const minX=Math.min(...es.map(e=>elX(e)));
+    es.forEach(e=>moveTo(e,minX+elW(e)/2,elY(e)+elH(e)/2));
+  }));
+  document.getElementById('ap-ac').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls();const cx=(Math.min(...es.map(e=>elX(e)))+Math.max(...es.map(e=>elX(e)+elW(e))))/2;
+    es.forEach(e=>moveTo(e,cx,elY(e)+elH(e)/2));
+  }));
+  document.getElementById('ap-ar').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls();const maxR=Math.max(...es.map(e=>elX(e)+elW(e)));
+    es.forEach(e=>moveTo(e,maxR-elW(e)/2,elY(e)+elH(e)/2));
+  }));
+  document.getElementById('ap-at').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls();const minY=Math.min(...es.map(e=>elY(e)));
+    es.forEach(e=>moveTo(e,elX(e)+elW(e)/2,minY+elH(e)/2));
+  }));
+  document.getElementById('ap-am').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls();const my=(Math.min(...es.map(e=>elY(e)))+Math.max(...es.map(e=>elY(e)+elH(e))))/2;
+    es.forEach(e=>moveTo(e,elX(e)+elW(e)/2,my));
+  }));
+  document.getElementById('ap-ab').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls();const maxB=Math.max(...es.map(e=>elY(e)+elH(e)));
+    es.forEach(e=>moveTo(e,elX(e)+elW(e)/2,maxB-elH(e)/2));
+  }));
+
+  // Distribute evenly (edge-to-edge equal gaps, outer pair fixed)
+  document.getElementById('ap-dh').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls().slice().sort((a,b)=>elX(a)-elX(b));
+    if(es.length<3)return;
+    const totalSpan=(elX(es[es.length-1])+elW(es[es.length-1]))-(elX(es[0]));
+    const totalW=es.reduce((s,e)=>s+elW(e),0);
+    const gap=(totalSpan-totalW)/(es.length-1);
+    let cur=elX(es[0]);
+    es.forEach(e=>{moveTo(e,cur+elW(e)/2,elY(e)+elH(e)/2);cur+=elW(e)+gap;});
+  }));
+  document.getElementById('ap-dv').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls().slice().sort((a,b)=>elY(a)-elY(b));
+    if(es.length<3)return;
+    const totalSpan=(elY(es[es.length-1])+elH(es[es.length-1]))-(elY(es[0]));
+    const totalH=es.reduce((s,e)=>s+elH(e),0);
+    const gap=(totalSpan-totalH)/(es.length-1);
+    let cur=elY(es[0]);
+    es.forEach(e=>{moveTo(e,elX(e)+elW(e)/2,cur+elH(e)/2);cur+=elH(e)+gap;});
+  }));
+
+  // Set exact spacing
+  document.getElementById('ap-sp-apply').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls();if(es.length<2)return;
+    const gFt=parseFloat(document.getElementById('ap-sp-val').value)||0;
+    const gPx=gFt*S.scale;
+    // Auto-detect axis: is selection bounding box wider or taller?
+    const bx1=Math.min(...es.map(e=>elX(e))),bx2=Math.max(...es.map(e=>elX(e)+elW(e)));
+    const by1=Math.min(...es.map(e=>elY(e))),by2=Math.max(...es.map(e=>elY(e)+elH(e)));
+    const horiz=(bx2-bx1)>=(by2-by1);
+    if(horiz){
+      const sorted=es.slice().sort((a,b)=>elX(a)-elX(b));
+      let cur=elX(sorted[0]);
+      sorted.forEach(e=>{moveTo(e,cur+elW(e)/2,elY(e)+elH(e)/2);cur+=elW(e)+gPx;});
+    }else{
+      const sorted=es.slice().sort((a,b)=>elY(a)-elY(b));
+      let cur=elY(sorted[0]);
+      sorted.forEach(e=>{moveTo(e,elX(e)+elW(e)/2,cur+elH(e)/2);cur+=elH(e)+gPx;});
+    }
+  }));
+
+  // Arrange as grid
+  document.getElementById('ap-gr-apply').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls();if(es.length<2)return;
+    const rows=Math.max(1,parseInt(document.getElementById('ap-gr-rows').value)||2);
+    const cols=Math.max(1,parseInt(document.getElementById('ap-gr-cols').value)||3);
+    const gFt=parseFloat(document.getElementById('ap-gr-gap').value)||0;
+    const gPx=gFt*S.scale;
+    // Sort top-left first
+    const sorted=es.slice().sort((a,b)=>(elY(a)+elX(a))-(elY(b)+elX(b)));
+    const anchorX=elX(sorted[0]),anchorY=elY(sorted[0]);
+    // Use max width/height in selection as cell size
+    const cellW=Math.max(...sorted.map(e=>elW(e)));
+    const cellH=Math.max(...sorted.map(e=>elH(e)));
+    sorted.forEach((e,i)=>{
+      const row=Math.floor(i/cols),col=i%cols;
+      const tx=anchorX+(col*(cellW+gPx))+elW(e)/2;
+      const ty=anchorY+(row*(cellH+gPx))+elH(e)/2;
+      moveTo(e,tx,ty);
+    });
+  }));
+})();
 
 // ── Map opacity overlay ────────────────────────────────────────────────────
 (()=>{
@@ -1474,7 +1677,7 @@ function renderEls(){
     if(t.isLabel){
       const xy=elXY(el),w=el.wFt*S.scale||80,h=28,lrot=el.rot||0;
       const div=document.createElement('div');
-      div.className='el'+(S.selId===el.id?' selected':'');
+      div.className='el'+(S.selIds.has(el.id)?' selected':'');
       div.style.cssText='left:'+xy.x+'px;top:'+xy.y+'px;width:'+w+'px;height:'+h+'px;transform:rotate('+lrot+'deg);';
       div.dataset.id=el.id;
       const inner=document.createElement('div');
@@ -1483,7 +1686,7 @@ function renderEls(){
       txt.style.cssText='color:#fff;font-family:var(--font);font-size:12px;font-weight:600;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.9);user-select:none;';
       txt.textContent=el.labelText||'Label';
       inner.appendChild(txt);
-      if(S.selId===el.id){inner.style.borderColor='var(--acc)';inner.style.boxShadow='0 0 0 2px var(--acc),0 0 14px rgba(244,81,64,0.35)';}
+      if(S.selIds.has(el.id)){inner.style.borderColor='var(--acc)';inner.style.boxShadow='0 0 0 2px var(--acc),0 0 14px rgba(244,81,64,0.35)';}
       const db=document.createElement('button');db.className='rbtn';
       db.style.cssText='width:14px;height:14px;top:2px;left:2px;font-size:12px;background:#ef4444;color:#fff;border-color:#dc2626;line-height:1;display:none;';
       db.innerHTML='x';
@@ -1500,16 +1703,16 @@ function renderEls(){
         const baseAng=Math.atan2(ev.clientY-cwR.top-oy,ev.clientX-cwR.left-ox)*(180/Math.PI),baseRot=el.rot||0;
         let rotating=false;
         const onM=mv=>{const dx=mv.clientX-startX,dy=mv.clientY-startY;if(!rotating){if(dx*dx+dy*dy<25)return;rotating=true;S.isRotating=true;}el.rot=baseRot+(Math.atan2(mv.clientY-cwR.top-oy,mv.clientX-cwR.left-ox)*(180/Math.PI)-baseAng);div.style.transform='rotate('+el.rot+'deg)';};
-        const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);if(rotating){S.isRotating=false;runRules();}else{S.selId=el.id;renderEls();editEl(el);}};
+        const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);if(rotating){S.isRotating=false;runRules();}else{S.selId=el.id;S.selIds=new Set([el.id]);renderEls();editEl(el);}};
         document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
       });
       inner.appendChild(rb);
-      if(S.selId===el.id){db.style.display='flex';rb.style.display='flex';}
+      if(S.selIds.has(el.id)){db.style.display='flex';rb.style.display='flex';}
       div.addEventListener('mouseenter',()=>{db.style.display='flex';rb.style.display='flex';});
-      div.addEventListener('mouseleave',()=>{if(S.selId!==el.id){db.style.display='none';rb.style.display='none';}});
+      div.addEventListener('mouseleave',()=>{if(!S.selIds.has(el.id)){db.style.display='none';rb.style.display='none';}});
       div.appendChild(inner);
       makeDrag(div,el);
-      div.addEventListener('click',ev=>{if(ev.target===db||ev.target===rb)return;if(div._dragMoved)return;S.selId=el.id;renderEls();editEl(el);});
+      div.addEventListener('click',ev=>{if(ev.target===db||ev.target===rb)return;if(div._dragMoved)return;if(ev.shiftKey){if(S.selIds.has(el.id)){S.selIds.delete(el.id);S.selId=S.selIds.size?[...S.selIds][S.selIds.size-1]:null;}else{S.selIds.add(el.id);S.selId=el.id;}renderEls();updateAlignBtn();return;}S.selId=el.id;S.selIds=new Set([el.id]);renderEls();updateAlignBtn();editEl(el);});
       elDiv.appendChild(div);
       return;
     }
@@ -1520,7 +1723,7 @@ function renderEls(){
     const btnOff=3;
 
     const div=document.createElement('div');
-    div.className='el'+(el.hr?' hr':el.sr?' sr':'')+(S.selId===el.id?' selected':'');
+    div.className='el'+(el.hr?' hr':el.sr?' sr':'')+(S.selIds.has(el.id)?' selected':'');
     div.style.cssText=`left:${xy.x}px;top:${xy.y}px;width:${w}px;height:${h}px;transform:rotate(${rot}deg);`;
     div.dataset.id=el.id;
 
@@ -1573,7 +1776,7 @@ function renderEls(){
         if(ev.button!==0)return;
         ev.stopPropagation();ev.preventDefault();
         pushUndo();S.els=S.els.filter(x=>x.id!==el.id);
-        if(S.selId===el.id)S.selId=null;
+        if(S.selId===el.id)S.selId=null;S.selIds.delete(el.id);updateAlignBtn();
         renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
       });
       wrap.appendChild(db);
@@ -1589,13 +1792,13 @@ function renderEls(){
         const baseAng=Math.atan2(ev.clientY-cwR.top-oy,ev.clientX-cwR.left-ox)*(180/Math.PI),baseRot=el.rot||0;
         let rotating=false;
         const onM=mv=>{const dx=mv.clientX-startX,dy=mv.clientY-startY;if(!rotating){if(dx*dx+dy*dy<25)return;rotating=true;S.isRotating=true;}el.rot=baseRot+(Math.atan2(mv.clientY-cwR.top-oy,mv.clientX-cwR.left-ox)*(180/Math.PI)-baseAng);div.style.transform=`rotate(${el.rot}deg)`;};
-        const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);if(rotating){S.isRotating=false;runRules();}else{S.selId=el.id;renderEls();if(el.type==='ingress')openIngressDetails(el.id);else editEl(el);}};
+        const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);if(rotating){S.isRotating=false;runRules();}else{S.selId=el.id;S.selIds=new Set([el.id]);updateAlignBtn();renderEls();if(el.type==='ingress')openIngressDetails(el.id);else editEl(el);}};
         document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
       });
       wrap.appendChild(rb);
       let _rbHvTm=null;
       const _rbShow=()=>{clearTimeout(_rbHvTm);rb.style.display='flex';};
-      const _rbHide=()=>{_rbHvTm=setTimeout(()=>{if(S.selId!==el.id)rb.style.display='none';},150);};
+      const _rbHide=()=>{_rbHvTm=setTimeout(()=>{if(!S.selIds.has(el.id))rb.style.display='none';},150);};
       div.addEventListener('mouseenter',_rbShow);
       div.addEventListener('mouseleave',_rbHide);
       rb.addEventListener('mouseenter',_rbShow);
@@ -1619,8 +1822,9 @@ function renderEls(){
     div.addEventListener('click',ev=>{
       if(ev.target.classList.contains('rbtn'))return;
       if(div._dragMoved)return;
-      if(el.type==='restroom'||el.type==='security'||el.type==='extinguisher'){S.selId=el.id;renderEls();return;}
-      S.selId=el.id;renderEls();
+      if(ev.shiftKey){if(S.selIds.has(el.id)){S.selIds.delete(el.id);S.selId=S.selIds.size?[...S.selIds][S.selIds.size-1]:null;}else{S.selIds.add(el.id);S.selId=el.id;}renderEls();updateAlignBtn();return;}
+      if(el.type==='restroom'||el.type==='security'||el.type==='extinguisher'){S.selId=el.id;S.selIds=new Set([el.id]);updateAlignBtn();renderEls();return;}
+      S.selId=el.id;S.selIds=new Set([el.id]);updateAlignBtn();renderEls();
       if(el.type==='ingress')openIngressDetails(el.id);else editEl(el);
     });
     elDiv.appendChild(div);
@@ -1814,7 +2018,7 @@ function openIngressDetails(elId){
     el.access=document.getElementById('ingress-access').value||undefined;
     renderSafetyCompliance();runRules();
   },'Save',{onDelete:doDelete});
-  mOnClose=()=>{S.selId=null;renderEls();};
+  mOnClose=()=>{S.selId=null;S.selIds=new Set();updateAlignBtn();renderEls();};
 }
 // ── Safety & Compliance sidebar ────────────────────────────────────────────
 function renderSafetyCompliance(){
@@ -2186,7 +2390,7 @@ function editEl(el){
   }else{
     modal(t.lbl,'Placed as a '+t.lbl+' marker. No additional configuration available.','',(()=>{}),'Close',{noCancel:true,onDelete:doDelete});
   }
-  mOnClose=()=>{S.selId=null;renderEls();};
+  mOnClose=()=>{S.selId=null;S.selIds=new Set();updateAlignBtn();renderEls();};
 }
 
 // ── Tool management ────────────────────────────────────────────────────────
@@ -2249,7 +2453,7 @@ cw.addEventListener('mousedown',e=>{
     redrawZones();return;
   }
   if(PLACEABLE.includes(S.tool)){place(S.tool,x,y);return;}
-  if(S.tool==='select'){S.selId=null;renderEls();}
+  if(S.tool==='select'){S.selId=null;S.selIds=new Set();updateAlignBtn();renderEls();}
 });
 
 cw.addEventListener('mousemove',e=>{
@@ -2296,7 +2500,7 @@ document.addEventListener('keydown',e=>{
     if(S.selId!==null){
       pushUndo();const found=S.els.find(x=>x.id===S.selId);
       if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==S.selId);}
-      S.els=S.els.filter(x=>x.id!==S.selId);S.selId=null;
+      S.els=S.els.filter(x=>x.id!==S.selId);S.selIds.delete(S.selId);S.selId=S.selIds.size?[...S.selIds][S.selIds.size-1]:null;updateAlignBtn();
       renderVendorList();renderEls();renderVenueInfra();renderSafetyCompliance();runRules();
     }
   }
