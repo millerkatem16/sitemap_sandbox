@@ -779,7 +779,7 @@ function undo(){
   if(snap.colorTags)S.colorTags=snap.colorTags;
   renderEls();renderColorKey();redrawZones();drawAda();drawDims();renderVenueInfra();renderSafetyCompliance();renderVendorList();runRules();
 }
-document.getElementById('bselect').addEventListener('click',()=>setTool('select'));
+document.getElementById('bselect').addEventListener('click',()=>{setTool('select');if(S.selIds.size){S.selId=null;S.selIds=new Set();updateAlignBtn();renderEls();}});
 document.getElementById('bundo').addEventListener('click',undo);
 document.getElementById('bmsel').addEventListener('click',()=>setTool('multiselect'));
 
@@ -4166,6 +4166,9 @@ window.initMap=function(){
     tilt:0
   });
 
+  google.maps.event.addListener(gmap,'click',()=>{
+    if(S.tool==='select'&&S.selIds.size){S.selId=null;S.selIds=new Set();updateAlignBtn();renderEls();}
+  });
   google.maps.event.addListener(gmap,'idle',()=>{
     const c=gmap.getCenter();
     S.mapCenter={lat:c.lat(),lng:c.lng()};
