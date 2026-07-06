@@ -2503,7 +2503,7 @@ cw.addEventListener('mouseup',e=>{
 document.addEventListener('mouseup',()=>{if(S.tool==='dim')dimStart=null;});
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){if(document.getElementById('mo').style.display!=='none'){closeModal();return;}if(S.tool!=='select')setTool('select');return;}
+  if(e.key==='Escape'){if(document.getElementById('mo').style.display!=='none'){closeModal();return;}if(S.tool!=='select')setTool('select');S.selId=null;S.selIds=new Set();updateAlignBtn();renderEls();return;}
   const tag=document.activeElement&&document.activeElement.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
   if(e.key==='Delete'||e.key==='Backspace'){
     if(S.selId!==null){
