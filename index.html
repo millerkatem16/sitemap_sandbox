@@ -3413,7 +3413,7 @@ function startMapCapture(){
     const ctx=selCv.getContext('2d');
     let dragging=false,sx=0,sy=0,ex=0,ey=0;
     let dashOffset=0,rafId=null;
-    let capturedDataUrl=null,capBgDataUrl=null,capX=0,capY=0,capW=0,capH=0;
+    let capturedDataUrl=null,capBgDataUrl=null,bgLargeDataUrl=null,capX=0,capY=0,capW=0,capH=0;
 
     function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
 
@@ -3467,6 +3467,7 @@ function startMapCapture(){
       await new Promise(res=>setTimeout(res,80));
       const relX=r.x-cvRect.left,relY=r.y-cvRect.top;
       const outW=Math.round(r.w),outH=Math.round(r.h);
+      const diagPx=Math.ceil(Math.sqrt(outW*outW+outH*outH)); // covers full rotation at any angle
 
       // Composite canvas at 2× for retina-quality PDF output
       const CS=2;
@@ -3479,17 +3480,25 @@ function startMapCapture(){
       try{
         const ctr=pixelToLatLng(relX+outW/2,relY+outH/2);
         const zoom=Math.round(gmap.getZoom());
-        const maxD=640,ratio=Math.min(1,Math.min(maxD/outW,maxD/outH));
+        const maxD=640,ratio=Math.min(1,maxD/diagPx);
         const smZoom=ratio<1?Math.max(0,Math.floor(zoom+Math.log2(ratio))):zoom;
-        const smW=Math.max(1,Math.round(outW*Math.pow(2,smZoom-zoom))),smH=Math.max(1,Math.round(outH*Math.pow(2,smZoom-zoom)));
-        const smUrl=`https://maps.googleapis.com/maps/api/staticmap?center=${ctr.lat},${ctr.lng}&zoom=${smZoom}&size=${smW}x${smH}&maptype=satellite&key=${mapsApiKey}`;
+        const smSide=Math.max(1,Math.round(diagPx*Math.pow(2,smZoom-zoom)));
+        const smUrl=`https://maps.googleapis.com/maps/api/staticmap?center=${ctr.lat},${ctr.lng}&zoom=${smZoom}&size=${smSide}x${smSide}&maptype=satellite&key=${mapsApiKey}`;
         const resp=await fetch(smUrl,{mode:'cors'});
         if(resp.ok){
           const blob=await resp.blob();
           const objUrl=URL.createObjectURL(blob);
           await new Promise(res=>{
             const img=new Image();
-            img.onload=()=>{cctx.drawImage(img,0,0,outW*CS,outH*CS);URL.revokeObjectURL(objUrl);bgDone=true;res();};
+            img.onload=()=>{
+              // Center-crop the diag image down to outW×outH for the preview
+              const selW=Math.round(outW*Math.pow(2,smZoom-zoom)),selH=Math.round(outH*Math.pow(2,smZoom-zoom));
+              cctx.drawImage(img,(smSide-selW)/2,(smSide-selH)/2,selW,selH,0,0,outW*CS,outH*CS);
+              // Store full diag image so exportPDF can rotate it without black corners
+              const bgC=document.createElement('canvas');bgC.width=img.naturalWidth;bgC.height=img.naturalHeight;
+              bgC.getContext('2d').drawImage(img,0,0);bgLargeDataUrl=bgC.toDataURL('image/jpeg',0.92);
+              URL.revokeObjectURL(objUrl);bgDone=true;res();
+            };
             img.onerror=()=>{URL.revokeObjectURL(objUrl);res();};
             img.src=objUrl;
           });
@@ -3553,7 +3562,7 @@ function startMapCapture(){
       if(!capturedDataUrl)return;
       cleanup();
       const c=gmap.getCenter();
-      resolve({dataUrl:capBgDataUrl||capturedDataUrl,x:capX,y:capY,w:capW,h:capH,frozenCenter:{lat:c.lat(),lng:c.lng()},frozenZoom:gmap.getZoom()});
+      resolve({dataUrl:capBgDataUrl||capturedDataUrl,bgLarge:bgLargeDataUrl,frozenRot:S.mapRot,x:capX,y:capY,w:capW,h:capH,frozenCenter:{lat:c.lat(),lng:c.lng()},frozenZoom:gmap.getZoom()});
     }
     function onRetry(){showInstructions();dragging=false;}
     function onEsc(){cleanup();reject('cancelled');}
@@ -3622,7 +3631,7 @@ async function exportPDF(capture){
   const{jsPDF}=window.jspdf;
 
   // ── 1. Map image from capture ─────────────────────────────────────────────
-  const mapDataUrl=capture.dataUrl;
+  let mapDataUrl=capture.dataUrl;
   const captureX=capture.x,captureY=capture.y; // cv-area-relative offsets (CSS px)
   const captureW=capture.w,captureH=capture.h; // CSS px dimensions
 
@@ -3653,6 +3662,24 @@ async function exportPDF(capture){
   const fitH=imgW/asp;
   if(fitH>imgH){imgW=imgH*asp;}else{imgH=fitH;}
   const dateStr=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const frozenRot=capture.frozenRot||0;
+  // Stage 4: pre-render rotated satellite background so shapes + bg rotate together
+  if(frozenRot&&capture.bgLarge){
+    const bgCS=2;
+    const bgLargeCssPx=Math.ceil(Math.sqrt(captureW*captureW+captureH*captureH));
+    const rotComp=document.createElement('canvas');
+    rotComp.width=captureW*bgCS;rotComp.height=captureH*bgCS;
+    const rctx=rotComp.getContext('2d');
+    rctx.fillStyle='#1c2b2c';rctx.fillRect(0,0,captureW*bgCS,captureH*bgCS);
+    const bgImg=await new Promise(res=>{const img=new Image();img.onload=()=>res(img);img.src=capture.bgLarge;});
+    rctx.save();
+    rctx.translate(captureW*bgCS/2,captureH*bgCS/2);
+    rctx.rotate(frozenRot*Math.PI/180);
+    const bgPx=bgLargeCssPx*bgCS;
+    rctx.drawImage(bgImg,-bgPx/2,-bgPx/2,bgPx,bgPx);
+    rctx.restore();
+    mapDataUrl=rotComp.toDataURL('image/jpeg',0.93);
+  }
 
   // ── 4. Title bar ─────────────────────────────────────────────────────────
   pdf.setFillColor(42,95,100);pdf.rect(0,0,PW*0.6,titleH,'F');
@@ -3679,11 +3706,12 @@ async function exportPDF(capture){
   // ── 6. Coordinate helpers ─────────────────────────────────────────────────
   // ll2pdf maps lat/lng → PDF coordinates using live map pixel positions
   // (captureX,captureY) is the cv-area-relative origin of the captured region
+  const _rotRad=frozenRot*Math.PI/180,_mapCX=imgX+imgW/2,_mapCY=imgY+imgH/2;
   function ll2pdf(lat,lng){
-    const screenPt=latLngToPixelFrozen(lat,lng,capture.frozenCenter,capture.frozenZoom); // CSS px within cv-area, frozen at capture time
-    const relX=screenPt.x-captureX;
-    const relY=screenPt.y-captureY;
-    return{x:imgX+relX*(imgW/captureW),y:imgY+relY*(imgH/captureH)};
+    const screenPt=latLngToPixelFrozen(lat,lng,capture.frozenCenter,capture.frozenZoom);
+    const dx=(screenPt.x-captureX-(captureW/2))*(imgW/captureW);
+    const dy=(screenPt.y-captureY-(captureH/2))*(imgH/captureH);
+    return{x:_mapCX+dx*Math.cos(_rotRad)-dy*Math.sin(_rotRad),y:_mapCY+dx*Math.sin(_rotRad)+dy*Math.cos(_rotRad)};
   }
   // S.scale = CSS px per foot on the live canvas
   // captureW CSS px maps to imgW mm, so 1 ft = S.scale*(imgW/captureW) mm
@@ -3766,7 +3794,7 @@ async function exportPDF(capture){
     else if(el.type==='ingress'){[fr,fg,fb]=[34,197,94];[dr,dg,db]=[22,163,74];}
     else{const hexCol=el.colorTag?(S.colorTags.find(ct=>ct.id===el.colorTag)||{hex:t.color}).hex:(el.color||t.color);[fr,fg,fb]=hexRgb(hexCol);dr=Math.max(0,fr-50);dg=Math.max(0,fg-50);db=Math.max(0,fb-50);}
     // Draw element
-    const rotDeg=el.rot||0;
+    const rotDeg=(el.rot||0)+frozenRot;
     const code=elCode(el,tnMap);
     if(t.noRender)return;
     if(t.isLabel)return;
@@ -3845,7 +3873,7 @@ async function exportPDF(capture){
     const ltxt=el.labelText||'';if(!ltxt)return;
     pdf.setFont('helvetica','bold');pdf.setFontSize(10);
     const lw=pdf.getTextWidth(ltxt)+6;
-    const rotDeg=el.rot||0;
+    let rotDeg=((el.rot||0)%180+180)%180;if(rotDeg>90)rotDeg-=180;
     const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
     const hw=lw/2,hh=3;
     const corners=[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([dx,dy])=>({x:lp.x+dx*cos2-dy*sin2,y:lp.y+dx*sin2+dy*cos2}));
