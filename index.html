@@ -3467,7 +3467,8 @@ function startMapCapture(){
       const relX=r.x-cvRect.left,relY=r.y-cvRect.top;
       const outW=Math.round(r.w),outH=Math.round(r.h);
       const diagPx=Math.ceil(Math.sqrt(outW*outW+outH*outH)); // covers full rotation at any angle
-      const cwOffX=(cw.clientWidth-cvArea.clientWidth)/2,cwOffY=(cw.clientHeight-cvArea.clientHeight)/2;
+      const _mrw=document.getElementById('map-rot-wrap');
+      const cwOffX=-_mrw.offsetLeft,cwOffY=-_mrw.offsetTop;
 
       // Composite canvas at 2× for retina-quality PDF output
       const CS=2;
