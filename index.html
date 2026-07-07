@@ -3412,7 +3412,7 @@ function startMapCapture(){
     const ctx=selCv.getContext('2d');
     let dragging=false,sx=0,sy=0,ex=0,ey=0;
     let dashOffset=0,rafId=null;
-    let capturedDataUrl=null,capBgDataUrl=null,bgLargeDataUrl=null,capX=0,capY=0,capW=0,capH=0;
+    let capturedDataUrl=null,capBgDataUrl=null,bgLargeDataUrl=null,capX=0,capY=0,capW=0,capH=0,capSelCwX=0,capSelCwY=0;
 
     function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
 
@@ -3679,7 +3679,7 @@ function startMapCapture(){
       })();
       {const _dc=vCanvas.getContext('2d');_dc.save();_dc.strokeStyle='#ff00ff';_dc.lineWidth=4;const _ccx=vCanvas.width/2,_ccy=vCanvas.height/2;_dc.beginPath();_dc.moveTo(_ccx-40,_ccy);_dc.lineTo(_ccx+40,_ccy);_dc.moveTo(_ccx,_ccy-40);_dc.lineTo(_ccx,_ccy+40);_dc.stroke();_dc.strokeStyle='#00ffff';_dc.lineWidth=2;_dc.strokeRect(0,0,vCanvas.width,vCanvas.height);_dc.restore();}
       capturedDataUrl=vCanvas.toDataURL('image/jpeg',0.93);
-      capX=relX;capY=relY;capW=outW;capH=outH;
+      capX=relX;capY=relY;capW=outW;capH=outH;capSelCwX=selCwX;capSelCwY=selCwY;
       prevImg.src=capturedDataUrl;
       instrCard.style.display='none';
       prevWrap.style.display='block';
@@ -3704,7 +3704,7 @@ function startMapCapture(){
       if(!capturedDataUrl)return;
       cleanup();
       const c=gmap.getCenter();
-      resolve({dataUrl:capBgDataUrl||capturedDataUrl,bgLarge:bgLargeDataUrl,frozenRot:S.mapRot,x:capX,y:capY,w:capW,h:capH,frozenCenter:{lat:c.lat(),lng:c.lng()},frozenZoom:gmap.getZoom()});
+      resolve({dataUrl:capBgDataUrl||capturedDataUrl,bgLarge:bgLargeDataUrl,frozenRot:S.mapRot,x:capX,y:capY,w:capW,h:capH,selCwX:capSelCwX,selCwY:capSelCwY,frozenCenter:{lat:c.lat(),lng:c.lng()},frozenZoom:gmap.getZoom()});
     }
     function onRetry(){showInstructions();dragging=false;}
     function onEsc(){cleanup();reject('cancelled');}
@@ -3852,11 +3852,10 @@ async function exportPDF(capture){
   // ll2pdf maps lat/lng → PDF coordinates using live map pixel positions
   // (captureX,captureY) is the cv-area-relative origin of the captured region
   const _rotRad=frozenRot*Math.PI/180,_mapCX=imgX+imgW/2,_mapCY=imgY+imgH/2;
-  const _cwOffX=(cw.clientWidth-cvArea.clientWidth)/2,_cwOffY=(cw.clientHeight-cvArea.clientHeight)/2;
   function ll2pdf(lat,lng){
     const screenPt=latLngToPixelFrozen(lat,lng,capture.frozenCenter,capture.frozenZoom);
-    const dx=(screenPt.x-_cwOffX-captureX-(captureW/2))*(imgW/captureW);
-    const dy=(screenPt.y-_cwOffY-captureY-(captureH/2))*(imgH/captureH);
+    const dx=(screenPt.x-capture.selCwX)*(imgW/captureW);
+    const dy=(screenPt.y-capture.selCwY)*(imgH/captureH);
     return{x:_mapCX+dx*Math.cos(_rotRad)-dy*Math.sin(_rotRad),y:_mapCY+dx*Math.sin(_rotRad)+dy*Math.cos(_rotRad)};
   }
   // S.scale = CSS px per foot on the live canvas
