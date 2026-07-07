@@ -68,6 +68,9 @@ canvas{position:absolute;inset:0;pointer-events:none}
 #map-overlay{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;background:#000;opacity:0.25;pointer-events:none}
 #map-rot-wrap{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:center center;transform:rotate(0deg);}
 #compass-widget{position:absolute;bottom:140px;right:10px;z-index:9;display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:auto;}
+#map-zoom-ctrl{position:absolute;bottom:16px;right:10px;z-index:9;display:flex;flex-direction:column;gap:2px;pointer-events:auto;}
+#map-zoom-ctrl button{width:32px;height:32px;background:rgba(20,32,33,0.88);border:1px solid rgba(255,255,255,0.18);border-radius:4px;color:#e2e8f0;font-size:22px;line-height:1;cursor:pointer;font-family:var(--mono);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,0.5);}
+#map-zoom-ctrl button:hover{background:rgba(50,40,90,0.9);}
 #compass-dial{width:44px;height:44px;border-radius:50%;background:rgba(20,32,33,0.88);border:1.5px solid rgba(255,255,255,0.18);cursor:grab;position:relative;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(0,0,0,0.5);}
 #compass-dial:active{cursor:grabbing;}
 #compass-needle{position:absolute;top:50%;left:50%;width:3px;height:17px;margin-top:-17px;margin-left:-1.5px;transform-origin:50% 100%;background:linear-gradient(to bottom,#ef4444 55%,rgba(200,200,210,0.5) 55%);border-radius:2px 2px 1px 1px;}
@@ -481,6 +484,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
     <input id="compass-angle-inp" type="number" min="-360" max="720" step="1">
     <button id="compass-reset" title="Reset to North">⟳ North</button>
   </div>
+  <div id="map-zoom-ctrl"><button id="mz-in" title="Zoom in">+</button><button id="mz-out" title="Zoom out">−</button></div>
   </div>
   <div id="align-pop" style="display:none;position:fixed;z-index:9100;background:#1e1b35;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px 16px;width:340px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:var(--font);color:#e2e8f0;box-sizing:border-box;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -1055,7 +1059,7 @@ function applyMapRot(deg,animate){
   let sdrActive=false,sdrX=0,sdrY=0,sdrStartRot=0,sdrCommitted=false;
   document.addEventListener('mousedown',ev=>{
     if(!ev.shiftKey||ev.button!==0||S.tool!=='select')return;
-    if(ev.target.closest('.el,#canvas-action-ctrl,#canvas-tool-ctrl,#opacity-ctrl,#compass-widget,#align-pop'))return;
+    if(ev.target.closest('.el,#canvas-action-ctrl,#canvas-tool-ctrl,#opacity-ctrl,#compass-widget,#map-zoom-ctrl,#align-pop'))return;
     const cvEl=document.getElementById('cv-area');
     if(!cvEl||!cvEl.contains(ev.target))return;
     ev.preventDefault();
@@ -1082,7 +1086,7 @@ function applyMapRot(deg,animate){
   document.addEventListener('mousedown',ev=>{
     if(ev.button!==0||ev.shiftKey)return;
     if(S.tool!=='select')return;
-    if(ev.target.closest('.el,#canvas-action-ctrl,#canvas-tool-ctrl,#opacity-ctrl,#compass-widget,#align-pop'))return;
+    if(ev.target.closest('.el,#canvas-action-ctrl,#canvas-tool-ctrl,#opacity-ctrl,#compass-widget,#map-zoom-ctrl,#align-pop'))return;
     const cvEl=document.getElementById('cv-area');
     if(!cvEl||!cvEl.contains(ev.target))return;
     panActive=true;panMoved=false;startX=lastX=ev.clientX;startY=lastY=ev.clientY;
@@ -1102,6 +1106,12 @@ function applyMapRot(deg,animate){
     gmap.panBy(-dx,-dy);
   });
   document.addEventListener('mouseup',()=>{panActive=false;panMoved=false;});
+})();
+
+// Custom zoom control (+/-)
+(()=>{
+  document.getElementById('mz-in').addEventListener('click',()=>{if(gmap)gmap.setZoom(gmap.getZoom()+1);});
+  document.getElementById('mz-out').addEventListener('click',()=>{if(gmap)gmap.setZoom(gmap.getZoom()-1);});
 })();
 
 // ── Map opacity overlay ────────────────────────────────────────────────────
@@ -4318,8 +4328,8 @@ window.initMap=function(){
     zoom:S.mapZoom,
     mapTypeId:'satellite',
     disableDefaultUI:true,
-    zoomControl:true,
-    zoomControlOptions:{position:google.maps.ControlPosition.RIGHT_BOTTOM},
+    zoomControl:false,
+    scrollwheel:true,
     gestureHandling:'greedy',
     draggable:false,
     tilt:0
