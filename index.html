@@ -3509,6 +3509,7 @@ function startMapCapture(){
 
       // 2. Canvas vector overlay — zones, elements, labels in frozen coordinate space.
       // (dom-to-image removed: it cannot apply ancestor CSS rotation from #map-rot-wrap)
+      console.log('[DEBUG capture]','mapRot:',S.mapRot,'bgLarge set:',!!bgLargeDataUrl,'outW:',outW,'outH:',outH,'smZoom:',smZoom,'zoom:',zoom);
       const vCanvas=(S.mapRot&&bgLargeDataUrl)?await buildRotatedBg(bgLargeDataUrl,outW,outH,S.mapRot,CS):comp;
       const vctx=vCanvas.getContext('2d');
       (()=>{
@@ -3764,7 +3765,8 @@ async function buildRotatedBg(srcDataUrl,captureW,captureH,mapRot,bgCS){
   overComp.width=bgPxSide;overComp.height=bgPxSide;
   const octx=overComp.getContext('2d');
   octx.fillStyle='#1c2b2c';octx.fillRect(0,0,bgPxSide,bgPxSide);
-  const bgImg=await new Promise((res,rej)=>{const img=new Image();img.onload=()=>res(img);img.onerror=()=>rej();img.src=srcDataUrl;}).catch(()=>null);
+  const bgImg=await new Promise((res,rej)=>{const img=new Image();img.onload=()=>res(img);img.onerror=()=>rej();img.src=srcDataUrl;}).catch(err=>{console.error('[DEBUG bgLarge load failed]',err);return null;});
+  console.log('[DEBUG buildRotatedBg]','bgImg loaded:',!!bgImg,'bgImg naturalWidth:',bgImg?.naturalWidth,'bgPxSide:',bgPxSide,'cropW:',captureW*bgCS,'cropH:',captureH*bgCS);
   if(bgImg){octx.save();octx.translate(bgPxSide/2,bgPxSide/2);octx.rotate(mapRot*Math.PI/180);octx.drawImage(bgImg,-bgPxSide/2,-bgPxSide/2,bgPxSide,bgPxSide);octx.restore();}
   const cropComp=document.createElement('canvas');
   cropComp.width=captureW*bgCS;cropComp.height=captureH*bgCS;
