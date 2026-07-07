@@ -3517,7 +3517,7 @@ function startMapCapture(){
           height:outH,
           scale:CS,
           style:{
-            transform:`translate(${-(relX+cwOffX)}px,${-(relY+cwOffY)}px)`,
+            transform:(()=>{const _r=-S.mapRot*Math.PI/180,_rx=relX+cwOffX,_ry=relY+cwOffY;const _lx=_rx*Math.cos(_r)-_ry*Math.sin(_r),_ly=_rx*Math.sin(_r)+_ry*Math.cos(_r);return`translate(${-_lx}px,${-_ly}px)`;})(),
             transformOrigin:'0 0',
             width:cw.offsetWidth+'px',
             height:cw.offsetHeight+'px',
