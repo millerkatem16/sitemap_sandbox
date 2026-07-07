@@ -3518,7 +3518,7 @@ function startMapCapture(){
       (()=>{
         // ll2cv: lat/lng → canvas pixel on vCanvas (outW*CS × outH*CS), applying S.mapRot rotation
         const _r=S.mapRot*Math.PI/180,_cos=Math.cos(_r),_sin=Math.sin(_r);
-        const _cx=outW*CS/2,_cy=outH*CS/2;
+        const _cx=vCanvas.width/2,_cy=vCanvas.height/2;
         const _fc={lat:gmap.getCenter().lat(),lng:gmap.getCenter().lng()},_fz=gmap.getZoom();
         console.log('[DEBUG zoom]','raw gmap.getZoom():',gmap.getZoom(),'rounded zoom used for fetch:',Math.round(gmap.getZoom()),'_fz used in ll2cv:',_fz,'fractional?',_fz!==Math.round(_fz));
         function ll2cv(lat,lng){
