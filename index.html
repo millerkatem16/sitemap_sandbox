@@ -3610,7 +3610,7 @@ function startMapCapture(){
           if(t.noRender||t.isLabel)return;
           if(t.utility&&S.hideUtils)return;
           const center=ll2cv(el.lat,el.lng);
-          if(!_elTraceLogged){_elTraceLogged=true;const _sp=latLngToPixelFrozen(el.lat,el.lng,_fc,_fz);const _dxr=_sp.x-cwOffX-relX-outW/2;const _dyr=_sp.y-cwOffY-relY-outH/2;console.log('[DEBUG element trace]',{elId:el.id,elType:el.type,elLat:el.lat,elLng:el.lng,sp:{x:_sp.x,y:_sp.y},relX,relY,cwOffX,cwOffY,outW,outH,CS,dx_raw:_dxr,dy_raw:_dyr,dx_scaled:_dxr*CS,dy_scaled:_dyr*CS,mapRot:S.mapRot,finalPos:{x:center.x,y:center.y},canvasCenter:{x:vCanvas.width/2,y:vCanvas.height/2}});}
+          if(!_elTraceLogged){_elTraceLogged=true;const _sp=latLngToPixelFrozen(el.lat,el.lng,_fc,_fz);const _dxr=_sp.x-cwOffX-relX-outW/2;const _dyr=_sp.y-cwOffY-relY-outH/2;console.log('[DEBUG element trace]',JSON.stringify({elId:el.id,elLat:el.lat,elLng:el.lng,spX:_sp.x,spY:_sp.y,relX,relY,cwOffX,cwOffY,outW,outH,CS,dx_raw:_dxr,dy_raw:_dyr,dx_scaled:_dxr*CS,dy_scaled:_dyr*CS,mapRot:S.mapRot,finalX:center.x,finalY:center.y,canvasCenterX:vCanvas.width/2,canvasCenterY:vCanvas.height/2},null,2));}
           const wPx=el.wFt*ftToPx,hPx=el.hFt*ftToPx;
           const rotDeg=(el.rot||0)+S.mapRot;
           const rad2=rotDeg*Math.PI/180,cos2=Math.cos(rad2),sin2=Math.sin(rad2);
