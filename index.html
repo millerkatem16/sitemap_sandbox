@@ -3484,6 +3484,7 @@ function startMapCapture(){
         const smZoom=ratio<1?Math.max(0,Math.floor(zoom+Math.log2(ratio))):zoom;
         const smSide=Math.max(1,Math.round(diagPx*Math.pow(2,smZoom-zoom)));
         const smUrl=`https://maps.googleapis.com/maps/api/staticmap?center=${ctr.lat},${ctr.lng}&zoom=${smZoom}&size=${smSide}x${smSide}&maptype=satellite&key=${mapsApiKey}`;
+        console.log('[DEBUG] Static Maps fetch URL:',smUrl,'zoom:',zoom,'smZoom:',smZoom,'smSide:',smSide,'diagPx:',diagPx);
         const resp=await fetch(smUrl,{mode:'cors'});
         if(resp.ok){
           const blob=await resp.blob();
@@ -3509,7 +3510,7 @@ function startMapCapture(){
 
       // 2. Canvas vector overlay — zones, elements, labels in frozen coordinate space.
       // (dom-to-image removed: it cannot apply ancestor CSS rotation from #map-rot-wrap)
-      console.log('[DEBUG capture]','mapRot:',S.mapRot,'bgLarge set:',!!bgLargeDataUrl,'outW:',outW,'outH:',outH,'smZoom:',smZoom,'zoom:',zoom);
+      console.log('[DEBUG capture]','mapRot:',S.mapRot,'bgLarge set:',!!bgLargeDataUrl,'outW:',outW,'outH:',outH);
       const vCanvas=(S.mapRot&&bgLargeDataUrl)?await buildRotatedBg(bgLargeDataUrl,outW,outH,S.mapRot,CS):comp;
       const vctx=vCanvas.getContext('2d');
       (()=>{
