@@ -3670,6 +3670,7 @@ function startMapCapture(){
           vctx.save();vctx.font=`bold ${lfs}px sans-serif`;vctx.fillStyle='rgb(255,255,255)';vctx.textAlign='center';vctx.textBaseline='middle';vctx.translate(lp.x,lp.y);vctx.rotate(lrad);vctx.fillText(ltxt,0,0);vctx.restore();
         });
       })();
+      {const _dc=vCanvas.getContext('2d');_dc.save();_dc.strokeStyle='#ff00ff';_dc.lineWidth=4;const _ccx=vCanvas.width/2,_ccy=vCanvas.height/2;_dc.beginPath();_dc.moveTo(_ccx-40,_ccy);_dc.lineTo(_ccx+40,_ccy);_dc.moveTo(_ccx,_ccy-40);_dc.lineTo(_ccx,_ccy+40);_dc.stroke();_dc.strokeStyle='#00ffff';_dc.lineWidth=2;_dc.strokeRect(0,0,vCanvas.width,vCanvas.height);_dc.restore();}
       capturedDataUrl=vCanvas.toDataURL('image/jpeg',0.93);
       capX=relX;capY=relY;capW=outW;capH=outH;
       prevImg.src=capturedDataUrl;
