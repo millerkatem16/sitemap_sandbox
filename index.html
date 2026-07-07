@@ -455,9 +455,9 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div id="grid"></div>
       <canvas id="zc"></canvas><canvas id="bc"></canvas><canvas id="dc"></canvas>
       <div id="el"></div>
-      <div id="marquee-rect" style="position:absolute;display:none;border:1.5px dashed rgba(244,81,64,0.65);background:rgba(244,81,64,0.07);pointer-events:none;z-index:800;box-sizing:border-box;"></div>
     </div>
     </div>
+    <div id="marquee-rect" style="position:absolute;display:none;border:1.5px dashed rgba(244,81,64,0.65);background:rgba(244,81,64,0.07);pointer-events:none;z-index:9;box-sizing:border-box;"></div>
     <div id="onboard-card"><i class="ti ti-calendar-star" id="onboard-icon"></i><div id="onboard-heading">Let's Get Started!</div><div id="onboard-sub"><span>Search your event venue or address or choose from your saved events.</span><span id="onboard-sub2">Then begin placing elements on your event site!</span></div><button id="onboard-dismiss">Dismiss</button></div>
     <div id="canvas-tool-ctrl">
       <button class="ctc-btn" id="ctc-measure" title="Measure distance"><i class="ti ti-ruler-2"></i><span>Measure</span></button>
@@ -835,18 +835,17 @@ function updateAlignBtn(){
     if(ev.target.closest('.el'))return;
     const cvR=cvArea.getBoundingClientRect();
     if(ev.clientX<cvR.left||ev.clientX>cvR.right||ev.clientY<cvR.top||ev.clientY>cvR.bottom)return;
-    const sp=screenToCanvasPt(ev.clientX,ev.clientY);
-    active=true;sx=sp.x;sy=sp.y;shiftStart=ev.shiftKey;
-    mq.style.left=sx+'px';mq.style.top=sy+'px';mq.style.width='0';mq.style.height='0';mq.style.display='none';
+    active=true;sx=ev.clientX;sy=ev.clientY;shiftStart=ev.shiftKey;
+    mq.style.left=(sx-cvR.left)+'px';mq.style.top=(sy-cvR.top)+'px';mq.style.width='0';mq.style.height='0';mq.style.display='none';
   });
   document.addEventListener('mousemove',ev=>{
     if(!active)return;
-    const cp=screenToCanvasPt(ev.clientX,ev.clientY);
-    const cx=cp.x,cy=cp.y;
+    const cx=ev.clientX,cy=ev.clientY;
     const dx=cx-sx,dy=cy-sy;
     if(!mq.style.display||mq.style.display==='none'){if(Math.abs(dx)<4&&Math.abs(dy)<4)return;}
+    const cvR2=cvArea.getBoundingClientRect();
     mq.style.display='block';
-    mq.style.left=Math.min(sx,cx)+'px';mq.style.top=Math.min(sy,cy)+'px';
+    mq.style.left=(Math.min(sx,cx)-cvR2.left)+'px';mq.style.top=(Math.min(sy,cy)-cvR2.top)+'px';
     mq.style.width=Math.abs(dx)+'px';mq.style.height=Math.abs(dy)+'px';
   });
   document.addEventListener('mouseup',ev=>{
@@ -854,9 +853,10 @@ function updateAlignBtn(){
     const wasDrag=mq.style.display==='block';
     mq.style.display='none';active=false;
     if(!wasDrag)return;
-    const cp=screenToCanvasPt(ev.clientX,ev.clientY);
-    const cx=cp.x,cy=cp.y;
-    const rx1=Math.min(sx,cx),ry1=Math.min(sy,cy),rx2=Math.max(sx,cx),ry2=Math.max(sy,cy);
+    const cx=ev.clientX,cy=ev.clientY;
+    const minSx=Math.min(sx,cx),minSy=Math.min(sy,cy),maxSx=Math.max(sx,cx),maxSy=Math.max(sy,cy);
+    const corners=[screenToCanvasPt(minSx,minSy),screenToCanvasPt(maxSx,minSy),screenToCanvasPt(minSx,maxSy),screenToCanvasPt(maxSx,maxSy)];
+    const rx1=Math.min(...corners.map(p=>p.x)),ry1=Math.min(...corners.map(p=>p.y)),rx2=Math.max(...corners.map(p=>p.x)),ry2=Math.max(...corners.map(p=>p.y));
     if(!shiftStart){S.selIds=new Set();S.selId=null;}
     S.els.forEach(el=>{
       const ex=elX(el),ey=elY(el),ew=elW(el),eh=elH(el);
@@ -4319,6 +4319,7 @@ window.initMap=function(){
   });
 
   setupMapRotLayer();
+  sz();
   applyMapRot(S.mapRot||0);
 };
 
