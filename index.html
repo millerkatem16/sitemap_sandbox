@@ -3510,6 +3510,7 @@ function startMapCapture(){
 
       // 2. dom-to-image-more: capture #cw (all SITEMAP overlays — zc, bc, dc, #el)
       // Transform crops to the user's selection region; filter removes non-visual chrome
+      let _domOverlayUrl=null;
       try{
         const pngUrl=await domtoimage.toPng(cw,{
           width:outW,
@@ -3524,6 +3525,7 @@ function startMapCapture(){
           },
           filter:node=>node.id!=='grid'&&node.id!=='map-overlay'&&node.id!=='opacity-ctrl'&&!(node.classList&&node.classList.contains('rbtn'))
         });
+        _domOverlayUrl=pngUrl;
         await new Promise(res=>{
           const img=new Image();
           img.onload=()=>{cctx.drawImage(img,0,0,outW*CS,outH*CS);res();};
@@ -3537,7 +3539,13 @@ function startMapCapture(){
         });
       }
 
-      capturedDataUrl=comp.toDataURL('image/jpeg',0.93);
+      if(S.mapRot&&bgLargeDataUrl&&_domOverlayUrl){
+        const rotBg=await buildRotatedBg(bgLargeDataUrl,outW,outH,S.mapRot,CS);
+        await new Promise(res=>{const img=new Image();img.onload=()=>{rotBg.getContext('2d').drawImage(img,0,0,outW*CS,outH*CS);res();};img.onerror=()=>res();img.src=_domOverlayUrl;});
+        capturedDataUrl=rotBg.toDataURL('image/jpeg',0.93);
+      }else{
+        capturedDataUrl=comp.toDataURL('image/jpeg',0.93);
+      }
       capX=relX;capY=relY;capW=outW;capH=outH;
       prevImg.src=capturedDataUrl;
       instrCard.style.display='none';
@@ -3627,6 +3635,21 @@ async function startExportFlow(){
 }
 document.getElementById('bpdf').addEventListener('click',startExportFlow);
 
+async function buildRotatedBg(srcDataUrl,captureW,captureH,mapRot,bgCS){
+  const bgLargeCssPx=Math.ceil(Math.sqrt(captureW*captureW+captureH*captureH));
+  const bgPxSide=bgLargeCssPx*bgCS;
+  const overComp=document.createElement('canvas');
+  overComp.width=bgPxSide;overComp.height=bgPxSide;
+  const octx=overComp.getContext('2d');
+  octx.fillStyle='#1c2b2c';octx.fillRect(0,0,bgPxSide,bgPxSide);
+  const bgImg=await new Promise((res,rej)=>{const img=new Image();img.onload=()=>res(img);img.onerror=()=>rej();img.src=srcDataUrl;}).catch(()=>null);
+  if(bgImg){octx.save();octx.translate(bgPxSide/2,bgPxSide/2);octx.rotate(mapRot*Math.PI/180);octx.drawImage(bgImg,-bgPxSide/2,-bgPxSide/2,bgPxSide,bgPxSide);octx.restore();}
+  const cropComp=document.createElement('canvas');
+  cropComp.width=captureW*bgCS;cropComp.height=captureH*bgCS;
+  const sx=(bgPxSide-captureW*bgCS)/2,sy=(bgPxSide-captureH*bgCS)/2;
+  cropComp.getContext('2d').drawImage(overComp,sx,sy,captureW*bgCS,captureH*bgCS,0,0,captureW*bgCS,captureH*bgCS);
+  return cropComp;
+}
 async function exportPDF(capture){
   if(!gmap)return;
   const{jsPDF}=window.jspdf;
@@ -3666,25 +3689,7 @@ async function exportPDF(capture){
   const frozenRot=capture.frozenRot||0;
   // Stage 4: pre-render rotated satellite background so shapes + bg rotate together
   if(frozenRot&&capture.bgLarge){
-    const bgCS=2;
-    const bgLargeCssPx=Math.ceil(Math.sqrt(captureW*captureW+captureH*captureH));
-    const bgPxSide=bgLargeCssPx*bgCS;
-    const overComp=document.createElement('canvas');
-    overComp.width=bgPxSide;overComp.height=bgPxSide;
-    const octx=overComp.getContext('2d');
-    octx.fillStyle='#1c2b2c';octx.fillRect(0,0,bgPxSide,bgPxSide);
-    const bgImg=await new Promise((res,rej)=>{const img=new Image();img.onload=()=>res(img);img.onerror=()=>rej();img.src=capture.bgLarge;}).catch(()=>null);
-    if(bgImg){
-      octx.save();
-      octx.translate(bgPxSide/2,bgPxSide/2);
-      octx.rotate(frozenRot*Math.PI/180);
-      octx.drawImage(bgImg,-bgPxSide/2,-bgPxSide/2,bgPxSide,bgPxSide);
-      octx.restore();
-    }
-    const cropComp=document.createElement('canvas');
-    cropComp.width=captureW*bgCS;cropComp.height=captureH*bgCS;
-    const sx=(bgPxSide-captureW*bgCS)/2,sy=(bgPxSide-captureH*bgCS)/2;
-    cropComp.getContext('2d').drawImage(overComp,sx,sy,captureW*bgCS,captureH*bgCS,0,0,captureW*bgCS,captureH*bgCS);
+    const cropComp=await buildRotatedBg(capture.bgLarge,captureW,captureH,frozenRot,2);
     mapDataUrl=cropComp.toDataURL('image/jpeg',0.93);
   }
 
@@ -3881,7 +3886,7 @@ async function exportPDF(capture){
     const ltxt=el.labelText||'';if(!ltxt)return;
     pdf.setFont('helvetica','bold');pdf.setFontSize(10);
     const lw=pdf.getTextWidth(ltxt)+6;
-    let rotDeg=((el.rot||0)%180+180)%180;if(rotDeg>90)rotDeg-=180;
+    let rotDeg=(((el.rot||0)+frozenRot)%180+180)%180;if(rotDeg>90)rotDeg-=180;
     const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
     const hw=lw/2,hh=3;
     const corners=[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([dx,dy])=>({x:lp.x+dx*cos2-dy*sin2,y:lp.y+dx*sin2+dy*cos2}));
