@@ -1062,7 +1062,7 @@ function applyMapRot(deg,animate){
     if(ev.target.closest('.el,#canvas-action-ctrl,#canvas-tool-ctrl,#opacity-ctrl,#compass-widget,#map-zoom-ctrl,#align-pop'))return;
     const cvEl=document.getElementById('cv-area');
     if(!cvEl||!cvEl.contains(ev.target))return;
-    ev.preventDefault();
+    ev.preventDefault();ev.stopPropagation();
     sdrActive=true;sdrX=ev.clientX;sdrY=ev.clientY;sdrStartRot=S.mapRot;sdrCommitted=false;
   },{capture:true});
   document.addEventListener('mousemove',ev=>{
@@ -1089,8 +1089,9 @@ function applyMapRot(deg,animate){
     if(ev.target.closest('.el,#canvas-action-ctrl,#canvas-tool-ctrl,#opacity-ctrl,#compass-widget,#map-zoom-ctrl,#align-pop'))return;
     const cvEl=document.getElementById('cv-area');
     if(!cvEl||!cvEl.contains(ev.target))return;
+    ev.stopPropagation();
     panActive=true;panMoved=false;startX=lastX=ev.clientX;startY=lastY=ev.clientY;
-  });
+  },{capture:true});
   document.addEventListener('mousemove',ev=>{
     if(!panActive||!gmap)return;
     const rdx=ev.clientX-lastX,rdy=ev.clientY-lastY;
@@ -4331,12 +4332,18 @@ window.initMap=function(){
     zoomControl:false,
     scrollwheel:true,
     gestureHandling:'greedy',
-    draggable:false,
     tilt:0
   });
 
   google.maps.event.addListener(gmap,'click',()=>{
     if(S.tool==='select'&&S.selIds.size){S.selId=null;S.selIds=new Set();updateAlignBtn();renderEls();}
+  });
+  // mousedown is stopped in capture before reaching gmap, so gmap 'click' won't fire for map-background clicks;
+  // this DOM handler deselects elements when the user clicks empty map space in select mode
+  cvArea.addEventListener('click',ev=>{
+    if(S.tool==='select'&&S.selIds.size&&!ev.target.closest('.el,#canvas-action-ctrl,#canvas-tool-ctrl,#opacity-ctrl,#compass-widget,#map-zoom-ctrl,#align-pop')){
+      S.selId=null;S.selIds=new Set();updateAlignBtn();renderEls();
+    }
   });
   google.maps.event.addListener(gmap,'idle',()=>{
     const c=gmap.getCenter();
