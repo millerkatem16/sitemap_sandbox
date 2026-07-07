@@ -1076,6 +1076,34 @@ function applyMapRot(deg,animate){
   document.addEventListener('mouseup',()=>{sdrActive=false;sdrCommitted=false;});
 })();
 
+// Manual pan (select mode) — replaces Google's disabled native drag, corrects for S.mapRot
+(()=>{
+  let panActive=false,panMoved=false,startX=0,startY=0,lastX=0,lastY=0;
+  document.addEventListener('mousedown',ev=>{
+    if(ev.button!==0||ev.shiftKey)return;
+    if(S.tool!=='select')return;
+    if(ev.target.closest('.el,#canvas-action-ctrl,#canvas-tool-ctrl,#opacity-ctrl,#compass-widget,#align-pop'))return;
+    const cvEl=document.getElementById('cv-area');
+    if(!cvEl||!cvEl.contains(ev.target))return;
+    panActive=true;panMoved=false;startX=lastX=ev.clientX;startY=lastY=ev.clientY;
+  });
+  document.addEventListener('mousemove',ev=>{
+    if(!panActive||!gmap)return;
+    const rdx=ev.clientX-lastX,rdy=ev.clientY-lastY;
+    lastX=ev.clientX;lastY=ev.clientY;
+    if(!panMoved){
+      const tdx=ev.clientX-startX,tdy=ev.clientY-startY;
+      if(tdx*tdx+tdy*tdy<25)return;
+      panMoved=true;return;
+    }
+    const rad=-S.mapRot*Math.PI/180;
+    const dx=rdx*Math.cos(rad)-rdy*Math.sin(rad);
+    const dy=rdx*Math.sin(rad)+rdy*Math.cos(rad);
+    gmap.panBy(-dx,-dy);
+  });
+  document.addEventListener('mouseup',()=>{panActive=false;panMoved=false;});
+})();
+
 // ── Map opacity overlay ────────────────────────────────────────────────────
 (()=>{
   const ov=document.getElementById('map-overlay');
@@ -2545,8 +2573,8 @@ function setTool(id){
   const btn=document.getElementById(m[id]);if(btn)btn.classList.add('active');
   // Select passes clicks through to map; every other tool needs canvas input
   cw.style.pointerEvents=id==='select'?'none':'auto';
-  if(_prevTool==='multiselect'&&id!=='multiselect'&&gmap)gmap.setOptions({draggable:true,gestureHandling:'greedy'});
-  if(id==='multiselect'&&gmap)gmap.setOptions({draggable:false,gestureHandling:'none'});
+  if(_prevTool==='multiselect'&&id!=='multiselect'&&gmap)gmap.setOptions({gestureHandling:'greedy'});
+  if(id==='multiselect'&&gmap)gmap.setOptions({gestureHandling:'none'});
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'||id==='fence'?'crosshair':'default';
   // Per-tool guidance copy — kept for future onboarding/empty-state UI, not currently shown
   const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an entrance/exit',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment',label:'Click to place a text label on the map',customtent:'Click to place your custom tent'}; // eslint-disable-line no-unused-vars
@@ -4293,6 +4321,7 @@ window.initMap=function(){
     zoomControl:true,
     zoomControlOptions:{position:google.maps.ControlPosition.RIGHT_BOTTOM},
     gestureHandling:'greedy',
+    draggable:false,
     tilt:0
   });
 
