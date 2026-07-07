@@ -3468,6 +3468,7 @@ function startMapCapture(){
       const relX=r.x-cvRect.left,relY=r.y-cvRect.top;
       const outW=Math.round(r.w),outH=Math.round(r.h);
       const diagPx=Math.ceil(Math.sqrt(outW*outW+outH*outH)); // covers full rotation at any angle
+      const cwOffX=(cw.clientWidth-cvArea.clientWidth)/2,cwOffY=(cw.clientHeight-cvArea.clientHeight)/2;
 
       // Composite canvas at 2× for retina-quality PDF output
       const CS=2;
@@ -3478,7 +3479,7 @@ function startMapCapture(){
       // 1. Satellite background — Static Maps API blob → object URL → no canvas taint
       let bgDone=false;
       try{
-        const ctr=pixelToLatLng(relX+outW/2,relY+outH/2);
+        const ctr=pixelToLatLng(relX+cwOffX+outW/2,relY+cwOffY+outH/2);
         const zoom=Math.round(gmap.getZoom());
         const maxD=640,ratio=Math.min(1,maxD/diagPx);
         const smZoom=ratio<1?Math.max(0,Math.floor(zoom+Math.log2(ratio))):zoom;
@@ -3515,7 +3516,7 @@ function startMapCapture(){
           height:outH,
           scale:CS,
           style:{
-            transform:`translate(${-relX}px,${-relY}px)`,
+            transform:`translate(${-(relX+cwOffX)}px,${-(relY+cwOffY)}px)`,
             transformOrigin:'0 0',
             width:cw.offsetWidth+'px',
             height:cw.offsetHeight+'px',
