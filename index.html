@@ -891,36 +891,32 @@ function updateAlignBtn(){
   }
   function moveTo(el,cx,cy){const ll=pixelToLatLng(cx,cy);el.lat=ll.lat;el.lng=ll.lng;}
 
-  // Arrange as Row: align vertical centers, distribute evenly horizontally
+  // Arrange as Row: align vertical centers, distribute horizontally with min 1ft gap
   document.getElementById('ap-row').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls().slice().sort((a,b)=>elX(a)-elX(b));
+    const es=selEls().slice().sort((a,b)=>elX(a)-elX(b)||elY(a)-elY(b));
     if(es.length<2)return;
     const my=(Math.min(...es.map(e=>elY(e)))+Math.max(...es.map(e=>elY(e)+elH(e))))/2;
-    if(es.length>=3){
-      const totalSpan=(elX(es[es.length-1])+elW(es[es.length-1]))-elX(es[0]);
-      const totalW=es.reduce((s,e)=>s+elW(e),0);
-      const gap=(totalSpan-totalW)/(es.length-1);
-      let cur=elX(es[0]);
-      es.forEach(e=>{moveTo(e,cur+elW(e)/2,my);cur+=elW(e)+gap;});
-    }else{
-      es.forEach(e=>moveTo(e,elX(e)+elW(e)/2,my));
-    }
+    const minGap=S.scale;// 1ft edge-to-edge minimum
+    const totalW=es.reduce((s,e)=>s+elW(e),0);
+    const totalSpan=(elX(es[es.length-1])+elW(es[es.length-1]))-elX(es[0]);
+    const naturalGap=(totalSpan-totalW)/(es.length-1);
+    const gap=naturalGap>=minGap?naturalGap:minGap;
+    let cur=elX(es[0]);
+    es.forEach(e=>{moveTo(e,cur+elW(e)/2,my);cur+=elW(e)+gap;});
   }));
 
-  // Arrange as Column: align horizontal centers, distribute evenly vertically
+  // Arrange as Column: align horizontal centers, distribute vertically with min 1ft gap
   document.getElementById('ap-col').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls().slice().sort((a,b)=>elY(a)-elY(b));
+    const es=selEls().slice().sort((a,b)=>elY(a)-elY(b)||elX(a)-elX(b));
     if(es.length<2)return;
     const mx=(Math.min(...es.map(e=>elX(e)))+Math.max(...es.map(e=>elX(e)+elW(e))))/2;
-    if(es.length>=3){
-      const totalSpan=(elY(es[es.length-1])+elH(es[es.length-1]))-elY(es[0]);
-      const totalH=es.reduce((s,e)=>s+elH(e),0);
-      const gap=(totalSpan-totalH)/(es.length-1);
-      let cur=elY(es[0]);
-      es.forEach(e=>{moveTo(e,mx,cur+elH(e)/2);cur+=elH(e)+gap;});
-    }else{
-      es.forEach(e=>moveTo(e,mx,elY(e)+elH(e)/2));
-    }
+    const minGap=S.scale;// 1ft edge-to-edge minimum
+    const totalH=es.reduce((s,e)=>s+elH(e),0);
+    const totalSpan=(elY(es[es.length-1])+elH(es[es.length-1]))-elY(es[0]);
+    const naturalGap=(totalSpan-totalH)/(es.length-1);
+    const gap=naturalGap>=minGap?naturalGap:minGap;
+    let cur=elY(es[0]);
+    es.forEach(e=>{moveTo(e,mx,cur+elH(e)/2);cur+=elH(e)+gap;});
   }));
 
   // Set exact spacing
