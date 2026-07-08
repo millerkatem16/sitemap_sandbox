@@ -19,7 +19,7 @@
   --font:'Plus Jakarta Sans',sans-serif;--mono:'DM Mono',monospace;
   --r:9px;--r2:14px;
 }
-html,body{height:100vh;background:var(--bg);color:var(--tx);font-family:var(--font);font-size:13px;overflow:hidden}
+html,body{height:100vh;background:#1C2B2C;color:var(--tx);font-family:var(--font);font-size:13px;overflow:hidden}
 #app{display:flex;flex-direction:column;height:100%;min-height:580px}
 
 /* ── Topbar ─────────────────────────────────────────────────────────────── */
@@ -208,6 +208,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .eiwrap{position:relative}
 .ei{display:flex;align-items:center;justify-content:center;border-radius:4px;border:2px solid;transition:box-shadow .1s;box-sizing:border-box}
 .el.selected .ei{box-shadow:0 0 0 2.5px var(--acc),0 0 18px rgba(244,81,64,0.4)}
+.el.multisel .ei{box-shadow:0 0 0 2.5px #3b82f6,0 0 18px rgba(59,130,246,0.4)}
 .el.hr .ei{box-shadow:0 0 0 2.5px var(--red),0 0 10px rgba(224,53,53,0.35)}
 .el.sr .ei{box-shadow:0 0 0 2.5px var(--amb),0 0 10px rgba(251,189,47,0.35)}
 .el-lbl{position:absolute;bottom:3px;left:2px;right:2px;font-family:var(--font);font-weight:800;letter-spacing:-.01em;color:#fff;text-align:center;text-shadow:0 0 6px rgba(0,0,0,1),0 1px 4px rgba(0,0,0,0.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;z-index:3;pointer-events:all;line-height:1.1}
@@ -1033,7 +1034,7 @@ function applyMapRot(deg,animate){
   });
   document.addEventListener('mousemove',ev=>{
     if(!cdDrag)return;
-    applyMapRot(cdStartRot+(dialAngle(ev)-cdStartAng));
+    applyMapRot(cdStartRot-(dialAngle(ev)-cdStartAng)*0.55);
   });
   document.addEventListener('mouseup',()=>{cdDrag=false;});
   document.getElementById('compass-reset').addEventListener('click',()=>applyMapRot(0,true));
@@ -1163,6 +1164,8 @@ const ZD={
 };
 const ZD_SUBZONE={stroke:'#2dd4a0',fill:'rgba(45,212,160,0.08)',lbl:'SUB-ZONE'};
 const ZONE_COLORS={green:{stroke:'rgba(45,212,160,0.5)',fill:'rgba(45,212,160,0.05)'},blue:{stroke:'rgba(59,130,246,0.5)',fill:'rgba(59,130,246,0.05)'},purple:{stroke:'rgba(168,85,247,0.5)',fill:'rgba(168,85,247,0.05)'}};
+const ZONE_COLORS_PDF={green:{stroke:'rgba(45,212,160,0.92)',fill:'rgba(45,212,160,0.22)'},blue:{stroke:'rgba(59,130,246,0.92)',fill:'rgba(59,130,246,0.22)'},purple:{stroke:'rgba(168,85,247,0.92)',fill:'rgba(168,85,247,0.22)'}};
+const ZD_SUBZONE_PDF={stroke:'#2dd4a0',fill:'rgba(45,212,160,0.22)',lbl:'SUB-ZONE'};
 let activePoly=null;let _zoneSnapped=false;
 
 function ptsToPixels(pts){
@@ -1181,8 +1184,8 @@ function redrawZones(){
   });
   S.zonePolys.forEach(z=>{
     if(z.pts.length<2)return;
-    const baseD=(z.type==='restrict'&&z.color&&ZONE_COLORS[z.color])?ZONE_COLORS[z.color]:(ZD[z.type]||(z.type==='border'?ZD.border:ZD.restrict));
-    const d=(z.type==='border'&&subzoneSet.has(z))?ZD_SUBZONE:baseD;
+    const isSub=z.type==='border'&&subzoneSet.has(z);
+    const d=isSub?(z.color&&ZONE_COLORS[z.color]?ZONE_COLORS[z.color]:ZD_SUBZONE):(ZD[z.type]||ZD.border);
     const px=ptsToPixels(z.pts);
     zcx.save();
     zcx.beginPath();zcx.moveTo(px[0].x,px[0].y);px.forEach(p=>zcx.lineTo(p.x,p.y));
@@ -1608,7 +1611,7 @@ function runRules(){
   trucks.forEach(t=>{
     tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft)`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
     restrooms.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft)`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
-    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<10){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} are too close together. 10ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft).`,ids:[t.id,o.id]});t.hr=true;o.hr=true;}});
+    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<9.95){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} are too close together. 10ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft).`,ids:[t.id,o.id]});t.hr=true;o.hr=true;}});
     const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} placed in a restricted zone`,ids:[t.id]});t.hr=true;}
   });
   // Cooking tent must be 20ft from other activations (non-cooking tents)
@@ -1848,7 +1851,8 @@ function renderEls(){
     if(t.isLabel){
       const xy=elXY(el),w=el.wFt*S.scale||80,h=28,lrot=el.rot||0;
       const div=document.createElement('div');
-      div.className='el'+(S.selIds.has(el.id)?' selected':'');
+      const _lSel=S.selIds.has(el.id),_lMulti=_lSel&&S.selIds.size>=2;
+      div.className='el'+(_lSel?_lMulti?' selected multisel':' selected':'');
       div.style.cssText='left:'+xy.x+'px;top:'+xy.y+'px;width:'+w+'px;height:'+h+'px;transform:rotate('+lrot+'deg);';
       div.dataset.id=el.id;
       const inner=document.createElement('div');
@@ -1857,7 +1861,7 @@ function renderEls(){
       txt.style.cssText='color:#fff;font-family:var(--font);font-size:12px;font-weight:600;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.9);user-select:none;';
       txt.textContent=el.labelText||'Label';
       inner.appendChild(txt);
-      if(S.selIds.has(el.id)){inner.style.borderColor='var(--acc)';inner.style.boxShadow='0 0 0 2px var(--acc),0 0 14px rgba(244,81,64,0.35)';}
+      if(_lSel){inner.style.borderColor=_lMulti?'#3b82f6':'var(--acc)';inner.style.boxShadow=_lMulti?'0 0 0 2px #3b82f6,0 0 14px rgba(59,130,246,0.35)':'0 0 0 2px var(--acc),0 0 14px rgba(244,81,64,0.35)';}
       const db=document.createElement('button');db.className='rbtn';
       db.style.cssText='width:14px;height:14px;top:2px;left:2px;font-size:12px;background:#ef4444;color:#fff;border-color:#dc2626;line-height:1;display:none;';
       db.innerHTML='x';
@@ -1896,7 +1900,8 @@ function renderEls(){
     const btnOff=3;
 
     const div=document.createElement('div');
-    div.className='el'+(el.hr?' hr':el.sr?' sr':'')+(S.selIds.has(el.id)?' selected':'');
+    const _eSel=S.selIds.has(el.id),_eMulti=_eSel&&S.selIds.size>=2;
+    div.className='el'+(el.hr?' hr':el.sr?' sr':'')+(_eSel?_eMulti?' selected multisel':' selected':'');
     div.style.cssText=`left:${xy.x}px;top:${xy.y}px;width:${w}px;height:${h}px;transform:rotate(${rot}deg);`;
     div.dataset.id=el.id;
 
@@ -1955,7 +1960,7 @@ function renderEls(){
       wrap.appendChild(db);
     }else{
       const rb=document.createElement('button');rb.className='rbtn';
-      rb.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:${-(btnSz+4)}px;left:${-(btnSz+4)}px;font-size:${btnSz-6}px;`;
+      rb.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:-${btnSz}px;left:-${btnSz}px;font-size:${btnSz-6}px;`;
       rb.innerHTML='↻';
       rb.addEventListener('mousedown',ev=>{
         ev.stopPropagation();ev.preventDefault();
@@ -2013,7 +2018,15 @@ function makeDrag(div,el){
     if(S.isRotating)return;
     if(ev.target.classList.contains('rbtn'))return;
     ev.preventDefault();ev.stopPropagation();
-    sx=ev.clientX;sy=ev.clientY;startPt=screenToCanvasPt(ev.clientX,ev.clientY);
+    sx=ev.clientX;sy=ev.clientY;
+    const _mrw=document.getElementById('map-rot-wrap');
+    const _cvR=cvArea.getBoundingClientRect();
+    const _vcx=_cvR.left+_cvR.width/2,_vcy=_cvR.top+_cvR.height/2;
+    const _rad=-S.mapRot*Math.PI/180;
+    const _cRad=Math.cos(_rad),_sRad=Math.sin(_rad);
+    const _mHW=_mrw?_mrw.offsetWidth/2:0,_mHH=_mrw?_mrw.offsetHeight/2:0;
+    const _sc2pt=(cx,cy)=>_mrw?{x:_mHW+(cx-_vcx)*_cRad-(cy-_vcy)*_sRad,y:_mHH+(cx-_vcx)*_sRad+(cy-_vcy)*_cRad}:{x:cx-cw.getBoundingClientRect().left,y:cy-cw.getBoundingClientRect().top};
+    startPt=_sc2pt(ev.clientX,ev.clientY);
     const xy=elXY(el);
     startCx=xy.x+elW(el)/2;startCy=xy.y+elH(el)/2;
     startLat=el.lat;startLng=el.lng;
@@ -2037,59 +2050,69 @@ function makeDrag(div,el){
       Object.entries(_cnt).forEach(([k,v])=>{if(v>=2&&v>_bc){_bc=v;_bv=parseFloat(k);}});
       if(_bv!==null)G=_bv;
     }
+    const _peerPxCache=_stPeers.map(o=>{const px=elX(o),py=elY(o),pw=elW(o),ph=elH(o);return{px,py,pw,ph,px2:px+pw,py2:py+ph};});
+    let _gSnapped=false,_aSnappedX=false,_aSnappedY=false;
     const onM=mv=>{
       if(!didPushUndo){pushUndo();didPushUndo=true;}
       moved=true;div._dragMoved=true;
-      const mvPt=screenToCanvasPt(mv.clientX,mv.clientY);
+      const mvPt=_sc2pt(mv.clientX,mv.clientY);
       let newCx=startCx+(mvPt.x-startPt.x),newCy=startCy+(mvPt.y-startPt.y);
-      // Tentatively place el at cursor position so bboxClearFt reads correctly
+      // Set el lat/lng to tentative (mouse) position — ensures runRules on mouseup sees it
       const tmpLl=pixelToLatLng(newCx,newCy);
       el.lat=tmpLl.lat;el.lng=tmpLl.lng;
-      // Find nearest same-type element
-      let nearClr=Infinity,nearEl=null;
-      for(const o of _stPeers){const c=bboxClearFt(el,o);if(c<nearClr){nearClr=c;nearEl=o;}}
-      // Feature 2: pattern-match snap to established spacing G
-      let snapped=false;
-      if(G!==null&&nearEl!==null&&Math.abs(nearClr-G)<=1.5){
-        const ax1=elX(el),ay1=elY(el),ax2=ax1+elW(el),ay2=ay1+elH(el);
-        const bx1=elX(nearEl),by1=elY(nearEl),bx2=bx1+elW(nearEl),by2=by1+elH(nearEl);
-        const gx=Math.max(0,Math.max(ax1,bx1)-Math.min(ax2,bx2));
-        const gy=Math.max(0,Math.max(ay1,by1)-Math.min(ay2,by2));
-        const G_px=G*S.scale;
-        if(gx>=gy){
-          if(ax1>=bx2)newCx=bx2+G_px+elW(el)/2;
-          else if(ax2<=bx1)newCx=bx1-G_px-elW(el)/2;
-        }else{
-          if(ay1>=by2)newCy=by2+G_px+elH(el)/2;
-          else if(ay2<=by1)newCy=by1-G_px-elH(el)/2;
-        }
-        const snapLl=pixelToLatLng(newCx,newCy);
-        el.lat=snapLl.lat;el.lng=snapLl.lng;
-        nearClr=G;snapped=true;
-      }
-      // Feature 3: edge/center alignment snap (runs on post-spacing-snap position)
+      // Find nearest peer via bbox from newCx/newCy + cached peer positions (no latLngToPixel per peer)
       const _aeW2=elW(el)/2,_aeH2=elH(el)/2;
+      const _ex=newCx-_aeW2,_ey=newCy-_aeH2,_ex2=newCx+_aeW2,_ey2=newCy+_aeH2;
+      let nearClr=Infinity,nearEl=null,_nearIdx=-1;
+      for(let pi=0;pi<_stPeers.length;pi++){const p=_peerPxCache[pi];const gx=Math.max(0,Math.max(_ex,p.px)-Math.min(_ex2,p.px2));const gy=Math.max(0,Math.max(_ey,p.py)-Math.min(_ey2,p.py2));const c=Math.sqrt(gx*gx+gy*gy)/S.scale;if(c<nearClr){nearClr=c;nearEl=_stPeers[pi];_nearIdx=pi;}}
+      // Feature 2: pattern-match snap — soft lerp toward G, hysteresis engage 1.5ft release 1.8ft
+      let snapped=false;
+      const _gThresh=_gSnapped?1.8:1.5;
+      if(G!==null&&nearEl!==null&&Math.abs(nearClr-G)<=_gThresh){
+        const p=_peerPxCache[_nearIdx];
+        const gx=Math.max(0,Math.max(_ex,p.px)-Math.min(_ex2,p.px2));
+        const gy=Math.max(0,Math.max(_ey,p.py)-Math.min(_ey2,p.py2));
+        const G_px=G*S.scale;
+        const t=Math.max(0,1-Math.abs(nearClr-G)/1.5);
+        let didSnap=false;
+        if(gx>=gy){
+          if(_ex>=p.px2){newCx+=(p.px2+G_px+_aeW2-newCx)*t;didSnap=true;}
+          else if(_ex2<=p.px){newCx+=(p.px-G_px-_aeW2-newCx)*t;didSnap=true;}
+        }else{
+          if(_ey>=p.py2){newCy+=(p.py2+G_px+_aeH2-newCy)*t;didSnap=true;}
+          else if(_ey2<=p.py){newCy+=(p.py-G_px-_aeH2-newCy)*t;didSnap=true;}
+        }
+        if(didSnap){const sLl=pixelToLatLng(newCx,newCy);el.lat=sLl.lat;el.lng=sLl.lng;snapped=true;_gSnapped=true;}
+        else _gSnapped=false;
+      }else _gSnapped=false;
+      // Feature 3: edge/center alignment snap — soft lerp + hysteresis (uses cached peer positions)
       const _eHRef=[newCy-_aeH2,newCy,newCy+_aeH2];
       const _eVRef=[newCx-_aeW2,newCx,newCx+_aeW2];
       const _eTol=Math.max(6,0.75*S.scale);
+      const _eTolR=_eTol*1.2;
       let _aY=null,_aX=null,_aYPeer=null,_aXPeer=null,_aYOff=Infinity,_aXOff=Infinity,_aYi=-1,_aXi=-1;
-      for(const o of _stPeers){
-        const oL=elX(o),oT=elY(o),oR=oL+elW(o),oB=oT+elH(o);
-        const oHR=[oT,oT+elH(o)/2,oB];const oVR=[oL,oL+elW(o)/2,oR];
+      for(let pi=0;pi<_stPeers.length;pi++){
+        const p=_peerPxCache[pi];
+        const oHR=[p.py,p.py+p.ph/2,p.py2];const oVR=[p.px,p.px+p.pw/2,p.px2];
         for(let i=0;i<3;i++){for(let j=0;j<3;j++){
           const dY=Math.abs(_eHRef[i]-oHR[j]);
-          if(dY<_eTol&&dY<_aYOff){_aYOff=dY;_aYi=i;_aY=i===0?oHR[j]+_aeH2:i===1?oHR[j]:oHR[j]-_aeH2;_aYPeer=o;}
+          if(dY<(_aSnappedY?_eTolR:_eTol)&&dY<_aYOff){_aYOff=dY;_aYi=i;_aY=i===0?oHR[j]+_aeH2:i===1?oHR[j]:oHR[j]-_aeH2;_aYPeer=_stPeers[pi];}
           const dX=Math.abs(_eVRef[i]-oVR[j]);
-          if(dX<_eTol&&dX<_aXOff){_aXOff=dX;_aXi=i;_aX=i===0?oVR[j]+_aeW2:i===1?oVR[j]:oVR[j]-_aeW2;_aXPeer=o;}
+          if(dX<(_aSnappedX?_eTolR:_eTol)&&dX<_aXOff){_aXOff=dX;_aXi=i;_aX=i===0?oVR[j]+_aeW2:i===1?oVR[j]:oVR[j]-_aeW2;_aXPeer=_stPeers[pi];}
         }}
       }
-      if(_aY!==null)newCy=_aY;
-      if(_aX!==null)newCx=_aX;
-      if(_aX!==null||_aY!==null){const alLl=pixelToLatLng(newCx,newCy);el.lat=alLl.lat;el.lng=alLl.lng;}
+      const tAX=_aX!==null?Math.max(0,1-_aXOff/_eTol):0;
+      const tAY=_aY!==null?Math.max(0,1-_aYOff/_eTol):0;
+      if(tAX>0)newCx+=(_aX-newCx)*tAX;
+      if(tAY>0)newCy+=(_aY-newCy)*tAY;
+      if(tAX>0||tAY>0){const alLl=pixelToLatLng(newCx,newCy);el.lat=alLl.lat;el.lng=alLl.lng;}
+      _aSnappedX=tAX>0;_aSnappedY=tAY>0;
+      // Fix 1: recompute nearClr from final post-snap position so readout matches visual
+      if(nearEl!==null&&_nearIdx>=0){const p=_peerPxCache[_nearIdx];const rfx=Math.max(0,Math.max(newCx-_aeW2,p.px)-Math.min(newCx+_aeW2,p.px2));const rfy=Math.max(0,Math.max(newCy-_aeH2,p.py)-Math.min(newCy+_aeH2,p.py2));nearClr=Math.sqrt(rfx*rfx+rfy*rfy)/S.scale;}
       // Feature 1: floating distance readout
       if(nearEl!==null){
         lbl.textContent=nearClr.toFixed(1)+'ft';
-        lbl.style.color=snapped?'#2dd4a0':(_aX!==null||_aY!==null)?'#63b3ed':'#fff';
+        lbl.style.color=snapped?'#2dd4a0':(tAX>0||tAY>0)?'#63b3ed':'#fff';
         lbl.style.left=(mv.clientX+14)+'px';
         lbl.style.top=(mv.clientY-20)+'px';
         lbl.style.display='block';
@@ -2585,15 +2608,13 @@ function setTool(id){
   const btn=document.getElementById(m[id]);if(btn)btn.classList.add('active');
   // Select passes clicks through to map; every other tool needs canvas input
   cw.style.pointerEvents=id==='select'?'none':'auto';
-  if(_prevTool==='multiselect'&&id!=='multiselect'&&gmap)gmap.setOptions({gestureHandling:'greedy'});
-  if(id==='multiselect'&&gmap)gmap.setOptions({gestureHandling:'none'});
   cw.style.cursor=(ZONE_TOOLS.includes(id)&&id!=='erase')||PLACEABLE.includes(id)||id==='dim'||id==='fence'?'crosshair':'default';
   // Per-tool guidance copy — kept for future onboarding/empty-state UI, not currently shown
   const msgs={select:'Adjust Map Layer — pan and zoom to frame your venue · Switch tools above to start planning',ada:'Click to add ADA path points · Double-click to finish',dim:'Click and drag to measure distance in feet',tent10:'Click to place a 10×10 tent',tent20:'Click to place a 10×20 tent',stage:'Click to place a stage',truck:'Click to place a food truck',gen:'Click to place a generator',ingress:'Click to place an entrance/exit',extinguisher:'Click to place a fire extinguisher',mix:'Click to place a mix platform',custom:'Click to place your custom element',electric:'Click to mark an electric source',water:'Click to mark a water source',trash:'Click to mark a trash bin location',security:'Click to place a security marker',restrict:'Click corners to draw restricted zone · Double-click to close',border:'Click to add points, double-click to close the boundary · You will be asked about enclosure',erase:'Click inside a zone or border to remove it',fence:'Click to add fence points — double-click to finish segment',label:'Click to place a text label on the map',customtent:'Click to place your custom tent'}; // eslint-disable-line no-unused-vars
   const _tt=document.getElementById('tool-tip');if(_tt){const tts={border:'Click to add points · Approach start point to snap-close',fence:'Click to add fence points · Double-click to end the fence run'};if(tts[id]){_tt.textContent=tts[id];_tt.style.display='block';}else{_tt.textContent='';_tt.style.display='none';}}
   if(activePoly&&activePoly.open){S.zonePolys=S.zonePolys.filter(z=>z!==activePoly);redrawZones();}activePoly=null;_zoneSnapped=false;if(id!=='dim')dimStart=null;if(id!=='fence')fenceCur=[];
 }
-function startRestrict(){modal('Restricted Area','Mark an area on your site as restricted. Choose a color, then click to place points.',msel('Zone Color','rz-color',[{v:'green',t:'Green'},{v:'blue',t:'Blue'},{v:'purple',t:'Light Purple'}]),()=>{S._pendingZoneColor=document.getElementById('rz-color').value||'green';setTool('restrict');},'Start Drawing');}
+function startRestrict(){setTool('restrict');}
 
 // ── Canvas interaction ─────────────────────────────────────────────────────
 cw.addEventListener('mousedown',e=>{
@@ -2626,7 +2647,7 @@ cw.addEventListener('mousedown',e=>{
     }
     if(e.detail===2){const _btt=document.getElementById('tool-tip');if(_btt)_btt.style.display='none';return;}
     const ll=pixelToLatLng(x,y);
-    if(!activePoly){const z={type:S.tool,pts:[{lat:ll.lat,lng:ll.lng}],open:true,zid:S.idCtr++};if(S.tool==='restrict'&&S._pendingZoneColor){z.color=S._pendingZoneColor;S._pendingZoneColor=null;}S.zonePolys.push(z);activePoly=z;}
+    if(!activePoly){const z={type:S.tool,pts:[{lat:ll.lat,lng:ll.lng}],open:true,zid:S.idCtr++};if(S._pendingZoneColor){z.color=S._pendingZoneColor;S._pendingZoneColor=null;}S.zonePolys.push(z);activePoly=z;}
     else activePoly.pts.push({lat:ll.lat,lng:ll.lng});
     redrawZones();return;
   }
@@ -2640,7 +2661,7 @@ cw.addEventListener('mousemove',e=>{
   if(S.tool==='dim'&&dimStart){drawDims();drawDimArrow(dcx,dimStart.x,dimStart.y,x,y,true);}
   if(S.tool==='fence'&&fenceCur.length>0){drawDims();const flp=latLngToPixel(fenceCur[fenceCur.length-1].lat,fenceCur[fenceCur.length-1].lng);drawFenceSeg(dcx,flp.x,flp.y,x,y,true,null);}
   if(ZONE_TOOLS.includes(S.tool)&&activePoly&&activePoly.open){
-    const d=(activePoly.type==='restrict'&&activePoly.color&&ZONE_COLORS[activePoly.color])?ZONE_COLORS[activePoly.color]:(ZD[activePoly.type]||ZD.border);
+    const d=(activePoly.color&&ZONE_COLORS[activePoly.color])?ZONE_COLORS[activePoly.color]:(ZD[activePoly.type]||ZD.border);
     const px=ptsToPixels(activePoly.pts);
     const canSnap=activePoly.pts.length>=3;
     const _sdx=x-px[0].x,_sdy=y-px[0].y;
@@ -2689,10 +2710,11 @@ document.addEventListener('keydown',e=>{
 document.getElementById('zbrd-sb').addEventListener('click',()=>setTool('border'));
 document.getElementById('zbrd-vip').addEventListener('click',()=>{
   modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',
-    mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),
+    mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden')+msel('Zone Color','vip-color',[{v:'green',t:'Green'},{v:'blue',t:'Blue'},{v:'purple',t:'Light Purple'}]),
     ()=>{
       const name=document.getElementById('vip-name').value.trim()||'Sub-zone';
       S._pendingZoneLabel=name;
+      S._pendingZoneColor=document.getElementById('vip-color').value||'green';
       setTool('border');
     },'Start Drawing');
 });
@@ -3550,7 +3572,7 @@ function startMapCapture(){
         S.zonePolys.forEach(z=>{
           if(z.open||z.pts.length<3)return;
           const isSub=z.type==='border'&&cvClosed.some(o=>o!==z&&isBorderNestedIn(z,o));
-          const zSt=isSub?ZD_SUBZONE:((z.type==='restrict'&&z.color&&ZONE_COLORS[z.color])?ZONE_COLORS[z.color]:(ZD[z.type]||ZD.border));
+          const zSt=isSub?(z.color&&ZONE_COLORS_PDF[z.color]?ZONE_COLORS_PDF[z.color]:ZD_SUBZONE_PDF):(ZD[z.type]||ZD.border);
           const[r,g,b]=hexArr(zSt.stroke);
           const pps=z.pts.map(p=>ll2cv(p.lat,p.lng));
           vctx.save();vctx.lineWidth=z.type==='border'?1.2*CS:0.7*CS;vctx.setLineDash(z.type==='border'?[5*CS,3*CS]:[]);
@@ -3862,10 +3884,10 @@ async function exportPDF(capture){
   S.zonePolys.forEach(z=>{
     if(z.open||z.pts.length<3)return;
     const isSubzonePdf=z.type==='border'&&pdfClosedBorders.some(outer=>outer!==z&&isBorderNestedIn(z,outer));
-    const zStyle=isSubzonePdf?ZD_SUBZONE:((z.type==='restrict'&&z.color&&ZONE_COLORS[z.color])?ZONE_COLORS[z.color]:(ZD[z.type]||ZD.border));
+    const zStyle=isSubzonePdf?(z.color&&ZONE_COLORS_PDF[z.color]?ZONE_COLORS_PDF[z.color]:ZD_SUBZONE_PDF):(ZD[z.type]||ZD.border);
     const[r,g,b]=hexRgb(zStyle.stroke);
     const pps=z.pts.map(p=>ll2pdf(p.lat,p.lng));
-    pdf.setDrawColor(r,g,b);pdf.setLineWidth(z.type==='border'?0.6:0.35);
+    pdf.setDrawColor(r,g,b);pdf.setLineWidth(z.type==='border'?0.9:0.5);
     if(z.type==='border')pdf.setLineDashPattern([2.5,1.5],0);else pdf.setLineDashPattern([],0);
     for(let i=0;i<pps.length;i++){const a=pps[i],b2=pps[(i+1)%pps.length];pdf.line(a.x,a.y,b2.x,b2.y);}
     pdf.setLineDashPattern([],0);
