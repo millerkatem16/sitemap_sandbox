@@ -672,7 +672,7 @@ const S={
   venues:{},isRotating:false,
   hasSoftSurface:null,undoStack:[],
   mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17,mapRot:0,
-  _pendingZoneLabel:null,hideUtils:false,
+  hideUtils:false,
   activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[],
   eventNotes:'',
   colorTags:[{id:'pink',hex:'#f9a8d4',name:null},{id:'lpurple',hex:'#c4b5fd',name:null},{id:'lblue',hex:'#93c5fd',name:null},{id:'dblue',hex:'#1e40af',name:null},{id:'green',hex:'#4ade80',name:null},{id:'gray',hex:'#9ca3af',name:null},{id:'orange',hex:'#fb923c',name:null},{id:'teal',hex:'#0d9488',name:null}],
@@ -1523,17 +1523,16 @@ function updateCap(){
   });
   const bordersEl=document.getElementById('cap-borders');
   const multi=borders.length>1;
-  // Preserve focus on zone name/peak-att inputs during re-render
+  // Preserve focus on zone name inputs during re-render
   const activeZoneEl=document.activeElement;
   const wasZid=activeZoneEl&&activeZoneEl.classList&&activeZoneEl.classList.contains('zone-name-inp')?activeZoneEl.dataset.zid:null;
-  const wasPeakZid=activeZoneEl&&activeZoneEl.classList&&activeZoneEl.classList.contains('peak-att-inp')?activeZoneEl.dataset.zid:null;
   const zones=getZoneCapacities();
   const usableFtSq=zones.reduce((s,z)=>s+z.sqFt,0);
   const totalCap=zones.reduce((s,z)=>s+z.cap,0);
   bordersEl.innerHTML=zones.map(z=>{
     const sub=z.isSub?` <span style="font-size:8px;color:var(--acc);font-weight:700;vertical-align:middle">SUB</span>`:'';
     const escapedLabel=(z.label||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--brd)"><div style="flex:1;min-width:0"><input class="vl-inp zone-name-inp" type="text" data-zid="${z.zid}" value="${escapedLabel}" placeholder="${z.placeholder}" style="width:100%;margin-bottom:2px">${sub}<br><span style="font-size:9px;color:var(--tx3);font-family:var(--mono)">${z.sqFt.toLocaleString()} sq ft usable</span></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:4px"><input type="number" class="vl-inp peak-att-inp" data-zid="${z.zid}" value="${z.peakAtt||''}" placeholder="Peak att." style="width:64px;font-size:10px;padding:3px 6px;text-align:right"><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${z.cap.toLocaleString()}</span><button class="vl-del zone-del-btn" data-zid="${z.zid}" title="Remove zone">×</button></div></div>`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--brd)"><div style="flex:1;min-width:0"><input class="vl-inp zone-name-inp" type="text" data-zid="${z.zid}" value="${escapedLabel}" placeholder="${z.placeholder}" style="width:100%;margin-bottom:2px">${sub}<br><span style="font-size:9px;color:var(--tx3);font-family:var(--mono)">${z.sqFt.toLocaleString()} sq ft usable${z.peakAtt?` · ${z.peakAtt.toLocaleString()} peak att.`:''}</span></div><div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:4px"><span style="font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--surf2);padding:1px 7px;border-radius:5px">~${z.cap.toLocaleString()}</span><button class="vl-btn zone-details-btn" data-zid="${z.zid}" title="Edit zone details" style="font-size:10px;padding:2px 7px">Details</button><button class="vl-del zone-del-btn" data-zid="${z.zid}" title="Remove zone">×</button></div></div>`;
   }).join('');
   if(multi){bordersEl.innerHTML+=`<div style="margin-top:6px;margin-bottom:2px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate)">Estimated Total</div>`;}
   bordersEl.querySelectorAll('.zone-name-inp').forEach(inp=>{
@@ -1551,19 +1550,34 @@ function updateCap(){
       redrawZones();runRules();
     });
   });
-  bordersEl.querySelectorAll('.peak-att-inp').forEach(inp=>{
-    inp.addEventListener('change',ev=>{
-      const zid=parseInt(ev.target.dataset.zid);
-      const z=S.zonePolys.find(z=>z.zid===zid);
-      if(z){const v=parseInt(ev.target.value);z.peakAtt=(isNaN(v)||v<=0)?null:v;runRules();}
-    });
+  bordersEl.querySelectorAll('.zone-details-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{editZone(parseInt(btn.dataset.zid));});
   });
   if(wasZid){const ni=bordersEl.querySelector(`.zone-name-inp[data-zid="${wasZid}"]`);if(ni)ni.focus();}
-  if(wasPeakZid){const pi=bordersEl.querySelector(`.peak-att-inp[data-zid="${wasPeakZid}"]`);if(pi)pi.focus();}
   document.getElementById('cn').textContent=totalCap.toLocaleString();
   document.getElementById('cn-lbl').textContent=multi?'estimated total occupants':'estimated occupants';
   document.getElementById('cd').textContent=`${Math.round(usableFtSq).toLocaleString()} sq ft usable · ${Math.round(struc)} in structures`;
   const capPanel=document.getElementById('cap-panel');if(capPanel)capPanel.classList.toggle('has-content',borders.length>0);
+}
+
+function editZone(zid){
+  const z=S.zonePolys.find(z=>z.zid===zid);if(!z)return;
+  const closedBorders=S.zonePolys.filter(b=>b.type==='border'&&!b.open&&b.pts.length>=3);
+  const isSub=z.type==='border'&&closedBorders.some(outer=>outer!==z&&isBorderNestedIn(z,outer));
+  const colorFld=isSub?msel('Color','zdtl-color',[{v:'green',t:'Green'},{v:'blue',t:'Blue'},{v:'purple',t:'Light Purple'}]):'';
+  modal('Zone Details','Edit the name, color, and peak attendance for this zone.',
+    mf('Zone Name','zdtl-name','text',z.label||'',z.type==='restrict'?'Restricted Area':'e.g. VIP, Beer Garden')+
+    colorFld+
+    mf('Peak Attendance','zdtl-att','number',z.peakAtt||'','e.g. 500'),
+    ()=>{
+      const nm=document.getElementById('zdtl-name').value.trim();
+      if(nm)z.label=nm;
+      if(isSub){const c=document.getElementById('zdtl-color').value;if(c)z.color=c;}
+      const av=parseInt(document.getElementById('zdtl-att').value);
+      z.peakAtt=(isNaN(av)||av<=0)?null:av;
+      redrawZones();runRules();
+    },'Save');
+  if(isSub&&z.color){const sel=document.getElementById('zdtl-color');if(sel)sel.value=z.color;}
 }
 
 function segDSq(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;if(!L)return d2(px,py,ax,ay);const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/L));return d2(px,py,ax+t*dx,ay+t*dy);}
@@ -2612,7 +2626,6 @@ cw.addEventListener('mousedown',e=>{
     const doClose=activePoly&&activePoly.pts.length>=3&&(e.detail===2||_zoneSnapped);
     if(doClose){
       pushUndo();activePoly.open=false;
-      if(S._pendingZoneLabel){activePoly.label=S._pendingZoneLabel;S._pendingZoneLabel=null;}
       const closedZone=activePoly;activePoly=null;_zoneSnapped=false;
       redrawZones();runRules();
       if(closedZone.type==='border'){
@@ -2624,7 +2637,7 @@ cw.addEventListener('mousedown',e=>{
     }
     if(e.detail===2){const _btt=document.getElementById('tool-tip');if(_btt)_btt.style.display='none';return;}
     const ll=pixelToLatLng(x,y);
-    if(!activePoly){const z={type:S.tool,pts:[{lat:ll.lat,lng:ll.lng}],open:true,zid:S.idCtr++};if(S._pendingZoneColor){z.color=S._pendingZoneColor;S._pendingZoneColor=null;}S.zonePolys.push(z);activePoly=z;}
+    if(!activePoly){const z={type:S.tool,pts:[{lat:ll.lat,lng:ll.lng}],open:true,zid:S.idCtr++};S.zonePolys.push(z);activePoly=z;}
     else activePoly.pts.push({lat:ll.lat,lng:ll.lng});
     redrawZones();return;
   }
@@ -2685,16 +2698,7 @@ document.addEventListener('keydown',e=>{
 
 // ── Capacity sidebar border buttons ────────────────────────────────────────
 document.getElementById('zbrd-sb').addEventListener('click',()=>setTool('border'));
-document.getElementById('zbrd-vip').addEventListener('click',()=>{
-  modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',
-    mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden')+msel('Zone Color','vip-color',[{v:'green',t:'Green'},{v:'blue',t:'Blue'},{v:'purple',t:'Light Purple'}]),
-    ()=>{
-      const name=document.getElementById('vip-name').value.trim()||'Sub-zone';
-      S._pendingZoneLabel=name;
-      S._pendingZoneColor=document.getElementById('vip-color').value||'green';
-      setTool('border');
-    },'Start Drawing');
-});
+document.getElementById('zbrd-vip').addEventListener('click',()=>{setTool('border');});
 
 // ── Tool buttons ───────────────────────────────────────────────────────────
 [['bsel','select'],['ze','erase'],['bdim','dim']].forEach(([id,tool])=>{
@@ -2710,7 +2714,7 @@ document.getElementById('ctc-select').addEventListener('click',()=>setTool('sele
     ()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');
 });
 document.getElementById('el-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;if(val&&val!=='─────────')setTool(val);e.target.selectedIndex=0;});
-document.getElementById('define-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){modal('Add Sub-zone','Name this enclosed zone (e.g. VIP, Beer Garden, Stage Area). Draw it inside your main venue border — its area will subtract from the outer zone and be counted separately.',mf('Zone Name','vip-name','text','','e.g. VIP, Beer Garden'),()=>{const name=document.getElementById('vip-name').value.trim()||'Sub-zone';S._pendingZoneLabel=name;setTool('border');},'Start Drawing');return;}if(val==='restrict'){startRestrict();return;}setTool(val);});
+document.getElementById('define-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val)return;if(val==='subzone'){setTool('border');return;}if(val==='restrict'){startRestrict();return;}setTool(val);});
 document.getElementById('vi-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='fence'){fenceMaterial='Fence';fenceCur=[];setTool('fence');return;}setTool(val);});
 document.getElementById('sc-drop').addEventListener('change',e=>{updateOnboardCard();const val=e.target.value;e.target.selectedIndex=0;if(!val||val==='─────────')return;if(val==='eventcontact'){addEventContact();return;}if(val==='ada'){modal('ADA Path Planning','For soft surfaces such as sand, you will need to create pathways using flooring so people of all abilities can get to all of your event activations.',msel('Do you have any soft surfaces at your event venue?','ada-soft',[{v:'no',t:'No — all hard surfaces'},{v:'yes',t:'Yes — sand, grass, gravel, or other soft ground'}])+(S.hasSoftSurface!==null?`<div style="font-size:10px;color:var(--tx3);margin-top:-4px">Previously: ${S.hasSoftSurface?'Yes':'No'}</div>`:''),()=>{S.hasSoftSurface=document.getElementById('ada-soft').value==='yes';setTool('ada');runRules();},'Continue');return;}setTool(val);});
 document.getElementById('export-trigger').addEventListener('click',()=>{
