@@ -3986,9 +3986,12 @@ async function exportPDF(capture){
       const aSegs=arrowPts.slice(1).map((p,i)=>[p.x-arrowPts[i].x,p.y-arrowPts[i].y]);
       pdf.setFillColor(fr,fg,fb);pdf.setDrawColor(dr,dg,db);pdf.setLineWidth(0.2);
       pdf.lines(aSegs,arrowPts[0].x,arrowPts[0].y,[1,1],'FD',true);
-      const fs=fitFontSize(code,wMm*0.5,4,24);
+      const _aLblI={entrance:'Entrance',exit:'Exit',both:'Both'};
+      const _desgI=_aLblI[el.access]||'';const _nmI=el.vendorName||'';
+      const ingressLbl=_nmI&&_desgI?_nmI+' '+_desgI:(_nmI||_desgI||code);
+      const fs=fitFontSize(ingressLbl,wMm*0.5,4,24);
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
-      if(wMm>4){const tw=pdf.getTextWidth(code);const fOff=fs*0.353*0.36;let tRot=((rotDeg%180)+180)%180;if(tRot>90)tRot-=180;const tc=Math.cos(tRot*Math.PI/180),ts=Math.sin(tRot*Math.PI/180);pdf.text(code,center.x-(tw/2)*tc-fOff*ts,center.y-(tw/2)*ts+fOff*tc,{angle:-tRot});}
+      if(wMm>4){const tw=pdf.getTextWidth(ingressLbl);const fOff=fs*0.353*0.36;let tRot=((rotDeg%180)+180)%180;if(tRot>90)tRot-=180;const tc=Math.cos(tRot*Math.PI/180),ts=Math.sin(tRot*Math.PI/180);pdf.text(ingressLbl,center.x-(tw/2)*tc-fOff*ts,center.y-(tw/2)*ts+fOff*tc,{angle:-tRot});}
     }else{
       // Standard rotated rectangle
       const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
@@ -4223,14 +4226,14 @@ async function exportPDF(capture){
       pdfIcon('ingress',p2C1X+iconSz,c1y-iconSz);
       pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(28,27,46);
       pdf.text(`Entrance / Exit (${p2IngressEls.length})`,p2C1X+txtOff,c1y);c1y+=p2LH;
+      const _aLblP2={entrance:'Entrance',exit:'Exit',both:'Both'};
       p2IngressEls.forEach(el=>{
         if(c1y>=p2MaxY)return;
-        pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(244,81,64);
-        pdf.text(elCode(el,tnMap),p2C1X+txtOff,c1y);
-        pdf.setFont('helvetica','normal');pdf.setTextColor(28,27,46);
-        let nm=el.vendorName||el.label||'Gate';
-        while(nm.length>1&&pdf.getTextWidth(nm)>p2C1W-txtOff-12)nm=nm.slice(0,-1);
-        pdf.text(nm,p2C1X+txtOff+12,c1y);c1y+=p2LH;
+        const _desgP2=_aLblP2[el.access]||'';const _nmP2=el.vendorName||'';
+        let ingressLblP2=_nmP2&&_desgP2?_nmP2+' '+_desgP2:(_nmP2||_desgP2||elCode(el,tnMap));
+        while(ingressLblP2.length>1&&pdf.getTextWidth(ingressLblP2)>p2C1W-txtOff)ingressLblP2=ingressLblP2.slice(0,-1);
+        pdf.setFont('helvetica','normal');pdf.setFontSize(11);pdf.setTextColor(28,27,46);
+        pdf.text(ingressLblP2,p2C1X+txtOff,c1y);c1y+=p2LH;
       });
     }
   }
