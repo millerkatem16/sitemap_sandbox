@@ -487,24 +487,14 @@ canvas{position:absolute;inset:0;pointer-events:none}
   </div>
   <div id="map-zoom-ctrl"><button id="mz-in" title="Zoom in">+</button><button id="mz-out" title="Zoom out">−</button></div>
   </div>
-  <div id="align-pop" style="display:none;position:fixed;z-index:9100;background:#1e1b35;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px 16px;width:340px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:var(--font);color:#e2e8f0;box-sizing:border-box;">
+  <div id="align-pop" style="display:none;position:fixed;z-index:9100;background:#1e1b35;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:14px 16px 16px;width:280px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:var(--font);color:#e2e8f0;box-sizing:border-box;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8">Align &amp; Distribute</span>
       <button id="ap-close" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;line-height:1;padding:0 2px">×</button>
     </div>
-    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Align Edges</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:12px">
-      <button class="ap-btn" id="ap-al">⇤ Left</button>
-      <button class="ap-btn" id="ap-ac">↔ Center</button>
-      <button class="ap-btn" id="ap-ar">Right ⇥</button>
-      <button class="ap-btn" id="ap-at">⇡ Top</button>
-      <button class="ap-btn" id="ap-am">↕ Middle</button>
-      <button class="ap-btn" id="ap-ab">Bottom ⇣</button>
-    </div>
-    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Distribute Evenly <span id="ap-dist-note" style="color:#475569;font-weight:400;text-transform:none;letter-spacing:0">(need 3+)</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
-      <button class="ap-btn ap-btn-w" id="ap-dh">⇔ Horizontal</button>
-      <button class="ap-btn ap-btn-w" id="ap-dv">⇕ Vertical</button>
+      <button class="ap-btn ap-btn-w" id="ap-row">⇔ Arrange as Row</button>
+      <button class="ap-btn ap-btn-w" id="ap-col">⇕ Arrange as Column</button>
     </div>
     <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Set Exact Spacing</div>
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:12px">
@@ -512,12 +502,15 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <span style="color:#94a3b8;font-size:12px">ft</span>
       <button class="ap-btn ap-btn-w" id="ap-sp-apply" style="flex:1">Apply</button>
     </div>
-    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Arrange as Grid</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:center">
-      <input id="ap-gr-rows" type="number" min="1" step="1" value="2" placeholder="rows" style="padding:4px 6px;background:#2d2a4a;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e2e8f0;font-size:12px">
-      <input id="ap-gr-cols" type="number" min="1" step="1" value="3" placeholder="cols" style="padding:4px 6px;background:#2d2a4a;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e2e8f0;font-size:12px">
-      <input id="ap-gr-gap" type="number" min="0" step="0.5" value="2" placeholder="ft gap" style="padding:4px 6px;background:#2d2a4a;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e2e8f0;font-size:12px">
-      <button class="ap-btn" id="ap-gr-apply">Go</button>
+    <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Arrange as Group</div>
+    <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap">
+      <input id="ap-gr-rows" type="number" min="1" step="1" value="2" style="width:36px;padding:4px 4px;background:#2d2a4a;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e2e8f0;font-size:12px;text-align:center">
+      <span style="color:#64748b;font-size:12px;flex-shrink:0">×</span>
+      <input id="ap-gr-cols" type="number" min="1" step="1" value="3" style="width:36px;padding:4px 4px;background:#2d2a4a;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e2e8f0;font-size:12px;text-align:center">
+      <span style="color:#64748b;font-size:12px;flex-shrink:0">at</span>
+      <input id="ap-gr-gap" type="number" min="0" step="0.5" value="2" style="width:40px;padding:4px 4px;background:#2d2a4a;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e2e8f0;font-size:12px;text-align:center">
+      <span style="color:#64748b;font-size:12px;flex-shrink:0">ft</span>
+      <button class="ap-btn" id="ap-gr-apply" style="flex-shrink:0">Apply</button>
     </div>
   </div>
 
@@ -878,14 +871,14 @@ function updateAlignBtn(){
 
   function openPop(){
     if(!btn||!pop)return;
-    pop.style.left='50%';
-    pop.style.top='50%';
-    pop.style.transform='translate(-50%,-50%)';
+    const br=btn.getBoundingClientRect();
+    const pw=280;
+    let left=br.left;
+    if(left+pw>window.innerWidth-8)left=window.innerWidth-pw-8;
+    pop.style.left=Math.max(8,left)+'px';
+    pop.style.top=(br.bottom+6)+'px';
+    pop.style.transform='none';
     pop.style.display='block';
-    // disable distribute if <3 selected
-    const n=S.selIds.size;
-    document.getElementById('ap-dh').disabled=n<3;
-    document.getElementById('ap-dv').disabled=n<3;
   }
   function closePop(){if(pop)pop.style.display='none';}
   btn.addEventListener('click',ev=>{ev.stopPropagation();pop.style.display==='block'?closePop():openPop();});
@@ -898,50 +891,36 @@ function updateAlignBtn(){
   }
   function moveTo(el,cx,cy){const ll=pixelToLatLng(cx,cy);el.lat=ll.lat;el.lng=ll.lng;}
 
-  // Align edges
-  document.getElementById('ap-al').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls();const minX=Math.min(...es.map(e=>elX(e)));
-    es.forEach(e=>moveTo(e,minX+elW(e)/2,elY(e)+elH(e)/2));
-  }));
-  document.getElementById('ap-ac').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls();const cx=(Math.min(...es.map(e=>elX(e)))+Math.max(...es.map(e=>elX(e)+elW(e))))/2;
-    es.forEach(e=>moveTo(e,cx,elY(e)+elH(e)/2));
-  }));
-  document.getElementById('ap-ar').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls();const maxR=Math.max(...es.map(e=>elX(e)+elW(e)));
-    es.forEach(e=>moveTo(e,maxR-elW(e)/2,elY(e)+elH(e)/2));
-  }));
-  document.getElementById('ap-at').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls();const minY=Math.min(...es.map(e=>elY(e)));
-    es.forEach(e=>moveTo(e,elX(e)+elW(e)/2,minY+elH(e)/2));
-  }));
-  document.getElementById('ap-am').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls();const my=(Math.min(...es.map(e=>elY(e)))+Math.max(...es.map(e=>elY(e)+elH(e))))/2;
-    es.forEach(e=>moveTo(e,elX(e)+elW(e)/2,my));
-  }));
-  document.getElementById('ap-ab').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls();const maxB=Math.max(...es.map(e=>elY(e)+elH(e)));
-    es.forEach(e=>moveTo(e,elX(e)+elW(e)/2,maxB-elH(e)/2));
+  // Arrange as Row: align vertical centers, distribute evenly horizontally
+  document.getElementById('ap-row').addEventListener('click',()=>applyAndClose(()=>{
+    const es=selEls().slice().sort((a,b)=>elX(a)-elX(b));
+    if(es.length<2)return;
+    const my=(Math.min(...es.map(e=>elY(e)))+Math.max(...es.map(e=>elY(e)+elH(e))))/2;
+    if(es.length>=3){
+      const totalSpan=(elX(es[es.length-1])+elW(es[es.length-1]))-elX(es[0]);
+      const totalW=es.reduce((s,e)=>s+elW(e),0);
+      const gap=(totalSpan-totalW)/(es.length-1);
+      let cur=elX(es[0]);
+      es.forEach(e=>{moveTo(e,cur+elW(e)/2,my);cur+=elW(e)+gap;});
+    }else{
+      es.forEach(e=>moveTo(e,elX(e)+elW(e)/2,my));
+    }
   }));
 
-  // Distribute evenly (edge-to-edge equal gaps, outer pair fixed)
-  document.getElementById('ap-dh').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls().slice().sort((a,b)=>elX(a)-elX(b));
-    if(es.length<3)return;
-    const totalSpan=(elX(es[es.length-1])+elW(es[es.length-1]))-(elX(es[0]));
-    const totalW=es.reduce((s,e)=>s+elW(e),0);
-    const gap=(totalSpan-totalW)/(es.length-1);
-    let cur=elX(es[0]);
-    es.forEach(e=>{moveTo(e,cur+elW(e)/2,elY(e)+elH(e)/2);cur+=elW(e)+gap;});
-  }));
-  document.getElementById('ap-dv').addEventListener('click',()=>applyAndClose(()=>{
+  // Arrange as Column: align horizontal centers, distribute evenly vertically
+  document.getElementById('ap-col').addEventListener('click',()=>applyAndClose(()=>{
     const es=selEls().slice().sort((a,b)=>elY(a)-elY(b));
-    if(es.length<3)return;
-    const totalSpan=(elY(es[es.length-1])+elH(es[es.length-1]))-(elY(es[0]));
-    const totalH=es.reduce((s,e)=>s+elH(e),0);
-    const gap=(totalSpan-totalH)/(es.length-1);
-    let cur=elY(es[0]);
-    es.forEach(e=>{moveTo(e,elX(e)+elW(e)/2,cur+elH(e)/2);cur+=elH(e)+gap;});
+    if(es.length<2)return;
+    const mx=(Math.min(...es.map(e=>elX(e)))+Math.max(...es.map(e=>elX(e)+elW(e))))/2;
+    if(es.length>=3){
+      const totalSpan=(elY(es[es.length-1])+elH(es[es.length-1]))-elY(es[0]);
+      const totalH=es.reduce((s,e)=>s+elH(e),0);
+      const gap=(totalSpan-totalH)/(es.length-1);
+      let cur=elY(es[0]);
+      es.forEach(e=>{moveTo(e,mx,cur+elH(e)/2);cur+=elH(e)+gap;});
+    }else{
+      es.forEach(e=>moveTo(e,mx,elY(e)+elH(e)/2));
+    }
   }));
 
   // Set exact spacing
@@ -2026,6 +2005,7 @@ function makeDrag(div,el){
     const _cRad=Math.cos(_rad),_sRad=Math.sin(_rad);
     const _mHW=_mrw?_mrw.offsetWidth/2:0,_mHH=_mrw?_mrw.offsetHeight/2:0;
     const _sc2pt=(cx,cy)=>_mrw?{x:_mHW+(cx-_vcx)*_cRad-(cy-_vcy)*_sRad,y:_mHH+(cx-_vcx)*_sRad+(cy-_vcy)*_cRad}:{x:cx-cw.getBoundingClientRect().left,y:cy-cw.getBoundingClientRect().top};
+    const _pt2sc=(cx,cy)=>{if(_mrw){const dx=cx-_mHW,dy=cy-_mHH;return{x:_vcx+dx*_cRad+dy*_sRad,y:_vcy-dx*_sRad+dy*_cRad};}const r=cw.getBoundingClientRect();return{x:cx+r.left,y:cy+r.top};};
     startPt=_sc2pt(ev.clientX,ev.clientY);
     const xy=elXY(el);
     startCx=xy.x+elW(el)/2;startCy=xy.y+elH(el)/2;
@@ -2037,7 +2017,10 @@ function makeDrag(div,el){
     document.body.appendChild(lbl);
     // Compute established spacing G from static align-group peers (nearest-neighbor pairs)
     let G=null;
-    const _stPeers=ALIGN_GROUP.has(el.type)?S.els.filter(e=>ALIGN_GROUP.has(e.type)&&e.id!==el.id):[];
+    const _isGroup=S.selIds.size>=2&&S.selIds.has(el.id);
+    const _groupPeers=_isGroup?S.els.filter(e=>S.selIds.has(e.id)&&e.id!==el.id):[];
+    const _peerStarts=_groupPeers.map(p=>{const pxy=elXY(p);return{el:p,startCx:pxy.x+elW(p)/2,startCy:pxy.y+elH(p)/2};});
+    const _stPeers=ALIGN_GROUP.has(el.type)?S.els.filter(e=>ALIGN_GROUP.has(e.type)&&(_isGroup?!S.selIds.has(e.id):e.id!==el.id)):[];
     if(_stPeers.length>=2){
       const _gaps=[];
       _stPeers.forEach(a=>{
@@ -2109,26 +2092,23 @@ function makeDrag(div,el){
       _aSnappedX=tAX>0;_aSnappedY=tAY>0;
       // Fix 1: recompute nearClr from final post-snap position so readout matches visual
       if(nearEl!==null&&_nearIdx>=0){const p=_peerPxCache[_nearIdx];const rfx=Math.max(0,Math.max(newCx-_aeW2,p.px)-Math.min(newCx+_aeW2,p.px2));const rfy=Math.max(0,Math.max(newCy-_aeH2,p.py)-Math.min(newCy+_aeH2,p.py2));nearClr=Math.sqrt(rfx*rfx+rfy*rfy)/S.scale;}
-      // Feature 1: floating distance readout
-      if(nearEl!==null){
-        lbl.textContent=nearClr.toFixed(1)+'ft';
-        lbl.style.color=snapped?'#2dd4a0':(tAX>0||tAY>0)?'#63b3ed':'#fff';
-        lbl.style.left=(mv.clientX+14)+'px';
-        lbl.style.top=(mv.clientY-20)+'px';
-        lbl.style.display='block';
-      }else{
-        lbl.style.display='none';
-      }
       // Guide lines on dimension canvas
       drawDims();
       if(nearEl!==null){
         const nCx=elX(nearEl)+elW(nearEl)/2,nCy=elY(nearEl)+elH(nearEl)/2;
+        // Feature 1: distance label positioned at midpoint of the connecting line
+        const midSc=_pt2sc((newCx+nCx)/2,(newCy+nCy)/2);
+        lbl.textContent=nearClr.toFixed(1)+'ft';
+        lbl.style.color=snapped?'#2dd4a0':(tAX>0||tAY>0)?'#63b3ed':'#fff';
+        lbl.style.left=(midSc.x+6)+'px';
+        lbl.style.top=(midSc.y-14)+'px';
+        lbl.style.display='block';
         dcx.save();
         if(snapped){dcx.strokeStyle='rgba(45,212,160,0.65)';dcx.lineWidth=1.5;dcx.setLineDash([5,4]);}
         else{dcx.strokeStyle='rgba(180,180,200,0.35)';dcx.lineWidth=1;dcx.setLineDash([4,5]);}
         dcx.beginPath();dcx.moveTo(newCx,newCy);dcx.lineTo(nCx,nCy);dcx.stroke();
         dcx.setLineDash([]);dcx.restore();
-      }
+      }else{lbl.style.display='none';}
       if(_aY!==null){
         const gY=_aYi===0?newCy-_aeH2:_aYi===1?newCy:newCy+_aeH2;
         const pL=elX(_aYPeer),pR=pL+elW(_aYPeer);
@@ -2141,6 +2121,7 @@ function makeDrag(div,el){
         dcx.save();dcx.strokeStyle='rgba(99,179,237,0.75)';dcx.lineWidth=1;dcx.setLineDash([]);
         dcx.beginPath();dcx.moveTo(gX,Math.min(newCy-_aeH2,pT)-8);dcx.lineTo(gX,Math.max(newCy+_aeH2,pB)+8);dcx.stroke();dcx.restore();
       }
+      if(_isGroup){const dCx=newCx-startCx,dCy=newCy-startCy;_peerStarts.forEach(ps=>{const pNewCx=ps.startCx+dCx,pNewCy=ps.startCy+dCy;const pLl=pixelToLatLng(pNewCx,pNewCy);ps.el.lat=pLl.lat;ps.el.lng=pLl.lng;const pDiv=document.querySelector(`#el [data-id="${ps.el.id}"]`);if(pDiv){pDiv.style.left=(pNewCx-elW(ps.el)/2)+'px';pDiv.style.top=(pNewCy-elH(ps.el)/2)+'px';}});}
       div.style.left=(newCx-elW(el)/2)+'px';
       div.style.top=(newCy-elH(el)/2)+'px';
     };
