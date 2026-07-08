@@ -856,7 +856,7 @@ function updateAlignBtn(){
     if(!active)return;
     const wasDrag=mq.style.display==='block';
     mq.style.display='none';active=false;
-    if(!wasDrag)return;
+    if(!wasDrag||S.tool!=='multiselect')return;
     const cx=ev.clientX,cy=ev.clientY;
     const minSx=Math.min(sx,cx),minSy=Math.min(sy,cy),maxSx=Math.max(sx,cx),maxSy=Math.max(sy,cy);
     const corners=[screenToCanvasPt(minSx,minSy),screenToCanvasPt(maxSx,minSy),screenToCanvasPt(minSx,maxSy),screenToCanvasPt(maxSx,maxSy)];
@@ -1081,6 +1081,7 @@ function applyMapRot(deg,animate){
 })();
 
 // Manual pan (select mode) — replaces Google's disabled native drag, corrects for S.mapRot
+let _cvPanMoved=false;
 (()=>{
   let panActive=false,panMoved=false,startX=0,startY=0,lastX=0,lastY=0;
   document.addEventListener('mousedown',ev=>{
@@ -1099,14 +1100,14 @@ function applyMapRot(deg,animate){
     if(!panMoved){
       const tdx=ev.clientX-startX,tdy=ev.clientY-startY;
       if(tdx*tdx+tdy*tdy<25)return;
-      panMoved=true;return;
+      panMoved=true;_cvPanMoved=true;return;
     }
     const rad=-S.mapRot*Math.PI/180;
     const dx=rdx*Math.cos(rad)-rdy*Math.sin(rad);
     const dy=rdx*Math.sin(rad)+rdy*Math.cos(rad);
     gmap.panBy(-dx,-dy);
   });
-  document.addEventListener('mouseup',()=>{panActive=false;panMoved=false;});
+  document.addEventListener('mouseup',()=>{panActive=false;panMoved=false;setTimeout(()=>{_cvPanMoved=false;},0);});
 })();
 
 // Custom zoom control (+/-)
@@ -3482,13 +3483,11 @@ function startMapCapture(){
       let bgDone=false;
       try{
         const ctr=pixelToLatLng(selCwX,selCwY);
-        console.log('[DEBUG satellite center]',{fetchCenterLat:ctr.lat,fetchCenterLng:ctr.lng,selCwX,selCwY});
         const zoom=Math.round(gmap.getZoom());
         const maxD=640,ratio=Math.min(1,maxD/diagPx);
         const smZoom=ratio<1?Math.max(0,Math.floor(zoom+Math.log2(ratio))):zoom;
         const smSide=Math.max(1,Math.round(diagPx*Math.pow(2,smZoom-zoom)));
         const smUrl=`https://maps.googleapis.com/maps/api/staticmap?center=${ctr.lat},${ctr.lng}&zoom=${smZoom}&size=${smSide}x${smSide}&maptype=satellite&key=${mapsApiKey}`;
-        console.log('[DEBUG] Static Maps fetch URL:',smUrl,'zoom:',zoom,'smZoom:',smZoom,'smSide:',smSide,'diagPx:',diagPx);
         const resp=await fetch(smUrl,{mode:'cors'});
         if(resp.ok){
           const blob=await resp.blob();
@@ -3514,7 +3513,6 @@ function startMapCapture(){
 
       // 2. Canvas vector overlay — zones, elements, labels in frozen coordinate space.
       // (dom-to-image removed: it cannot apply ancestor CSS rotation from #map-rot-wrap)
-      console.log('[DEBUG capture]','mapRot:',S.mapRot,'bgLarge set:',!!bgLargeDataUrl,'outW:',outW,'outH:',outH);
       const vCanvas=(S.mapRot&&bgLargeDataUrl)?await buildRotatedBg(bgLargeDataUrl,outW,outH,S.mapRot,CS):comp;
       const vctx=vCanvas.getContext('2d');
       (()=>{
@@ -3522,7 +3520,6 @@ function startMapCapture(){
         const _r=S.mapRot*Math.PI/180,_cos=Math.cos(_r),_sin=Math.sin(_r);
         const _cx=vCanvas.width/2,_cy=vCanvas.height/2;
         const _fc={lat:gmap.getCenter().lat(),lng:gmap.getCenter().lng()},_fz=gmap.getZoom();
-        console.log('[DEBUG zoom]','raw gmap.getZoom():',gmap.getZoom(),'rounded zoom used for fetch:',Math.round(gmap.getZoom()),'_fz used in ll2cv:',_fz,'fractional?',_fz!==Math.round(_fz));
         function ll2cv(lat,lng){
           const sp=latLngToPixelFrozen(lat,lng,_fc,_fz);
           const dx=(sp.x-selCwX)*CS,dy=(sp.y-selCwY)*CS;
@@ -3553,14 +3550,14 @@ function startMapCapture(){
         S.zonePolys.forEach(z=>{
           if(z.open||z.pts.length<3)return;
           const isSub=z.type==='border'&&cvClosed.some(o=>o!==z&&isBorderNestedIn(z,o));
-          const zSt=isSub?ZD_SUBZONE:(ZD[z.type]||ZD.border);
+          const zSt=isSub?ZD_SUBZONE:((z.type==='restrict'&&z.color&&ZONE_COLORS[z.color])?ZONE_COLORS[z.color]:(ZD[z.type]||ZD.border));
           const[r,g,b]=hexArr(zSt.stroke);
           const pps=z.pts.map(p=>ll2cv(p.lat,p.lng));
           vctx.save();vctx.lineWidth=z.type==='border'?1.2*CS:0.7*CS;vctx.setLineDash(z.type==='border'?[5*CS,3*CS]:[]);
           vctx.strokeStyle=`rgb(${r},${g},${b})`;
           vctx.beginPath();vctx.moveTo(pps[0].x,pps[0].y);
           for(let i=1;i<pps.length;i++)vctx.lineTo(pps[i].x,pps[i].y);
-          vctx.closePath();vctx.stroke();vctx.restore();
+          vctx.closePath();vctx.fillStyle=zSt.fill;vctx.fill();vctx.stroke();vctx.restore();
         });
         // ADA paths
         S.adaPaths.forEach(path=>{
@@ -3607,13 +3604,11 @@ function startMapCapture(){
         });
         // Elements
         const cvTnMap=getTypeNums();
-        let _elTraceLogged=false;
         S.els.forEach(el=>{
           const t=TYPES[el.type]||TYPES.custom;
           if(t.noRender||t.isLabel)return;
           if(t.utility&&S.hideUtils)return;
           const center=ll2cv(el.lat,el.lng);
-          if(!_elTraceLogged){_elTraceLogged=true;const _sp=latLngToPixelFrozen(el.lat,el.lng,_fc,_fz);const _dxr=_sp.x-selCwX;const _dyr=_sp.y-selCwY;console.log('[DEBUG element trace]',JSON.stringify({elId:el.id,elLat:el.lat,elLng:el.lng,spX:_sp.x,spY:_sp.y,selCwX,selCwY,outW,outH,CS,dx_raw:_dxr,dy_raw:_dyr,dx_scaled:_dxr*CS,dy_scaled:_dyr*CS,mapRot:S.mapRot,finalX:center.x,finalY:center.y,canvasCenterX:vCanvas.width/2,canvasCenterY:vCanvas.height/2},null,2));}
           const wPx=el.wFt*ftToPx,hPx=el.hFt*ftToPx;
           const rotDeg=(el.rot||0)+S.mapRot;
           const rad2=rotDeg*Math.PI/180,cos2=Math.cos(rad2),sin2=Math.sin(rad2);
@@ -3677,7 +3672,6 @@ function startMapCapture(){
           vctx.save();vctx.font=`bold ${lfs}px sans-serif`;vctx.fillStyle='rgb(255,255,255)';vctx.textAlign='center';vctx.textBaseline='middle';vctx.translate(lp.x,lp.y);vctx.rotate(lrad);vctx.fillText(ltxt,0,0);vctx.restore();
         });
       })();
-      {const _dc=vCanvas.getContext('2d');_dc.save();_dc.strokeStyle='#ff00ff';_dc.lineWidth=4;const _ccx=vCanvas.width/2,_ccy=vCanvas.height/2;_dc.beginPath();_dc.moveTo(_ccx-40,_ccy);_dc.lineTo(_ccx+40,_ccy);_dc.moveTo(_ccx,_ccy-40);_dc.lineTo(_ccx,_ccy+40);_dc.stroke();_dc.strokeStyle='#00ffff';_dc.lineWidth=2;_dc.strokeRect(0,0,vCanvas.width,vCanvas.height);_dc.restore();}
       capturedDataUrl=vCanvas.toDataURL('image/jpeg',0.93);
       capX=relX;capY=relY;capW=outW;capH=outH;capSelCwX=selCwX;capSelCwY=selCwY;
       prevImg.src=capturedDataUrl;
@@ -3774,8 +3768,7 @@ async function buildRotatedBg(srcDataUrl,captureW,captureH,mapRot,bgCS){
   overComp.width=bgPxSide;overComp.height=bgPxSide;
   const octx=overComp.getContext('2d');
   octx.fillStyle='#1c2b2c';octx.fillRect(0,0,bgPxSide,bgPxSide);
-  const bgImg=await new Promise((res,rej)=>{const img=new Image();img.onload=()=>res(img);img.onerror=()=>rej();img.src=srcDataUrl;}).catch(err=>{console.error('[DEBUG bgLarge load failed]',err);return null;});
-  console.log('[DEBUG buildRotatedBg]','bgImg loaded:',!!bgImg,'bgImg naturalWidth:',bgImg?.naturalWidth,'bgImg naturalHeight:',bgImg?.naturalHeight,'bgPxSide:',bgPxSide,'cropW:',captureW*bgCS,'cropH:',captureH*bgCS);
+  const bgImg=await new Promise((res,rej)=>{const img=new Image();img.onload=()=>res(img);img.onerror=()=>rej();img.src=srcDataUrl;}).catch(()=>null);
   if(bgImg){octx.save();octx.translate(bgPxSide/2,bgPxSide/2);octx.rotate(mapRot*Math.PI/180);octx.drawImage(bgImg,-bgPxSide/2,-bgPxSide/2,bgPxSide,bgPxSide);octx.restore();}
   const cropComp=document.createElement('canvas');
   cropComp.width=captureW*bgCS;cropComp.height=captureH*bgCS;
@@ -4514,6 +4507,7 @@ window.initMap=function(){
   // mousedown is stopped in capture before reaching gmap, so gmap 'click' won't fire for map-background clicks;
   // this DOM handler deselects elements when the user clicks empty map space in select mode
   cvArea.addEventListener('click',ev=>{
+    if(_cvPanMoved)return;
     if(S.tool==='select'&&S.selIds.size&&!ev.target.closest('.el,#canvas-action-ctrl,#canvas-tool-ctrl,#opacity-ctrl,#compass-widget,#map-zoom-ctrl,#align-pop')){
       S.selId=null;S.selIds=new Set();updateAlignBtn();renderEls();
     }
