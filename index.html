@@ -3854,7 +3854,7 @@ async function exportPDF(capture){
   // S.scale = CSS px per foot on the live canvas
   // captureW CSS px maps to imgW mm, so 1 ft = S.scale*(imgW/captureW) mm
   const ftToMm=S.scale*(imgW/captureW);
-  function hexRgb(h){const c=(h||'#888').replace('#','');return[parseInt(c.slice(0,2),16)||128,parseInt(c.slice(2,4),16)||128,parseInt(c.slice(4,6),16)||128];}
+  function hexRgb(h){if(!h)return[128,128,128];const m=h.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);if(m)return[+m[1],+m[2],+m[3]];const c=h.replace('#','');return[parseInt(c.slice(0,2),16)||128,parseInt(c.slice(2,4),16)||128,parseInt(c.slice(4,6),16)||128];}
   function fitFontSize(text,targetWidthMm,minFs,maxFs){pdf.setFont('helvetica','bold');pdf.setFontSize(maxFs);const wAtMax=pdf.getTextWidth(text);if(wAtMax<=0)return maxFs;let fs=maxFs*(targetWidthMm/wAtMax);return Math.max(minFs,Math.min(maxFs,fs));}
 
   // ── 7. Draw zones ─────────────────────────────────────────────────────────
@@ -3862,7 +3862,7 @@ async function exportPDF(capture){
   S.zonePolys.forEach(z=>{
     if(z.open||z.pts.length<3)return;
     const isSubzonePdf=z.type==='border'&&pdfClosedBorders.some(outer=>outer!==z&&isBorderNestedIn(z,outer));
-    const zStyle=isSubzonePdf?ZD_SUBZONE:(ZD[z.type]||ZD.border);
+    const zStyle=isSubzonePdf?ZD_SUBZONE:((z.type==='restrict'&&z.color&&ZONE_COLORS[z.color])?ZONE_COLORS[z.color]:(ZD[z.type]||ZD.border));
     const[r,g,b]=hexRgb(zStyle.stroke);
     const pps=z.pts.map(p=>ll2pdf(p.lat,p.lng));
     pdf.setDrawColor(r,g,b);pdf.setLineWidth(z.type==='border'?0.6:0.35);
@@ -3985,7 +3985,7 @@ async function exportPDF(capture){
       pdf.lines(aSegs,arrowPts[0].x,arrowPts[0].y,[1,1],'FD',true);
       const fs=fitFontSize(code,wMm*0.5,4,24);
       pdf.setFont('helvetica','bold');pdf.setFontSize(fs);pdf.setTextColor(255,255,255);
-      if(wMm>4){const tw=pdf.getTextWidth(code);const fOff=fs*0.353*0.36;pdf.text(code,center.x-(tw/2)*cos2-fOff*sin2,center.y-(tw/2)*sin2+fOff*cos2,{angle:-rotDeg});}
+      if(wMm>4){const tw=pdf.getTextWidth(code);const fOff=fs*0.353*0.36;let tRot=((rotDeg%180)+180)%180;if(tRot>90)tRot-=180;const tc=Math.cos(tRot*Math.PI/180),ts=Math.sin(tRot*Math.PI/180);pdf.text(code,center.x-(tw/2)*tc-fOff*ts,center.y-(tw/2)*ts+fOff*tc,{angle:-tRot});}
     }else{
       // Standard rotated rectangle
       const rad2=rotDeg*Math.PI/180;const cos2=Math.cos(rad2),sin2=Math.sin(rad2);
@@ -4001,7 +4001,7 @@ async function exportPDF(capture){
       const dark=t.tent&&(el.tentType!=='food'&&el.tentType!=='cooking');
       pdf.setTextColor(dark?28:255,dark?27:255,dark?46:255);
       const tw=pdf.getTextWidth(code);const thApprox=fs*0.353;
-      if(tw<wMm*0.95&&thApprox<hMm*0.95){const fOff=fs*0.353*0.36;pdf.text(code,center.x-(tw/2)*cos2-fOff*sin2,center.y-(tw/2)*sin2+fOff*cos2,{angle:-rotDeg});}
+      if(tw<wMm*0.95&&thApprox<hMm*0.95){const fOff=fs*0.353*0.36;let tRot=((rotDeg%180)+180)%180;if(tRot>90)tRot-=180;const tc=Math.cos(tRot*Math.PI/180),ts=Math.sin(tRot*Math.PI/180);pdf.text(code,center.x-(tw/2)*tc-fOff*ts,center.y-(tw/2)*ts+fOff*tc,{angle:-tRot});}
     }
   });
 
