@@ -2036,7 +2036,7 @@ function renderEls(){
         const _sX=ev.clientX,_sY=ev.clientY;
         const _bPt=screenToCanvasPt(ev.clientX,ev.clientY);
         const _bAng=Math.atan2(_bPt.y-_bbCy,_bPt.x-_bbCx)*(180/Math.PI);
-        const _bases=_grpEls.map(e=>({el:e,base:e.rot||0}));
+        const _bases=_grpEls.map(e=>({el:e,base:e.rot||0,ox:ecx(e)-_bbCx,oy:ecy(e)-_bbCy}));
         let _gRot=false,_gUndo=false;
         const _onM=mv=>{
           const dx=mv.clientX-_sX,dy=mv.clientY-_sY;
@@ -2044,10 +2044,12 @@ function renderEls(){
           if(!_gUndo){pushUndo();_gUndo=true;}
           const _rPt=screenToCanvasPt(mv.clientX,mv.clientY);
           const _dR=Math.atan2(_rPt.y-_bbCy,_rPt.x-_bbCx)*(180/Math.PI)-_bAng;
-          _bases.forEach(({el:e,base:b})=>{
+          const _rad=_dR*Math.PI/180,_cos=Math.cos(_rad),_sin=Math.sin(_rad);
+          _bases.forEach(({el:e,base:b,ox:_ox,oy:_oy})=>{
+            moveTo(e,_bbCx+_ox*_cos-_oy*_sin,_bbCy+_ox*_sin+_oy*_cos);
             e.rot=b+_dR;
             const _d2=document.querySelector('#el [data-id="'+e.id+'"]');
-            if(_d2)_d2.style.transform='rotate('+e.rot+'deg)';
+            if(_d2){const _xy=elXY(e);_d2.style.left=_xy.x+'px';_d2.style.top=_xy.y+'px';_d2.style.transform='rotate('+e.rot+'deg)';}
           });
         };
         const _onU=()=>{
