@@ -217,6 +217,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .rbtn{background:var(--gold);color:#1C1B2E;cursor:grab}
 .dbtn:hover{transform:scale(1.18);opacity:1}
 .rbtn:hover{transform:scale(1.9);opacity:1;box-shadow:0 4px 20px rgba(251,189,47,0.65);z-index:30}
+.grp-rot-handle:hover{transform:scale(1.15);box-shadow:0 4px 16px rgba(59,130,246,0.65)!important;opacity:1;}
 .el:hover .dbtn,.el:hover .rbtn,.el.selected .dbtn,.el.selected .rbtn{display:flex}
 
 /* ── Modal ───────────────────────────────────────────────────────────────── */
@@ -1998,6 +1999,51 @@ function renderEls(){
     });
     elDiv.appendChild(div);
   });
+  // ── Group rotate handle ──────────────────────────────────────────────────
+  if(S.selIds.size>=2){
+    const _grpEls=S.els.filter(e=>S.selIds.has(e.id));
+    if(_grpEls.length>=2){
+      const _bbL=Math.min(..._grpEls.map(e=>elX(e)));
+      const _bbT=Math.min(..._grpEls.map(e=>elY(e)));
+      const _bbR=Math.max(..._grpEls.map(e=>elX(e)+elW(e)));
+      const _bbB=Math.max(..._grpEls.map(e=>elY(e)+elH(e)));
+      const _bbCx=(_bbL+_bbR)/2,_bbCy=(_bbT+_bbB)/2;
+      const _gSz=20,_gOff=6;
+      const _grh=document.createElement('button');
+      _grh.className='grp-rot-handle';
+      _grh.innerHTML='↻';
+      _grh.title='Rotate group';
+      _grh.style.cssText=`position:absolute;left:${_bbL-_gSz-_gOff}px;top:${_bbT-_gSz-_gOff}px;width:${_gSz}px;height:${_gSz}px;font-size:${_gSz-6}px;background:#3b82f6;border:1.5px solid #2563eb;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;z-index:1000;cursor:grab;pointer-events:auto;user-select:none;box-shadow:0 2px 8px rgba(59,130,246,0.45);transition:transform .14s,box-shadow .14s;`;
+      _grh.addEventListener('mousedown',ev=>{
+        ev.stopPropagation();ev.preventDefault();
+        const _sX=ev.clientX,_sY=ev.clientY;
+        const _bPt=screenToCanvasPt(ev.clientX,ev.clientY);
+        const _bAng=Math.atan2(_bPt.y-_bbCy,_bPt.x-_bbCx)*(180/Math.PI);
+        const _bases=_grpEls.map(e=>({el:e,base:e.rot||0}));
+        let _gRot=false,_gUndo=false;
+        const _onM=mv=>{
+          const dx=mv.clientX-_sX,dy=mv.clientY-_sY;
+          if(!_gRot){if(dx*dx+dy*dy<25)return;_gRot=true;S.isRotating=true;}
+          if(!_gUndo){pushUndo();_gUndo=true;}
+          const _rPt=screenToCanvasPt(mv.clientX,mv.clientY);
+          const _dR=Math.atan2(_rPt.y-_bbCy,_rPt.x-_bbCx)*(180/Math.PI)-_bAng;
+          _bases.forEach(({el:e,base:b})=>{
+            e.rot=b+_dR;
+            const _d2=document.querySelector('#el [data-id="'+e.id+'"]');
+            if(_d2)_d2.style.transform='rotate('+e.rot+'deg)';
+          });
+        };
+        const _onU=()=>{
+          document.removeEventListener('mousemove',_onM);
+          document.removeEventListener('mouseup',_onU);
+          if(_gRot){S.isRotating=false;runRules();}
+        };
+        document.addEventListener('mousemove',_onM);
+        document.addEventListener('mouseup',_onU);
+      });
+      elDiv.appendChild(_grh);
+    }
+  }
 }
 
 // ── Drag ───────────────────────────────────────────────────────────────────
