@@ -1847,6 +1847,42 @@ function updatePlanningGuideBadge(){
   S.pgSeenOpenKeys=openKeys;
 }
 
+// ── Shared group rigid-body rotation ──────────────────────────────────────
+function startGrpRot(grpEls,pivCx,pivCy,ev,onNoRotate){
+  const sX=ev.clientX,sY=ev.clientY;
+  const bPt=screenToCanvasPt(sX,sY);
+  const bAng=Math.atan2(bPt.y-pivCy,bPt.x-pivCx)*(180/Math.PI);
+  const bases=grpEls.map(e=>({el:e,base:e.rot||0,ox:ecx(e)-pivCx,oy:ecy(e)-pivCy}));
+  let didRot=false,didUndo=false;
+  const onM=mv=>{
+    const dx=mv.clientX-sX,dy=mv.clientY-sY;
+    if(!didRot){if(dx*dx+dy*dy<25)return;didRot=true;S.isRotating=true;}
+    if(!didUndo){pushUndo();didUndo=true;}
+    const rPt=screenToCanvasPt(mv.clientX,mv.clientY);
+    const dR=Math.atan2(rPt.y-pivCy,rPt.x-pivCx)*(180/Math.PI)-bAng;
+    const rad=dR*Math.PI/180,C=Math.cos(rad),Si=Math.sin(rad);
+    bases.forEach(({el:e,base:b,ox,oy})=>{
+      moveTo(e,pivCx+ox*C-oy*Si,pivCy+ox*Si+oy*C);
+      e.rot=b+dR;
+      const d2=document.querySelector('#el [data-id="'+e.id+'"]');
+      if(d2){const xy=elXY(e);d2.style.left=xy.x+'px';d2.style.top=xy.y+'px';d2.style.transform='rotate('+e.rot+'deg)';}
+    });
+  };
+  const onU=()=>{
+    document.removeEventListener('mousemove',onM);
+    document.removeEventListener('mouseup',onU);
+    if(didRot){S.isRotating=false;runRules();}
+    else if(onNoRotate){onNoRotate();}
+  };
+  document.addEventListener('mousemove',onM);
+  document.addEventListener('mouseup',onU);
+}
+function grpCenter(els){
+  const L=Math.min(...els.map(e=>elX(e))),T=Math.min(...els.map(e=>elY(e)));
+  const R=Math.max(...els.map(e=>elX(e)+elW(e))),B=Math.max(...els.map(e=>elY(e)+elH(e)));
+  return{cx:(L+R)/2,cy:(T+B)/2};
+}
+
 // ── Render Elements ────────────────────────────────────────────────────────
 function renderEls(){
   const tnMap=getTypeNums();
@@ -1879,14 +1915,19 @@ function renderEls(){
       rb.innerHTML='↻';
       rb.addEventListener('mousedown',ev=>{
         ev.stopPropagation();ev.preventDefault();
+        const _isGrp=S.selIds.size>=2&&S.selIds.has(el.id);
+        if(_isGrp){
+          const _gEls=S.els.filter(e=>S.selIds.has(e.id));
+          const {cx:_pCx,cy:_pCy}=grpCenter(_gEls);
+          startGrpRot(_gEls,_pCx,_pCy,ev,null);
+          return;
+        }
         const startX=ev.clientX,startY=ev.clientY;
         const ox=elXY(el).x+elW(el)/2,oy=elXY(el).y+elH(el)/2;
         const basePt=screenToCanvasPt(ev.clientX,ev.clientY);
         const baseAng=Math.atan2(basePt.y-oy,basePt.x-ox)*(180/Math.PI),baseRot=el.rot||0;
-        const _isGrp=S.selIds.size>=2&&S.selIds.has(el.id);
-        const _grpBases=_isGrp?S.els.filter(e=>S.selIds.has(e.id)&&e.id!==el.id).map(e=>({el:e,base:e.rot||0})):[];
         let rotating=false,_didUndo=false;
-        const onM=mv=>{const dx=mv.clientX-startX,dy=mv.clientY-startY;if(!rotating){if(dx*dx+dy*dy<25)return;rotating=true;S.isRotating=true;}if(!_didUndo){pushUndo();_didUndo=true;}const rPt=screenToCanvasPt(mv.clientX,mv.clientY);const dR=Math.atan2(rPt.y-oy,rPt.x-ox)*(180/Math.PI)-baseAng;el.rot=baseRot+dR;div.style.transform='rotate('+el.rot+'deg)';if(_isGrp)_grpBases.forEach(({el:e,base:b})=>{e.rot=b+dR;const d2=document.querySelector('#el [data-id="'+e.id+'"]');if(d2)d2.style.transform='rotate('+e.rot+'deg)';});};
+        const onM=mv=>{const dx=mv.clientX-startX,dy=mv.clientY-startY;if(!rotating){if(dx*dx+dy*dy<25)return;rotating=true;S.isRotating=true;}if(!_didUndo){pushUndo();_didUndo=true;}const rPt=screenToCanvasPt(mv.clientX,mv.clientY);const dR=Math.atan2(rPt.y-oy,rPt.x-ox)*(180/Math.PI)-baseAng;el.rot=baseRot+dR;div.style.transform='rotate('+el.rot+'deg)';};
         const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);if(rotating){S.isRotating=false;runRules();}else{S.selId=el.id;S.selIds=new Set([el.id]);renderEls();editEl(el);}};
         document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
       });
@@ -1971,14 +2012,19 @@ function renderEls(){
       rb.innerHTML='↻';
       rb.addEventListener('mousedown',ev=>{
         ev.stopPropagation();ev.preventDefault();
+        const _isGrp=S.selIds.size>=2&&S.selIds.has(el.id);
+        if(_isGrp){
+          const _gEls=S.els.filter(e=>S.selIds.has(e.id));
+          const {cx:_pCx,cy:_pCy}=grpCenter(_gEls);
+          startGrpRot(_gEls,_pCx,_pCy,ev,null);
+          return;
+        }
         const startX=ev.clientX,startY=ev.clientY;
         const ox=elXY(el).x+elW(el)/2,oy=elXY(el).y+elH(el)/2;
         const basePt=screenToCanvasPt(ev.clientX,ev.clientY);
         const baseAng=Math.atan2(basePt.y-oy,basePt.x-ox)*(180/Math.PI),baseRot=el.rot||0;
-        const _isGrp=S.selIds.size>=2&&S.selIds.has(el.id);
-        const _grpBases=_isGrp?S.els.filter(e=>S.selIds.has(e.id)&&e.id!==el.id).map(e=>({el:e,base:e.rot||0})):[];
         let rotating=false,_didUndo=false;
-        const onM=mv=>{const dx=mv.clientX-startX,dy=mv.clientY-startY;if(!rotating){if(dx*dx+dy*dy<25)return;rotating=true;S.isRotating=true;}if(!_didUndo){pushUndo();_didUndo=true;}const rPt=screenToCanvasPt(mv.clientX,mv.clientY);const dR=Math.atan2(rPt.y-oy,rPt.x-ox)*(180/Math.PI)-baseAng;el.rot=baseRot+dR;div.style.transform=`rotate(${el.rot}deg)`;if(_isGrp)_grpBases.forEach(({el:e,base:b})=>{e.rot=b+dR;const d2=document.querySelector('#el [data-id="'+e.id+'"]');if(d2)d2.style.transform='rotate('+e.rot+'deg)';});};
+        const onM=mv=>{const dx=mv.clientX-startX,dy=mv.clientY-startY;if(!rotating){if(dx*dx+dy*dy<25)return;rotating=true;S.isRotating=true;}if(!_didUndo){pushUndo();_didUndo=true;}const rPt=screenToCanvasPt(mv.clientX,mv.clientY);const dR=Math.atan2(rPt.y-oy,rPt.x-ox)*(180/Math.PI)-baseAng;el.rot=baseRot+dR;div.style.transform=`rotate(${el.rot}deg)`;};
         const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);if(rotating){S.isRotating=false;runRules();}else{S.selId=el.id;S.selIds=new Set([el.id]);updateAlignBtn();renderEls();if(el.type==='ingress')openIngressDetails(el.id);else editEl(el);}};
         document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
       });
@@ -2033,32 +2079,7 @@ function renderEls(){
       _grh.style.cssText=`position:absolute;left:${_bbL-_gSz-_gOff}px;top:${_bbT-_gSz-_gOff}px;width:${_gSz}px;height:${_gSz}px;font-size:${_gSz-6}px;background:#3b82f6;border:1.5px solid #2563eb;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;z-index:1000;cursor:grab;pointer-events:auto;user-select:none;box-shadow:0 2px 8px rgba(59,130,246,0.45);transition:transform .14s,box-shadow .14s;`;
       _grh.addEventListener('mousedown',ev=>{
         ev.stopPropagation();ev.preventDefault();
-        const _sX=ev.clientX,_sY=ev.clientY;
-        const _bPt=screenToCanvasPt(ev.clientX,ev.clientY);
-        const _bAng=Math.atan2(_bPt.y-_bbCy,_bPt.x-_bbCx)*(180/Math.PI);
-        const _bases=_grpEls.map(e=>({el:e,base:e.rot||0,ox:ecx(e)-_bbCx,oy:ecy(e)-_bbCy}));
-        let _gRot=false,_gUndo=false;
-        const _onM=mv=>{
-          const dx=mv.clientX-_sX,dy=mv.clientY-_sY;
-          if(!_gRot){if(dx*dx+dy*dy<25)return;_gRot=true;S.isRotating=true;}
-          if(!_gUndo){pushUndo();_gUndo=true;}
-          const _rPt=screenToCanvasPt(mv.clientX,mv.clientY);
-          const _dR=Math.atan2(_rPt.y-_bbCy,_rPt.x-_bbCx)*(180/Math.PI)-_bAng;
-          const _rad=_dR*Math.PI/180,_cos=Math.cos(_rad),_sin=Math.sin(_rad);
-          _bases.forEach(({el:e,base:b,ox:_ox,oy:_oy})=>{
-            moveTo(e,_bbCx+_ox*_cos-_oy*_sin,_bbCy+_ox*_sin+_oy*_cos);
-            e.rot=b+_dR;
-            const _d2=document.querySelector('#el [data-id="'+e.id+'"]');
-            if(_d2){const _xy=elXY(e);_d2.style.left=_xy.x+'px';_d2.style.top=_xy.y+'px';_d2.style.transform='rotate('+e.rot+'deg)';}
-          });
-        };
-        const _onU=()=>{
-          document.removeEventListener('mousemove',_onM);
-          document.removeEventListener('mouseup',_onU);
-          if(_gRot){S.isRotating=false;runRules();}
-        };
-        document.addEventListener('mousemove',_onM);
-        document.addEventListener('mouseup',_onU);
+        startGrpRot(_grpEls,_bbCx,_bbCy,ev,null);
       });
       elDiv.appendChild(_grh);
     }
