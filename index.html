@@ -1862,7 +1862,7 @@ function startGrpRot(grpEls,pivCx,pivCy,ev,onNoRotate){
     const dR=Math.atan2(rPt.y-pivCy,rPt.x-pivCx)*(180/Math.PI)-bAng;
     const rad=dR*Math.PI/180,C=Math.cos(rad),Si=Math.sin(rad);
     bases.forEach(({el:e,ox,oy})=>{
-      moveTo(e,pivCx+ox*C-oy*Si,pivCy+ox*Si+oy*C);
+      const _ll=pixelToLatLng(pivCx+ox*C-oy*Si,pivCy+ox*Si+oy*C);e.lat=_ll.lat;e.lng=_ll.lng;
       const d2=document.querySelector('#el [data-id="'+e.id+'"]');
       if(d2){const xy=elXY(e);d2.style.left=xy.x+'px';d2.style.top=xy.y+'px';}
     });
