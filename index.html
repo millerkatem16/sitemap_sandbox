@@ -1852,7 +1852,7 @@ function startGrpRot(grpEls,pivCx,pivCy,ev,onNoRotate){
   const sX=ev.clientX,sY=ev.clientY;
   const bPt=screenToCanvasPt(sX,sY);
   const bAng=Math.atan2(bPt.y-pivCy,bPt.x-pivCx)*(180/Math.PI);
-  const bases=grpEls.map(e=>({el:e,base:e.rot||0,ox:ecx(e)-pivCx,oy:ecy(e)-pivCy}));
+  const bases=grpEls.map(e=>({el:e,ox:ecx(e)-pivCx,oy:ecy(e)-pivCy}));
   let didRot=false,didUndo=false;
   const onM=mv=>{
     const dx=mv.clientX-sX,dy=mv.clientY-sY;
@@ -1861,11 +1861,10 @@ function startGrpRot(grpEls,pivCx,pivCy,ev,onNoRotate){
     const rPt=screenToCanvasPt(mv.clientX,mv.clientY);
     const dR=Math.atan2(rPt.y-pivCy,rPt.x-pivCx)*(180/Math.PI)-bAng;
     const rad=dR*Math.PI/180,C=Math.cos(rad),Si=Math.sin(rad);
-    bases.forEach(({el:e,base:b,ox,oy})=>{
+    bases.forEach(({el:e,ox,oy})=>{
       moveTo(e,pivCx+ox*C-oy*Si,pivCy+ox*Si+oy*C);
-      e.rot=b+dR;
       const d2=document.querySelector('#el [data-id="'+e.id+'"]');
-      if(d2){const xy=elXY(e);d2.style.left=xy.x+'px';d2.style.top=xy.y+'px';d2.style.transform='rotate('+e.rot+'deg)';}
+      if(d2){const xy=elXY(e);d2.style.left=xy.x+'px';d2.style.top=xy.y+'px';}
     });
   };
   const onU=()=>{
