@@ -891,33 +891,46 @@ function updateAlignBtn(){
     pushUndo();fn();renderEls();runRules();closePop();
   }
   function moveTo(el,cx,cy){const ll=pixelToLatLng(cx,cy);el.lat=ll.lat;el.lng=ll.lng;}
+  // Screen-aligned coordinate helpers: su = screen-right, sv = screen-down (canvas basis)
+  function screenAxes(){
+    const θ=S.mapRot*Math.PI/180,C=Math.cos(θ),Si=Math.sin(θ);
+    const cxOf=e=>elX(e)+elW(e)/2,cyOf=e=>elY(e)+elH(e)/2;
+    const suOf=e=>cxOf(e)*C-cyOf(e)*Si;   // project center onto screen-right axis
+    const svOf=e=>cxOf(e)*Si+cyOf(e)*C;   // project center onto screen-down axis
+    const suExt=e=>elW(e)*Math.abs(C)+elH(e)*Math.abs(Si);  // element footprint in su
+    const svExt=e=>elW(e)*Math.abs(Si)+elH(e)*Math.abs(C);  // element footprint in sv
+    const from=(su,sv)=>({cx:su*C+sv*Si,cy:-su*Si+sv*C});   // (su,sv) back to canvas
+    return{suOf,svOf,suExt,svExt,from};
+  }
 
-  // Arrange as Row: align vertical centers, distribute horizontally with min 1ft gap
+  // Arrange as Row: align screen-vertical centers, distribute screen-horizontally
   document.getElementById('ap-row').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls().slice().sort((a,b)=>elX(a)-elX(b)||elY(a)-elY(b));
+    const ax=screenAxes();
+    const es=selEls().slice().sort((a,b)=>ax.suOf(a)-ax.suOf(b)||ax.svOf(a)-ax.svOf(b));
     if(es.length<2)return;
-    const my=(Math.min(...es.map(e=>elY(e)))+Math.max(...es.map(e=>elY(e)+elH(e))))/2;
-    const minGap=S.scale;// 1ft edge-to-edge minimum
-    const totalW=es.reduce((s,e)=>s+elW(e),0);
-    const totalSpan=(elX(es[es.length-1])+elW(es[es.length-1]))-elX(es[0]);
-    const naturalGap=(totalSpan-totalW)/(es.length-1);
+    const msv=(Math.min(...es.map(e=>ax.svOf(e)-ax.svExt(e)/2))+Math.max(...es.map(e=>ax.svOf(e)+ax.svExt(e)/2)))/2;
+    const minGap=S.scale;
+    const totalWSU=es.reduce((s,e)=>s+ax.suExt(e),0);
+    const su0=ax.suOf(es[0])-ax.suExt(es[0])/2,suN=ax.suOf(es[es.length-1])+ax.suExt(es[es.length-1])/2;
+    const naturalGap=(suN-su0-totalWSU)/(es.length-1);
     const gap=naturalGap>=minGap?naturalGap:minGap;
-    let cur=elX(es[0]);
-    es.forEach(e=>{moveTo(e,cur+elW(e)/2,my);cur+=elW(e)+gap;});
+    let cur=su0;
+    es.forEach(e=>{const p=ax.from(cur+ax.suExt(e)/2,msv);moveTo(e,p.cx,p.cy);cur+=ax.suExt(e)+gap;});
   }));
 
-  // Arrange as Column: align horizontal centers, distribute vertically with min 1ft gap
+  // Arrange as Column: align screen-horizontal centers, distribute screen-vertically
   document.getElementById('ap-col').addEventListener('click',()=>applyAndClose(()=>{
-    const es=selEls().slice().sort((a,b)=>elY(a)-elY(b)||elX(a)-elX(b));
+    const ax=screenAxes();
+    const es=selEls().slice().sort((a,b)=>ax.svOf(a)-ax.svOf(b)||ax.suOf(a)-ax.suOf(b));
     if(es.length<2)return;
-    const mx=(Math.min(...es.map(e=>elX(e)))+Math.max(...es.map(e=>elX(e)+elW(e))))/2;
-    const minGap=S.scale;// 1ft edge-to-edge minimum
-    const totalH=es.reduce((s,e)=>s+elH(e),0);
-    const totalSpan=(elY(es[es.length-1])+elH(es[es.length-1]))-elY(es[0]);
-    const naturalGap=(totalSpan-totalH)/(es.length-1);
+    const msu=(Math.min(...es.map(e=>ax.suOf(e)-ax.suExt(e)/2))+Math.max(...es.map(e=>ax.suOf(e)+ax.suExt(e)/2)))/2;
+    const minGap=S.scale;
+    const totalHSV=es.reduce((s,e)=>s+ax.svExt(e),0);
+    const sv0=ax.svOf(es[0])-ax.svExt(es[0])/2,svN=ax.svOf(es[es.length-1])+ax.svExt(es[es.length-1])/2;
+    const naturalGap=(svN-sv0-totalHSV)/(es.length-1);
     const gap=naturalGap>=minGap?naturalGap:minGap;
-    let cur=elY(es[0]);
-    es.forEach(e=>{moveTo(e,mx,cur+elH(e)/2);cur+=elH(e)+gap;});
+    let cur=sv0;
+    es.forEach(e=>{const p=ax.from(msu,cur+ax.svExt(e)/2);moveTo(e,p.cx,p.cy);cur+=ax.svExt(e)+gap;});
   }));
 
   // Set exact spacing
@@ -940,24 +953,27 @@ function updateAlignBtn(){
     }
   }));
 
-  // Arrange as grid
+  // Arrange as grid (screen-aligned)
   document.getElementById('ap-gr-apply').addEventListener('click',()=>applyAndClose(()=>{
     const es=selEls();if(es.length<2)return;
     const rows=Math.max(1,parseInt(document.getElementById('ap-gr-rows').value)||2);
     const cols=Math.max(1,parseInt(document.getElementById('ap-gr-cols').value)||3);
     const gFt=parseFloat(document.getElementById('ap-gr-gap').value)||0;
     const gPx=gFt*S.scale;
-    // Sort top-left first
-    const sorted=es.slice().sort((a,b)=>(elY(a)+elX(a))-(elY(b)+elX(b)));
-    const anchorX=elX(sorted[0]),anchorY=elY(sorted[0]);
-    // Use max width/height in selection as cell size
-    const cellW=Math.max(...sorted.map(e=>elW(e)));
-    const cellH=Math.max(...sorted.map(e=>elH(e)));
+    const ax=screenAxes();
+    // Sort screen-top-left first
+    const sorted=es.slice().sort((a,b)=>(ax.svOf(a)+ax.suOf(a))-(ax.svOf(b)+ax.suOf(b)));
+    const su0=ax.suOf(sorted[0])-ax.suExt(sorted[0])/2;
+    const sv0=ax.svOf(sorted[0])-ax.svExt(sorted[0])/2;
+    // Cell size = max element footprint in each screen axis
+    const cellSU=Math.max(...sorted.map(e=>ax.suExt(e)));
+    const cellSV=Math.max(...sorted.map(e=>ax.svExt(e)));
     sorted.forEach((e,i)=>{
       const row=Math.floor(i/cols),col=i%cols;
-      const tx=anchorX+(col*(cellW+gPx))+elW(e)/2;
-      const ty=anchorY+(row*(cellH+gPx))+elH(e)/2;
-      moveTo(e,tx,ty);
+      const su_c=su0+col*(cellSU+gPx)+ax.suExt(e)/2;
+      const sv_c=sv0+row*(cellSV+gPx)+ax.svExt(e)/2;
+      const p=ax.from(su_c,sv_c);
+      moveTo(e,p.cx,p.cy);
     });
   }));
 })();
