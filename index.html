@@ -1917,8 +1917,15 @@ function renderEls(){
         const _isGrp=S.selIds.size>=2&&S.selIds.has(el.id);
         if(_isGrp){
           const _gEls=S.els.filter(e=>S.selIds.has(e.id));
-          const {cx:_pCx,cy:_pCy}=grpCenter(_gEls);
-          startGrpRot(_gEls,_pCx,_pCy,ev,null);
+          const _sX=ev.clientX,_sY=ev.clientY;
+          const _ox=elXY(el).x+elW(el)/2,_oy=elXY(el).y+elH(el)/2;
+          const _bPt=screenToCanvasPt(_sX,_sY);
+          const _bAng=Math.atan2(_bPt.y-_oy,_bPt.x-_ox)*(180/Math.PI);
+          const _bases=_gEls.map(e=>({el:e,base:e.rot||0}));
+          let _rot=false,_undo=false;
+          const _onM=mv=>{const dx=mv.clientX-_sX,dy=mv.clientY-_sY;if(!_rot){if(dx*dx+dy*dy<25)return;_rot=true;S.isRotating=true;}if(!_undo){pushUndo();_undo=true;}const _rPt=screenToCanvasPt(mv.clientX,mv.clientY);const _dR=Math.atan2(_rPt.y-_oy,_rPt.x-_ox)*(180/Math.PI)-_bAng;_bases.forEach(({el:e,base:b})=>{e.rot=b+_dR;const _d2=document.querySelector('#el [data-id="'+e.id+'"]');if(_d2)_d2.style.transform='rotate('+e.rot+'deg)';});};
+          const _onU=()=>{document.removeEventListener('mousemove',_onM);document.removeEventListener('mouseup',_onU);if(_rot){S.isRotating=false;runRules();}};
+          document.addEventListener('mousemove',_onM);document.addEventListener('mouseup',_onU);
           return;
         }
         const startX=ev.clientX,startY=ev.clientY;
@@ -2014,8 +2021,15 @@ function renderEls(){
         const _isGrp=S.selIds.size>=2&&S.selIds.has(el.id);
         if(_isGrp){
           const _gEls=S.els.filter(e=>S.selIds.has(e.id));
-          const {cx:_pCx,cy:_pCy}=grpCenter(_gEls);
-          startGrpRot(_gEls,_pCx,_pCy,ev,null);
+          const _sX=ev.clientX,_sY=ev.clientY;
+          const _ox=elXY(el).x+elW(el)/2,_oy=elXY(el).y+elH(el)/2;
+          const _bPt=screenToCanvasPt(_sX,_sY);
+          const _bAng=Math.atan2(_bPt.y-_oy,_bPt.x-_ox)*(180/Math.PI);
+          const _bases=_gEls.map(e=>({el:e,base:e.rot||0}));
+          let _rot=false,_undo=false;
+          const _onM=mv=>{const dx=mv.clientX-_sX,dy=mv.clientY-_sY;if(!_rot){if(dx*dx+dy*dy<25)return;_rot=true;S.isRotating=true;}if(!_undo){pushUndo();_undo=true;}const _rPt=screenToCanvasPt(mv.clientX,mv.clientY);const _dR=Math.atan2(_rPt.y-_oy,_rPt.x-_ox)*(180/Math.PI)-_bAng;_bases.forEach(({el:e,base:b})=>{e.rot=b+_dR;const _d2=document.querySelector('#el [data-id="'+e.id+'"]');if(_d2)_d2.style.transform='rotate('+e.rot+'deg)';});};
+          const _onU=()=>{document.removeEventListener('mousemove',_onM);document.removeEventListener('mouseup',_onU);if(_rot){S.isRotating=false;runRules();}};
+          document.addEventListener('mousemove',_onM);document.addEventListener('mouseup',_onU);
           return;
         }
         const startX=ev.clientX,startY=ev.clientY;
