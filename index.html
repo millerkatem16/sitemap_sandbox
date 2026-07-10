@@ -1663,17 +1663,17 @@ function runRules(){
     tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`${N(t)} too close to ${N(n)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft)`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
     restrooms.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`${N(t)} too close to ${N(n)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft)`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
     trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<9.95){warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`${N(t)} & ${N(o)} are too close together. 10ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft).`,ids:[t.id,o.id]});t.hr=true;o.hr=true;}});
-    const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} placed in a restricted zone`,ids:[t.id]});t.hr=true;}
+    const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'soft',msg:`${N(t)} placed in a restricted zone`,ids:[t.id]});t.sr=true;}
   });
   // Cooking tent must be 20ft from other activations (non-cooking tents)
   const cookingTents=tents.filter(t=>getTentCat(t)==='cooking');
   const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
   cookingTents.forEach(c=>{[...nonCookingTents,...trucks,...restrooms].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`${N(c)} too close to ${N(o)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft).`,ids:[c.id,o.id]});c.hr=true;o.hr=true;}});});
   gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`${N(g)} requires 10ft clearance on all sides for Fire Code compliance`,ids:[g.id]});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed. Please note to keep it secured and inaccessible to the public.`,ids:[g.id]});});
-  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0&&closedBordersList.length>0)warns.push({type:'hard',msg:`No entrances or exits placed${zoneDesc}. You need to place at least 2 exits. 3 are recommended.`,ids:[],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 entrance/exit${zoneDesc}. You need to place at least 2 exits. 3 are recommended.`,ids:[ins[0].id],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===2){const _ents=ins.filter(i=>i.access==='entrance'||i.access==='both');const _exts=ins.filter(i=>i.access==='exit'||i.access==='both');if(!(_ents.length>=1&&_exts.length===1))warns.push({type:'soft',msg:`You have placed 2 entrances/exits${zoneDesc}. It's recommended to place a 3rd (emergency) exit`,ids:ins.map(ii=>ii.id)});}}}
+  {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0&&closedBordersList.length>0){warns.push({type:'soft',msg:`No entrances or exits placed${zoneDesc}. There should be at least 2 exits to your event site, even if 1 is an emergency exit only. 3 are recommended.`,ids:[],action:{type:'topbar',target:'define-drop',value:'ingress'}});if(S.activeJurisdiction==='virginia_beach')warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`No entrances or exits placed${zoneDesc}. There should be at least 2 exits to your event site, even if 1 is an emergency exit only. 3 are recommended.`,ids:[],action:{type:'topbar',target:'define-drop',value:'ingress'}});}else if(ins.length===1){warns.push({type:'soft',msg:`Only 1 entrance/exit${zoneDesc}. There should be at least 2 exits to your event site, even if 1 is an emergency exit only. 3 are recommended.`,ids:[ins[0].id],action:{type:'topbar',target:'define-drop',value:'ingress'}});if(S.activeJurisdiction==='virginia_beach')warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`Only 1 entrance/exit${zoneDesc}. There should be at least 2 exits to your event site, even if 1 is an emergency exit only. 3 are recommended.`,ids:[ins[0].id],action:{type:'topbar',target:'define-drop',value:'ingress'}});}else if(ins.length===2){const _ents=ins.filter(i=>i.access==='entrance'||i.access==='both');const _exts=ins.filter(i=>i.access==='exit'||i.access==='both');if(!(_ents.length>=1&&_exts.length===1))warns.push({type:'soft',msg:`You have placed 2 entrances/exits${zoneDesc}. It's recommended to place a 3rd (emergency) exit`,ids:ins.map(ii=>ii.id)});}}}
   ins.forEach(i=>{
-    if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is too narrow. 10ft is required to meet ADA minimum.`,ids:[i.id]});i.hr=true;}
-    const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'hard',msg:`${N(i)} path is blocked by ${N(blocked[0])}`,ids:[i.id,...blocked.map(b=>b.id)]});i.hr=true;blocked.forEach(b=>b.hr=true);}
+    if(i.wFt<10){warns.push({type:'soft',msg:`${N(i)} is narrow. 10ft or wider accommodates ADA accessibility`,ids:[i.id]});i.sr=true;}
+    const blocked=S.els.filter(e=>e!==i&&e.type!=='ingress'&&e.type!=='security'&&ovlp(i,e,ft2px(2)));if(blocked.length){warns.push({type:'soft',msg:`${N(i)} path is blocked by ${N(blocked[0])}`,ids:[i.id,...blocked.map(b=>b.id)]});i.sr=true;blocked.forEach(b=>b.sr=true);}
   });
   // G2.2: flag elements within 10ft of ingress arrow tips
   ins.forEach(i=>{
@@ -1681,17 +1681,17 @@ function runRules(){
     const tips=[{x:icx+hw*Math.cos(rad2),y:icy+hw*Math.sin(rad2)},{x:icx-hw*Math.cos(rad2),y:icy-hw*Math.sin(rad2)}];
     S.els.filter(e=>e.type!=='ingress'&&e.type!=='security').forEach(el=>{
       let flagged=false;const bx1=elX(el),by1=elY(el),bx2=bx1+elW(el),by2=by1+elH(el);
-      tips.forEach(tip=>{if(flagged)return;const nx=Math.max(bx1,Math.min(tip.x,bx2)),ny=Math.max(by1,Math.min(tip.y,by2));const dist=Math.sqrt((tip.x-nx)**2+(tip.y-ny)**2)/S.scale;if(dist<10){const nEl=el.vendorName||elCode(el,getTypeNums());const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:nEl+' is within 10ft of '+nIn+'. Keep opening clear to reduce crowd flow conflicts.',ids:[el.id,i.id]});el.hr=true;i.hr=true;flagged=true;}});
+      tips.forEach(tip=>{if(flagged)return;const nx=Math.max(bx1,Math.min(tip.x,bx2)),ny=Math.max(by1,Math.min(tip.y,by2));const dist=Math.sqrt((tip.x-nx)**2+(tip.y-ny)**2)/S.scale;if(dist<10){const nEl=el.vendorName||elCode(el,getTypeNums());const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'soft',msg:nEl+' is within 10ft of '+nIn+'. Keeping the opening clear can reduce crowd flow conflicts.',ids:[el.id,i.id]});el.sr=true;i.sr=true;flagged=true;}});
     });
   });
-  // G2.3: flag fencing within 12ft of any ingress center
+  // G2.3: flag fencing within 10ft of any ingress center
   S.fences.forEach(f=>{
     if(!f.pts||f.pts.length<2)return;
     const fPx=f.pts.map(p=>latLngToPixel(p.lat,p.lng));
     let fFlagged=false;
     ins.forEach(i=>{
       if(fFlagged)return;const cx=ecx(i),cy=ecy(i);
-      for(let fi=0;fi<fPx.length-1&&!fFlagged;fi++){const dsq=segDSq(cx,cy,fPx[fi].x,fPx[fi].y,fPx[fi+1].x,fPx[fi+1].y);if(Math.sqrt(dsq)/S.scale<12){const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'hard',msg:'Fencing is within 12ft of '+nIn+' gate. Keep opening clear to reduce crowd flow conflicts.',ids:[i.id]});i.hr=true;fFlagged=true;}}
+      for(let fi=0;fi<fPx.length-1&&!fFlagged;fi++){const dsq=segDSq(cx,cy,fPx[fi].x,fPx[fi].y,fPx[fi+1].x,fPx[fi+1].y);if(Math.sqrt(dsq)/S.scale<10){const nIn=i.vendorName||elCode(i,getTypeNums());warns.push({type:'soft',msg:'Fencing is within 10ft of '+nIn+' gate. Keeping the opening clear can reduce crowd flow conflicts.',ids:[i.id]});i.sr=true;fFlagged=true;}}
     });
   });
   // G2.4: entrance/exit designation checks
@@ -1700,20 +1700,20 @@ function runRules(){
     const extsD=ins.filter(i=>i.access==='exit'||i.access==='both');
     const allUndesignated=ins.every(i=>!i.access);
     if(allUndesignated){
-      warns.push({type:'info',msg:'You can designate entrance and exit usage by clicking on the entrance/exit and assigning details.',ids:ins.map(i=>i.id)});
+      warns.push({type:'info',msg:'You can designate entrance and exit usage by clicking on the entrance/exit and assigning details',ids:ins.map(i=>i.id)});
     } else {
-      if(entsD.length===0)warns.push({type:'hard',pgSev:'todo',msg:'Place a designated Entrance.',ids:ins.map(i=>i.id)});
-      if(extsD.length===0)warns.push({type:'hard',pgSev:'todo',msg:'Place a designated Exit.',ids:ins.map(i=>i.id)});
+      if(entsD.length===0)warns.push({type:'soft',pgSev:'todo',msg:'Place a designated Entrance',ids:ins.map(i=>i.id)});
+      if(extsD.length===0)warns.push({type:'soft',pgSev:'todo',msg:'Place a designated Exit',ids:ins.map(i=>i.id)});
       if(ins.length<3&&entsD.length>=1&&extsD.length===1)warns.push({type:'soft',msg:'You have placed 2 exits. It\'s recommended to place a 3rd (emergency) exit',ids:extsD.map(i=>i.id)});
     }
   }
   const vis=new Set();
   tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',jurisdiction:'virginia_beach',msg:`Cluster is ${sq} sq ft. Large clusters over 900 sq ft may need a building permit. You can create a 7ft gap to break up the cluster.`,ids:grp.map(e=>e.id)});grp.forEach(e=>e.sr=true);}});
   stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',jurisdiction:'virginia_beach',msg:`${N(s)} (~${sq} sq ft). Stages & platforms over 256 sq ft may need a building permit`,ids:[s.id]});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',jurisdiction:'virginia_beach',msg:`${N(s)} at ${s.heightFt}ft. Stages & platforms taller than 3ft may need a building permit`,ids:[s.id]});s.sr=true;}});
-  S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||e.type==='restroom'||(_t2.tent&&(e.tentType==='event'||e.tentType==='production'));if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone`,ids:[e.id]});e.hr=true;}});
+  S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||e.type==='restroom'||(_t2.tent&&(e.tentType==='event'||e.tentType==='production'));if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'soft',msg:`${N(e)} placed in restricted zone`,ids:[e.id]});e.sr=true;}});
   // Overlap / proximity check
-  for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){const _clr=bboxClearFt(S.els[i],S.els[j]);if(_clr<0.02){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping.`,ids:[S.els[i].id,S.els[j].id]});S.els[i].hr=true;S.els[j].hr=true;}else if(_clr<1){warns.push({type:'soft',msg:`${N(S.els[i])} and ${N(S.els[j])} are less than 1ft apart.`,ids:[S.els[i].id,S.els[j].id]});S.els[i].sr=true;S.els[j].sr=true;}}}
-  if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'hard',msg:'ADA flooring required for a soft surface area. Draw ADA paths to mark accessible routes.',ids:[]});else warns.push({type:'info',msg:'You have designated an area as soft surface. You can use ADA Path tool under the Safety menu to designate accessible flooring paths.',ids:[]});}
+  for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){const _clr=bboxClearFt(S.els[i],S.els[j]);if(_clr<0.02){warns.push({type:'soft',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping`,ids:[S.els[i].id,S.els[j].id]});S.els[i].sr=true;S.els[j].sr=true;}else if(_clr<1){warns.push({type:'soft',msg:`${N(S.els[i])} and ${N(S.els[j])} are less than 1ft apart. More space between tents is recommended if space allows`,ids:[S.els[i].id,S.els[j].id]});S.els[i].sr=true;S.els[j].sr=true;}}}
+  if(S.hasSoftSurface){if(!S.adaPaths.length)warns.push({type:'soft',msg:'ADA flooring required for a soft surface area. You can draw ADA paths to mark accessible routes',ids:[]});else warns.push({type:'info',msg:'You have designated an area as soft surface. You can use ADA Path tool under the Safety menu to designate accessible flooring paths',ids:[]});}
   getZoneCapacities().forEach(z=>{
     if(z.peakAtt&&z.peakAtt>z.cap){warns.push({type:'soft',msg:`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated peak capacity (~${z.cap.toLocaleString()}). Consider removing some elements or altering your event boundaries.`,ids:[]});}
   });
