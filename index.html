@@ -134,6 +134,10 @@ canvas{position:absolute;inset:0;pointer-events:none}
 .w i{font-size:13px;flex-shrink:0;margin-top:1px}
 .w.hard{background:rgba(224,53,53,0.07);color:#9e1a1a;border-color:rgba(224,53,53,0.22)}
 .w.soft{background:rgba(251,189,47,0.09);color:#7a5200;border-color:rgba(251,189,47,0.36)}
+.w.univ{background:rgba(251,189,47,0.09);color:#7a5200;border-color:rgba(251,189,47,0.36)}
+.w.jur{background:rgba(251,141,30,0.09);color:#7c3000;border-color:rgba(251,141,30,0.38)}
+#juris-badge{font-size:10px;font-weight:600;color:var(--tx3);padding:2px 8px;background:var(--surf2);border:1px solid var(--brd);border-radius:5px;white-space:nowrap;letter-spacing:.03em;flex-shrink:0}
+#juris-badge.jur-active{background:rgba(251,141,30,0.1);color:#7c3000;border-color:rgba(251,141,30,0.38)}
 .w.info{background:rgba(42,95,100,0.08);color:var(--slate);border-color:rgba(42,95,100,0.2)}
 .w.ok{background:rgba(45,212,160,0.08);color:#14705a;border-color:rgba(45,212,160,0.28)}
 
@@ -561,6 +565,7 @@ canvas{position:absolute;inset:0;pointer-events:none}
       <div class="panel" id="precheck-panel">
         <div class="panel-toggle" id="precheck-panel-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
           <span class="plabel" style="margin-bottom:0">Flags &amp; Alerts</span>
+          <span id="juris-badge" style="display:none"></span>
           <svg id="precheck-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div id="precheck-panel-body" style="display:block;margin-top:12px">
@@ -672,7 +677,7 @@ const S={
   scale:3,venueWidthFt:200,
   zonePolys:[],firstAids:[],idCtr:1,selId:null,selIds:new Set(),
   venues:{},isRotating:false,
-  hasSoftSurface:null,undoStack:[],
+  hasSoftSurface:null,activeJurisdiction:null,jurisdictionLocked:false,undoStack:[],
   mapCenter:{lat:36.8508,lng:-76.2858},mapZoom:17,mapRot:0,
   hideUtils:false,
   activeVenueId:null,loadedVenueSnapshot:null,venueMode:false,fences:[],
@@ -1601,6 +1606,45 @@ function editZone(zid){
 function segDSq(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;if(!L)return d2(px,py,ax,ay);const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/L));return d2(px,py,ax+t*dx,ay+t*dy);}
 function ovlp(a,b,m=0){return!(elX(a)+elW(a)+m<=elX(b)||elX(b)+elW(b)+m<=elX(a)||elY(a)+elH(a)+m<=elY(b)||elY(b)+elH(b)+m<=elY(a));}
 
+// ── Jurisdiction lookup (extend this map to add more city packs) ───────────
+const JURISDICTIONS={'Virginia Beach':'virginia_beach'};
+const JUR_LABELS={'virginia_beach':'Virginia Beach'};
+function updateJurisBadge(){
+  const b=document.getElementById('juris-badge');if(!b)return;
+  if(!S.jurisdictionLocked){b.style.display='none';return;}
+  if(S.activeJurisdiction){
+    b.textContent='Compliance: Universal + '+(JUR_LABELS[S.activeJurisdiction]||S.activeJurisdiction);
+    b.className='jur-active';
+  } else {
+    b.textContent='Compliance: Universal';
+    b.className='';
+  }
+  b.style.display='';
+}
+function checkJurisdiction(borderZone){
+  if(S.jurisdictionLocked)return;
+  S.jurisdictionLocked=true;
+  const pts=borderZone.pts;
+  const lat=pts.reduce((s,p)=>s+p.lat,0)/pts.length;
+  const lng=pts.reduce((s,p)=>s+p.lng,0)/pts.length;
+  new google.maps.Geocoder().geocode({location:{lat,lng}},(res,st)=>{
+    if(st!=='OK'||!res||!res.length)return;
+    const comp=res.flatMap(r=>r.address_components).find(c=>c.types.includes('locality'));
+    if(!comp)return;
+    const jKey=JURISDICTIONS[comp.long_name];if(!jKey)return;
+    const city=comp.long_name;
+    const show=()=>{
+      // TODO: copy rewrite pending
+      modal('Apply Local Compliance Rules?','',
+        `<p style="font-size:13px;line-height:1.6;color:var(--tx2)">This site is in <strong>${city}</strong>. Apply ${city}-specific compliance rules to this event?</p>`,
+        ()=>{S.activeJurisdiction=jKey;updateJurisBadge();runRules();},'Apply Rules');
+    };
+    const mo=document.getElementById('mo');
+    if(!mo||mo.style.display==='none'){show();}
+    else{const prev=mOnClose;mOnClose=()=>{if(prev)prev();show();};}
+  });
+}
+
 // ── Rules ──────────────────────────────────────────────────────────────────
 function getTentCat(el){const tt=el.tentType;if(!tt)return'unassigned';if(tt==='event'||tt==='production')return'production';if(tt==='activity')return'activity';if(tt==='cooking'||tt==='food')return'cooking';if(tt==='vendor')return'vendor';return'unassigned';}
 const TENT_CAT_PRE={vendor:'V',activity:'A',production:'P',cooking:'C',unassigned:'T'};
@@ -1616,16 +1660,16 @@ function runRules(){
   const restrooms=S.els.filter(e=>e.type==='restroom');
   S.els.forEach(e=>{e.hr=false;e.sr=false;});
   trucks.forEach(t=>{
-    tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft)`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
-    restrooms.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',msg:`${N(t)} too close to ${N(n)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft)`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
-    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<9.95){warns.push({type:'hard',msg:`${N(t)} & ${N(o)} are too close together. 10ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft).`,ids:[t.id,o.id]});t.hr=true;o.hr=true;}});
+    tents.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`${N(t)} too close to ${N(n)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft)`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
+    restrooms.forEach(n=>{const clr=bboxClearFt(t,n);if(clr<20){warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`${N(t)} too close to ${N(n)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft)`,ids:[t.id,n.id]});t.hr=true;n.hr=true;}});
+    trucks.filter(o=>o!==t&&o.id>t.id).forEach(o=>{const clr=bboxClearFt(t,o);if(clr<9.95){warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`${N(t)} & ${N(o)} are too close together. 10ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft).`,ids:[t.id,o.id]});t.hr=true;o.hr=true;}});
     const z=zoneAt(ecx(t),ecy(t));if(z==='restrict'){warns.push({type:'hard',msg:`${N(t)} placed in a restricted zone`,ids:[t.id]});t.hr=true;}
   });
   // Cooking tent must be 20ft from other activations (non-cooking tents)
   const cookingTents=tents.filter(t=>getTentCat(t)==='cooking');
   const nonCookingTents=tents.filter(t=>getTentCat(t)!=='cooking');
-  cookingTents.forEach(c=>{[...nonCookingTents,...trucks,...restrooms].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',msg:`${N(c)} too close to ${N(o)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft).`,ids:[c.id,o.id]});c.hr=true;o.hr=true;}});});
-  gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',msg:`${N(g)} requires 10ft clearance on all sides for Fire Code compliance`,ids:[g.id]});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed. Please note to keep it secured and inaccessible to the public.`,ids:[g.id]});});
+  cookingTents.forEach(c=>{[...nonCookingTents,...trucks,...restrooms].forEach(o=>{const clr=bboxClearFt(c,o);if(clr<20){warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`${N(c)} too close to ${N(o)}. 20ft clearance is required for Fire Code compliance (Currently: ~${Math.round(clr)}ft).`,ids:[c.id,o.id]});c.hr=true;o.hr=true;}});});
+  gens.forEach(g=>{if(S.els.filter(e=>e!==g).some(o=>ovlp(g,o,ft2px(10)))){warns.push({type:'hard',jurisdiction:'virginia_beach',msg:`${N(g)} requires 10ft clearance on all sides for Fire Code compliance`,ids:[g.id]});g.hr=true;}warns.push({type:'info',msg:`${N(g)} placed. Please note to keep it secured and inaccessible to the public.`,ids:[g.id]});});
   {const closedBordersList=getClosedBorders();const needsIngressCheck=closedBordersList.length===0||closedBordersList.some(z=>z.hasDesignatedIngress===true||z.hasDesignatedIngress===undefined);if(needsIngressCheck){const ingReqZones=closedBordersList.filter(z=>z.hasDesignatedIngress===true);let zoneDesc='';if(ingReqZones.length===1){const z=ingReqZones[0];const isSub=closedBordersList.some(other=>other!==z&&isBorderNestedIn(z,other));if(z.label){zoneDesc=` for "${z.label}"${isSub?' sub-zone':''}`;}else{zoneDesc=isSub?' for sub-zone':'';}}if(ins.length===0&&S.els.length>0&&closedBordersList.length>0)warns.push({type:'hard',msg:`No entrances or exits placed${zoneDesc}. You need to place at least 2 exits. 3 are recommended.`,ids:[],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===1)warns.push({type:'hard',msg:`Only 1 entrance/exit${zoneDesc}. You need to place at least 2 exits. 3 are recommended.`,ids:[ins[0].id],action:{type:'topbar',target:'define-drop',value:'ingress'}});else if(ins.length===2){const _ents=ins.filter(i=>i.access==='entrance'||i.access==='both');const _exts=ins.filter(i=>i.access==='exit'||i.access==='both');if(!(_ents.length>=1&&_exts.length===1))warns.push({type:'soft',msg:`You have placed 2 entrances/exits${zoneDesc}. It's recommended to place a 3rd (emergency) exit`,ids:ins.map(ii=>ii.id)});}}}
   ins.forEach(i=>{
     if(i.wFt<10){warns.push({type:'hard',msg:`${N(i)} is too narrow. 10ft is required to meet ADA minimum.`,ids:[i.id]});i.hr=true;}
@@ -1664,8 +1708,8 @@ function runRules(){
     }
   }
   const vis=new Set();
-  tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',msg:`Cluster is ${sq} sq ft. Large clusters over 900 sq ft may need a building permit. You can create a 7ft gap to break up the cluster.`,ids:grp.map(e=>e.id)});grp.forEach(e=>e.sr=true);}});
-  stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',msg:`${N(s)} (~${sq} sq ft). Stages & platforms over 256 sq ft may need a building permit`,ids:[s.id]});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',msg:`${N(s)} at ${s.heightFt}ft. Stages & platforms taller than 3ft may need a building permit`,ids:[s.id]});s.sr=true;}});
+  tents.forEach(t=>{if(vis.has(t.id))return;const grp=[t];vis.add(t.id);let ch=true;while(ch){ch=false;tents.filter(o=>!vis.has(o.id)).forEach(o=>{if(grp.some(g=>ovlp(g,o,ft2px(2)))){grp.push(o);vis.add(o.id);ch=true;}});}const sq=grp.reduce((s,e)=>s+e.wFt*e.hFt,0);if(sq>900){warns.push({type:'soft',jurisdiction:'virginia_beach',msg:`Cluster is ${sq} sq ft. Large clusters over 900 sq ft may need a building permit. You can create a 7ft gap to break up the cluster.`,ids:grp.map(e=>e.id)});grp.forEach(e=>e.sr=true);}});
+  stages.forEach(s=>{const sq=Math.round(s.wFt*s.hFt);if(sq>256){warns.push({type:'soft',jurisdiction:'virginia_beach',msg:`${N(s)} (~${sq} sq ft). Stages & platforms over 256 sq ft may need a building permit`,ids:[s.id]});s.sr=true;}if(s.heightFt&&s.heightFt>3){warns.push({type:'soft',jurisdiction:'virginia_beach',msg:`${N(s)} at ${s.heightFt}ft. Stages & platforms taller than 3ft may need a building permit`,ids:[s.id]});s.sr=true;}});
   S.els.forEach(e=>{const _t2=TYPES[e.type]||TYPES.custom;const _ex=e.type==='ingress'||e.type==='security'||e.type==='restroom'||(_t2.tent&&(e.tentType==='event'||e.tentType==='production'));if(!_ex&&zoneAt(ecx(e),ecy(e))==='restrict'){warns.push({type:'hard',msg:`${N(e)} placed in restricted zone`,ids:[e.id]});e.hr=true;}});
   // Overlap / proximity check
   for(let i=0;i<S.els.length;i++){for(let j=i+1;j<S.els.length;j++){const _clr=bboxClearFt(S.els[i],S.els[j]);if(_clr<0.02){warns.push({type:'hard',msg:`${N(S.els[i])} and ${N(S.els[j])} are overlapping.`,ids:[S.els[i].id,S.els[j].id]});S.els[i].hr=true;S.els[j].hr=true;}else if(_clr<1){warns.push({type:'soft',msg:`${N(S.els[i])} and ${N(S.els[j])} are less than 1ft apart.`,ids:[S.els[i].id,S.els[j].id]});S.els[i].sr=true;S.els[j].sr=true;}}}
@@ -1674,9 +1718,9 @@ function runRules(){
     if(z.peakAtt&&z.peakAtt>z.cap){warns.push({type:'soft',msg:`${z.label||'Zone'} peak attendance (${z.peakAtt.toLocaleString()}) exceeds estimated peak capacity (~${z.cap.toLocaleString()}). Consider removing some elements or altering your event boundaries.`,ids:[]});}
   });
   if(!warns.length)warns.push({type:'ok',msg:'No alerts or flags!',ids:[]});S.lastWarns=warns;
-  document.getElementById('wl').innerHTML=warns.filter(w=>!(S.pgDismissed.has(w.msg)&&(w.type==='soft'||w.type==='info'))).map(w=>`<div class="w ${w.type}"><i class="ti ti-${w.type==='hard'?'alert-circle':w.type==='soft'?'alert-triangle':w.type==='ok'?'circle-check':'info-circle'}"></i><span>${w.msg}</span></div>`).join('');
+  document.getElementById('wl').innerHTML=warns.filter(w=>!(S.pgDismissed.has(w.msg)&&(w.type==='soft'||w.type==='info'))).map(w=>{const _wc=(w.type==='info'||w.type==='ok')?w.type:(w.jurisdiction?'jur':'univ');const _wi=w.type==='ok'?'circle-check':w.type==='info'?'info-circle':'alert-triangle';return`<div class="w ${_wc}"><i class="ti ti-${_wi}"></i><span>${w.msg}</span></div>`;}).join('');
   const precheckPanel=document.getElementById('precheck-panel');if(precheckPanel)precheckPanel.classList.toggle('has-content',S.els.length>0||S.zonePolys.length>0);
-  renderEls();updateCap();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();updatePlanningGuideBadge();
+  renderEls();updateCap();renderVenueInfra();renderSafetyCompliance();renderVenueChanges();updatePlanningGuideBadge();updateJurisBadge();
 }
 
 // ── Planning Guide ─────────────────────────────────────────────────────────
@@ -2731,6 +2775,7 @@ cw.addEventListener('mousedown',e=>{
         modal('Entrances & Exits','Does this area have designated entrances and exits?',
           msel('Do you have designated entrances and exits for this area?','zone-ingress',[{v:'yes',t:'Yes — specific gates/entrances'},{v:'no',t:'No — open access, no designated points'}]),
           ()=>{closedZone.hasDesignatedIngress=document.getElementById('zone-ingress').value==='yes';runRules();},'Save');
+        checkJurisdiction(closedZone);
       }
       const _btt=document.getElementById('tool-tip');if(_btt)_btt.style.display='none';return;
     }
@@ -3087,6 +3132,7 @@ async function saveEvent(){
     mapCenter:S.mapCenter,mapZoom:S.mapZoom,mapRot:S.mapRot||0,
     fences:JSON.parse(JSON.stringify(S.fences)),
     hasSoftSurface:S.hasSoftSurface,idCtr:S.idCtr,
+    activeJurisdiction:S.activeJurisdiction||null,jurisdictionLocked:S.jurisdictionLocked||false,
     activeVenueId:S.activeVenueId||null,
     eventNotes:S.eventNotes||'',
     colorTags:JSON.parse(JSON.stringify(S.colorTags))
@@ -3162,6 +3208,7 @@ async function openEvents(){
           S.els=state.els||[];S.zonePolys=state.zonePolys||[];S.adaPaths=state.adaPaths||[];
           S.dims=state.dims||[];S.fences=state.fences||[];S.firstAids=state.firstAids||[];
           S.hasSoftSurface=state.hasSoftSurface!==undefined?state.hasSoftSurface:null;
+          S.activeJurisdiction=state.activeJurisdiction||null;S.jurisdictionLocked=state.jurisdictionLocked||false;
           S.colorTags=state.colorTags||S.colorTags;
           if(state.idCtr)S.idCtr=state.idCtr;
           const evtNEl=document.getElementById('evt-name');const evtDEl=document.getElementById('evt-date');
@@ -3268,7 +3315,7 @@ function resetCanvas(){
   S.els=[];S.firstAids=[];S.fences=[];S.selId=null;renderEls();renderColorKey();renderVenueInfra();renderSafetyCompliance();renderVendorList();
   S.dims=[];drawDims();
   S.zonePolys=[];redrawZones();
-  S.adaPaths=[];S.curAda=[];S.hasSoftSurface=null;S.undoStack=[];
+  S.adaPaths=[];S.curAda=[];S.hasSoftSurface=null;S.activeJurisdiction=null;S.jurisdictionLocked=false;S.undoStack=[];
   drawAda();runRules();
   eventDetailsPinnedOpen=true;
   const _rb=document.getElementById('event-details-body'),_rc=document.getElementById('event-details-chevron');
