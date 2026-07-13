@@ -563,10 +563,12 @@ canvas{position:absolute;inset:0;pointer-events:none}
       </div>
 
       <div class="panel" id="precheck-panel">
-        <div class="panel-toggle" id="precheck-panel-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0">
-          <span class="plabel" style="margin-bottom:0">Flags &amp; Alerts</span>
-          <span id="juris-badge" style="display:none"></span>
-          <svg id="precheck-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+        <div class="panel-toggle" id="precheck-panel-toggle" style="display:flex;flex-direction:column;cursor:pointer;user-select:none;margin-bottom:0">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="plabel" style="margin-bottom:0">Flags &amp; Alerts</span>
+            <svg id="precheck-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <span id="juris-badge" style="display:none;margin-top:4px"></span>
         </div>
         <div id="precheck-panel-body" style="display:block;margin-top:12px">
           <div id="wl"><div class="w info"><i class="ti ti-info-circle"></i><span>Place elements to run checks.</span></div></div>
@@ -1347,11 +1349,12 @@ function drawDims(){
   document.addEventListener('mousemove',ev=>{
     if(S.isRotating)return;
     if(S.tool==='dim'&&dimStart)return;
-    const r=cw.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top;
-    if(x<0||y<0||x>r.width||y>r.height){
+    const _cvR=cvArea.getBoundingClientRect();
+    if(ev.clientX<_cvR.left||ev.clientX>_cvR.right||ev.clientY<_cvR.top||ev.clientY>_cvR.bottom){
       if(hoveredDimId!=null){hoveredDimId=null;if(S.tool==='select')cw.style.pointerEvents='none';drawDims();}
       return;
     }
+    const {x,y}=screenToCanvasPt(ev.clientX,ev.clientY);
     const hitId=dimHitTest(x,y);
     if(hitId!==hoveredDimId){hoveredDimId=hitId;drawDims();}
     if(hitId!=null){
@@ -1397,12 +1400,13 @@ function drawDims(){
   document.addEventListener('mousemove',ev=>{
     if(S.isRotating)return;
     if(S.tool==='fence'&&fenceCur.length>0)return;
-    const r=cw.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top;
-    if(x<0||y<0||x>r.width||y>r.height){
+    const _cvR2=cvArea.getBoundingClientRect();
+    if(ev.clientX<_cvR2.left||ev.clientX>_cvR2.right||ev.clientY<_cvR2.top||ev.clientY>_cvR2.bottom){
       if(hoveredFenceId!=null){hoveredFenceId=null;if(S.tool==='select')cw.style.pointerEvents='none';drawDims();}
       return;
     }
-    const hitId=fenceHitTest(x,y);
+    const {x:_fx,y:_fy}=screenToCanvasPt(ev.clientX,ev.clientY);
+    const hitId=fenceHitTest(_fx,_fy);
     if(hitId!==hoveredFenceId){hoveredFenceId=hitId;drawDims();}
     if(hitId!=null){
       cw.style.cursor='pointer';
@@ -2058,7 +2062,7 @@ function renderEls(){
       wrap.appendChild(db);
     }else{
       const rb=document.createElement('button');rb.className='rbtn';
-      rb.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:-${btnSz}px;left:-${btnSz}px;font-size:${btnSz-6}px;`;
+      rb.style.cssText=`width:${btnSz}px;height:${btnSz}px;top:-${Math.ceil(btnSz/2)}px;left:-${Math.ceil(btnSz/2)}px;font-size:${btnSz-6}px;`;
       rb.innerHTML='↻';
       rb.addEventListener('mousedown',ev=>{
         ev.stopPropagation();ev.preventDefault();
@@ -2189,6 +2193,8 @@ function makeDrag(div,el){
     const _peerPxCache=_stPeers.map(o=>{const px=elX(o),py=elY(o),pw=elW(o),ph=elH(o);return{px,py,pw,ph,px2:px+pw,py2:py+ph};});
     let _gSnapped=false,_aSnappedX=false,_aSnappedY=false;
     const onM=mv=>{
+      const _ddx=mv.clientX-sx,_ddy=mv.clientY-sy;
+      if(!moved&&_ddx*_ddx+_ddy*_ddy<9)return;
       if(!didPushUndo){pushUndo();didPushUndo=true;}
       moved=true;div._dragMoved=true;
       const mvPt=_sc2pt(mv.clientX,mv.clientY);
@@ -2830,7 +2836,19 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){if(document.getElementById('mo').style.display!=='none'){closeModal();return;}if(S.tool!=='select')setTool('select');S.selId=null;S.selIds=new Set();updateAlignBtn();renderEls();return;}
   const tag=document.activeElement&&document.activeElement.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
   if(e.key==='Delete'||e.key==='Backspace'){
-    if(S.selId!==null){
+    const _hDim=window._dimGetHovered?window._dimGetHovered():null;
+    const _hFence=window._fenceGetHovered?window._fenceGetHovered():null;
+    if(_hDim!=null){
+      e.preventDefault();
+      const _did=_hDim;
+      modal('Delete Measurement?','Remove this measurement from the map?','',
+        ()=>{pushUndo();S.dims=S.dims.filter(d=>d.id!==_did);if(S.tool==='select')cw.style.pointerEvents='none';drawDims();},'Delete');
+    }else if(_hFence!=null){
+      e.preventDefault();
+      const _fid=_hFence;
+      modal('Delete Fence?','Remove this fence run from the map?','',
+        ()=>{pushUndo();S.fences=S.fences.filter(f=>f.id!==_fid);if(S.tool==='select')cw.style.pointerEvents='none';drawDims();renderVenueInfra();runRules();},'Delete');
+    }else if(S.selId!==null){
       pushUndo();const found=S.els.find(x=>x.id===S.selId);
       if(found&&found.type==='firstaid'){S.firstAids=S.firstAids.filter(c=>c.eid!==S.selId);}
       S.els=S.els.filter(x=>x.id!==S.selId);S.selIds.delete(S.selId);S.selId=S.selIds.size?[...S.selIds][S.selIds.size-1]:null;updateAlignBtn();
